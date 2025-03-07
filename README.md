@@ -1,44 +1,48 @@
 # YouTube Video Maker
 
-A Python application for creating YouTube videos with synchronized lyrics/subtitles.
+A web application for creating YouTube videos with synchronized lyrics/subtitles, built with React and Node.js.
 
 ## Features
 
-- Transcription using Faster Whisper
-- Synchronized lyrics/subtitles generation
-- Web interface for video creation and management
-
-## Requirements
-
-- Python 3.8+
-- Flask
-- faster-whisper
+-   Synchronized lyrics/subtitles generation
+-   Web interface for video creation and management
 
 ## Setup
 
-1. Clone the repository
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-3. Download the required Faster Whisper model files
-4. Place audio files in the `audio/` directory
-5. Run the application:
-```bash
-python app.py
-```
+1.  Clone the repository
+2.  Navigate to the `frontend` directory and install dependencies:
 
-## Configuration
+    ```bash
+    cd frontend
+    npm install
+    ```
 
-The application uses a web interface accessed through Flask. The default port is 5000.
+3.  Navigate to the `backend` directory and install dependencies:
+
+    ```bash
+    cd ../backend
+    npm install
+    ```
+
+4.  Place audio files in the `audio/` directory
+
+## Running the Application
+1.  Start the backend server:
+    ```
+    cd backend
+    npm run dev
+    ```
+2.  Start the frontend:
+    ```
+    cd ../frontend
+    npm start
+    ```
 
 ## Directory Structure
 
-- `app.py`: Main Flask application
-- `main.py`: Core video creation logic
-- `templates/`: HTML templates
-- `static/`: Static files
-- `audio/`: Audio files (not tracked in git)
-- `models/`: Model files (not tracked in git)
-- `transcriptions/`: Generated transcription files
-- `lyrics/`: Generated lyrics/subtitle files
+-   `frontend/`: React frontend application
+-   `backend/`: Node.js backend server
+-   `audio/`: Audio files (not tracked in git)
+-   `lyrics/`: Generated lyrics/subtitle files
+-   `transcriptions/`: Generated transcription files (original Python app - to be migrated)
+- `models/`: Model files (original Python app - to be migrated)

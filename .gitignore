@@ -18,3 +18,13 @@ audio/
 .vscode/
 *.swp
 *.swo
+
+# Node.js
+node_modules/
+
+# Build output
+build/
+dist/
+
+# React
+.DS_Store
