@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env/
+.venv/
+models/
+audio/
+*.mp3
+*.png
+*.wav
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lyrics Timing Adjuster</title>
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .waveform-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            margin-bottom: 20px;
+        }
+        #visualizer { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .position-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background-color: red;
+            pointer-events: none;
+            transition: left 0.1s linear;
+        }
+        #timeline { width: 100%; margin: 20px 0; }
+        .lyrics-line { padding: 5px; margin: 2px 0; }
+        .active-line { background: #e0e0e0; }
+        #timing-adjustment { width: 100%; margin: 20px 0; }
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .time-display {
+            font-family: monospace;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="waveform-container">
+            <img id="visualizer" alt="Audio waveform">
+            <div class="position-indicator"></div>
+        </div>
+        <div class="controls">
+            <button id="play-pause">Play</button>
+            <span class="time-display" id="current-time">00:00</span>
+            <input type="range" id="timeline" min="0" max="100" value="0">
+            <span class="time-display" id="duration">00:00</span>
+        </div>
+        <div id="timing-controls">
+            <label>Global Timing Adjustment:</label>
+            <input type="range" id="timing-adjustment" min="-30" max="30" step="0.1" value="0">
+            <span id="adjustment-value">0.0s</span>
+        </div>
+        <button id="save-timing">Reset Timing</button>
+        <div id="lyrics-container"></div>
+    </div>
+
+    <script>
+        // Add audioContext declaration
+        let audioContext = null;
+        let audio = new Audio();
+        audio.crossOrigin = "anonymous";
+        let isPlaying = false;
+        let lyrics = [];
+        let globalAdjustment = 0;
+        let visualizerInitialized = false;
+        let originalLyrics = [];
+
+        // Modify initAudio function to be simpler
+        async function initAudio() {
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    audioSource = audioContext.createMediaElementSource(audio);
+                    audioSource.connect(audioContext.destination);
+                    visualizerInitialized = true;
+                }
+            } catch (e) {
+                console.error('Audio initialization failed:', e);
+            }
+        }
+
+        // Format time display
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Load audio and lyrics data
+        async function loadData() {
+            try {
+                // Create AudioContext on first load
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const response = await fetch('/get_lyrics_timing/안예은 - 가자');
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                originalLyrics = JSON.parse(JSON.stringify(data)); // Deep copy
+                lyrics = data;
+                renderLyrics();
+                
+                const audioData = await fetch('/get_audio_data/안예은 - 가자');
+                const audioJson = await audioData.json();
+                
+                if (audioJson.error) {
+                    throw new Error(audioJson.error);
+                }
+                
+                // Load waveform
+                const waveformData = await fetch('/get_waveform/안예은 - 가자');
+                const waveformJson = await waveformData.json();
+                
+                if (waveformJson.error) {
+                    throw new Error(waveformJson.error);
+                }
+                
+                document.getElementById('visualizer').src = waveformJson.waveform_url;
+                
+                audio.src = audioJson.audio_url;
+                audio.load();
+                
+                // Update duration once metadata is loaded
+                audio.onloadedmetadata = () => {
+                    document.getElementById('duration').textContent = formatTime(audio.duration);
+                };
+            } catch (e) {
+                console.error('Loading failed:', e);
+                alert('Failed to load audio or lyrics: ' + e.message);
+            }
+        }
+
+        // Update lyrics display
+        function updateLyrics(currentTime) {
+            const lines = document.querySelectorAll('.lyrics-line');
+            lines.forEach((line, i) => {
+                if (lyrics[i].start <= currentTime && lyrics[i].end >= currentTime) {
+                    line.classList.add('active-line');
+                } else {
+                    line.classList.remove('active-line');
+                }
+            });
+        }
+
+        // Render lyrics
+        function renderLyrics() {
+            const container = document.getElementById('lyrics-container');
+            container.innerHTML = lyrics.map((line, i) => 
+                `<div class="lyrics-line" data-index="${i}">${line.line}</div>`
+            ).join('');
+        }
+
+        // Add timeline control
+        document.getElementById('timeline').oninput = (e) => {
+            const time = (e.target.value / 100) * audio.duration;
+            audio.currentTime = time;
+        };
+
+        // Update play/pause button handling
+        document.getElementById('play-pause').onclick = async () => {
+            try {
+                if (isPlaying) {
+                    audio.pause();
+                    isPlaying = false;
+                    document.getElementById('play-pause').textContent = 'Play';
+                } else {
+                    await initAudio();  // Initialize audio context on first play
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                        console.log('AudioContext resumed');
+                    }
+                    await audio.play();
+                    isPlaying = true;
+                    document.getElementById('play-pause').textContent = 'Pause';
+                }
+                console.log('Playback state:', isPlaying ? 'playing' : 'paused');
+            } catch (error) {
+                console.error('Playback control failed:', error);
+                alert('Playback failed: ' + error.message);
+            }
+        };
+
+        async function applyTimingAdjustment(adjustment) {
+            lyrics = originalLyrics.map(line => ({
+                ...line,
+                start: line.start + adjustment,
+                end: line.end + adjustment
+            }));
+
+            // Save immediately
+            try {
+                await fetch('/save_timing', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        song_name: '안예은 - 가자',
+                        timing: lyrics
+                    })
+                });
+                console.log('Timing saved with adjustment:', adjustment);
+            } catch (e) {
+                console.error('Failed to save timing:', e);
+            }
+        }
+
+        document.getElementById('timing-adjustment').oninput = async (e) => {
+            globalAdjustment = parseFloat(e.target.value);
+            document.getElementById('adjustment-value').textContent = `${globalAdjustment}s`;
+            await applyTimingAdjustment(globalAdjustment);
+        };
+
+        // Replace save button handler with reset functionality
+        document.getElementById('save-timing').onclick = async () => {
+            globalAdjustment = 0;
+            document.getElementById('timing-adjustment').value = "0";
+            document.getElementById('adjustment-value').textContent = "0.0s";
+            lyrics = JSON.parse(JSON.stringify(originalLyrics)); // Reset to original
+            
+            // Save reset state
+            try {
+                await fetch('/save_timing', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        song_name: '안예은 - 가자',
+                        timing: lyrics
+                    })
+                });
+                console.log('Timing reset to original');
+            } catch (e) {
+                console.error('Failed to reset timing:', e);
+            }
+        };
+
+        // Add error handling for audio loading
+        audio.onerror = (e) => {
+            console.error('Audio loading error:', e);
+            alert('Error loading audio file');
+        };
+
+        // Continuously update timeline & lyrics
+        audio.addEventListener('timeupdate', () => {
+            if (audio.duration) {
+                const progress = (audio.currentTime / audio.duration) * 100;
+                document.getElementById('timeline').value = progress;
+                document.getElementById('current-time').textContent = formatTime(audio.currentTime);
+                updateLyrics(audio.currentTime);
+                
+                // Update position indicator
+                const indicator = document.querySelector('.position-indicator');
+                indicator.style.left = `${progress}%`;
+            }
+        });
+
+        // Add click handler for waveform seeking
+        document.querySelector('.waveform-container').addEventListener('click', (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = (x / rect.width) * 100;
+            const time = (percentage / 100) * audio.duration;
+            audio.currentTime = time;
+        });
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>
