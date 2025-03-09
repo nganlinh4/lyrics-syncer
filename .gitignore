@@ -28,3 +28,5 @@ dist/
 
 # React
 .DS_Store
+
+backend/config.json

@@ -11,7 +11,8 @@ function App() {
   const [playing, setPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [fileSize, setFileSize] = useState(null);
-  
+  const [lyrics, setLyrics] = useState([]);
+
   const wavesurferRef = useRef(null);
   const audioRef = useRef(null);
   const containerRef = useRef(null);
@@ -24,9 +25,9 @@ function App() {
   * @returns {string} The URL-friendly song name.
   */
   const getSongName = (artist, song) => {
-      return `${artist} - ${song}`.toLowerCase().replace(/\s+/g, '_');
+    return `${artist} - ${song}`.toLowerCase().replace(/\s+/g, '_');
   };
-  
+
   const handleDownload = async () => {
     if (!song || !artist) {
       setError('Please enter both song and artist.');
@@ -36,7 +37,7 @@ function App() {
     setLoading(true);
     setError(null);
     setAudioLoaded(false);
-    
+
     try {
       const response = await fetch('http://localhost:3001/api/process', {
         method: 'POST',
@@ -51,21 +52,21 @@ function App() {
 
       const songName = getSongName(artist, song);
       const audioDataResponse = await fetch(`http://localhost:3001/api/audio_data/${songName}`);
-      
+
       if (!audioDataResponse.ok) {
         const errorData = await audioDataResponse.json();
         throw new Error(`Failed to fetch audio data: ${audioDataResponse.status} - ${errorData.error}`);
       }
-      
+
       const audioData = await audioDataResponse.json();
       console.log("Audio data received:", audioData);
-      
+
       // Set file size
       setFileSize(audioData.size);
-      
+
       // Use the URL exactly as provided by the backend
       setAudioUrl(audioData.audio_url);
-      
+
     } catch (error) {
       console.error("Error processing song:", error);
       setError(error.message);
@@ -132,10 +133,39 @@ function App() {
     }
   }, [audioUrl]);
 
+ const handlePreviewLyrics = () => {
+    if (!song || !artist) {
+      setError("Please enter both song and artist.");
+      setLyrics([]);
+      return;
+    }
+
+    fetch('http://localhost:3001/api/lyrics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artist, song }),
+    })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch lyrics: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((data) => {
+      setLyrics(data.lyrics.split('\\n'));
+      setError(null); // Clear any previous error
+    })
+    .catch((error) => {
+      console.error("Error fetching lyrics:", error);
+      setLyrics([]); // Reset lyrics on error
+      setError("Error fetching lyrics from Genius."); // Set error message
+    });
+  };
+
   // Function to toggle play/pause
   const togglePlay = () => {
     if (!audioRef.current || !audioUrl) return;
-    
+
     if (playing) {
       audioRef.current.pause();
     } else {
@@ -195,12 +225,18 @@ function App() {
         </div>
       </div>
 
-      <button 
-        onClick={handleDownload} 
+      <button
+        onClick={handleDownload}
         disabled={loading}
         style={{ padding: '8px 16px', marginBottom: '20px' }}
       >
         {loading ? 'Processing...' : 'Download and Process'}
+      </button>
+      <button
+        onClick={handlePreviewLyrics}
+        style={{ padding: '8px 16px', marginLeft: '10px' }}
+      >
+        Preview Lyrics
       </button>
 
       {error && (
@@ -212,9 +248,9 @@ function App() {
           <>
             <h3>Audio Preview</h3>
             <div ref={containerRef} style={{ marginTop: '20px', marginBottom: '20px', width: '100%' }}></div>
-            
+
             <div style={{ marginTop: '10px', marginBottom: '20px' }}>
-              <audio 
+              <audio
                 ref={audioRef}
                 controls
                 src={audioUrl}
@@ -232,7 +268,7 @@ function App() {
                 onPlay={() => setPlaying(true)}
                 onPause={() => setPlaying(false)}
               />
-              
+
               {/* Add a direct download link as a fallback */}
               <div style={{ marginTop: '10px' }}>
                 <a href={audioUrl} target="_blank" rel="noopener noreferrer">
@@ -240,8 +276,20 @@ function App() {
                 </a>
               </div>
             </div>
-            
+
             {fileSize && <div>File Size: {Math.round(fileSize / 1024)} KB</div>}
+            {lyrics.length > 0 && (
+              <div>
+                <h3>Lyrics</h3>
+                <ul>
+                  {lyrics.map((item, index) => (
+                    <li key={index}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </>
         )}
       </div>

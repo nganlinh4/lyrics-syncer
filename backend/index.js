@@ -30,7 +30,7 @@ app.use(express.json());
 
 // Make sure audio directory exists
 const AUDIO_DIR = path.join(__dirname, '../audio');
-const LYRICS_DIR = path.join(__dirname, '../lyrics');
+const LYRICS_DIR = path.join(__dirname, '../../frontend/public/lyrics');
 fsSync.mkdirSync(AUDIO_DIR, { recursive: true });
 fsSync.mkdirSync(LYRICS_DIR, { recursive: true });
 
@@ -315,6 +315,39 @@ app.get('/api/audio_data/:song_name', getAudioData);
 app.get('/api/lyrics_timing/:song_name', getLyricsTiming);
 app.post('/api/save_timing', saveTiming);
 app.post('/api/process', processSong);
+const getLyrics = async (req, res) => {
+    try {
+        // Read the API key from config.json
+        let config = {};
+        const configPath = path.join(__dirname, 'config.json');
+        if (await fileExists(configPath)) {
+            const configData = await fs.readFile(configPath, 'utf-8');
+            config = JSON.parse(configData);
+        }
+        if (!config.geniusApiKey) {
+            return res.status(400).json({ error: 'Genius API key not set. Please provide it through the frontend.' });
+        }
+
+        const { default: Genius } = await import('genius-lyrics');
+        const geniusClient = new Genius.Client(config.geniusApiKey);
+        const { artist, song } = req.body;
+
+        if (!artist || !song) {
+            return res.status(400).json({ error: 'Missing artist or song' });
+        }
+        const geniusSong = await geniusClient.songs.search(`${artist} ${song}`);
+        if (geniusSong.length > 0) {
+          const lyrics = await geniusSong[0].lyrics();
+          res.json({ lyrics });
+        } else {
+          res.status(404).json({error: "Lyrics not found"});
+        }
+
+    } catch (error) {
+        console.error("Error in /api/lyrics:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
 app.post('/api/save_api_key', saveApiKey);
 
 // Replace the complex static file handler with a simpler one
@@ -333,3 +366,5 @@ app.use('/audio', express.static(AUDIO_DIR, {
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
+
+app.post('/api/lyrics', getLyrics);
