@@ -27,15 +27,17 @@ A web application for creating YouTube videos with synchronized lyrics/subtitles
 4.  Place audio files in the `audio/` directory
 
 ## Running the Application
+
 1.  Start the backend server:
+
     ```
-    cd backend
-    npm run dev
+    cd backend && npm run dev
     ```
+
 2.  Start the frontend:
+
     ```
-    cd ../frontend
-    npm start
+    cd frontend && npm start
     ```
 
 ## Directory Structure
@@ -46,3 +48,45 @@ A web application for creating YouTube videos with synchronized lyrics/subtitles
 -   `lyrics/`: Generated lyrics/subtitle files
 -   `transcriptions/`: Generated transcription files (original Python app - to be migrated)
 - `models/`: Model files (original Python app - to be migrated)
+
+## API Endpoints
+
+The backend server provides the following API endpoints:
+
+### `GET /api/audio_data/:song_name`
+
+Retrieves audio data for a given song.
+
+-   **Parameters:**
+    -   `song_name`: The name of the song (artist - song title, lowercase, spaces replaced with underscores).
+-   **Response:**
+    -   `audio_url`: The URL of the audio file.
+    -   `duration`: The duration of the audio file (currently a placeholder).
+
+### `GET /api/lyrics_timing/:song_name`
+
+Retrieves lyrics timing data for a given song.
+
+-   **Parameters:**
+    -   `song_name`: The name of the song (artist - song title, lowercase, spaces replaced with underscores).
+-   **Response:**
+    -   A JSON object containing the timed lyrics data.
+
+### `POST /api/save_timing`
+
+Saves lyrics timing data for a given song.
+
+-   **Parameters:**
+    -   `song_name`: The name of the song (in the request body).
+    -   `timing`: The lyrics timing data (in the request body).
+- **Response:**
+  - `{ success: true }`
+
+### `GET /api/waveform/:song_name`
+
+Retrieves the waveform SVG for a given song.
+
+- **Parameters:**
+ - `song_name`: The name of the song (artist - song title, lowercase, spaces replaced with underscores).
+- **Response:**
+ - `waveform_svg`: A string containing the SVG path data for the waveform.
