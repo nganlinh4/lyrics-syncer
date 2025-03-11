@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 
 function App() {
@@ -8,15 +8,18 @@ function App() {
   const [youtubeApiKey, setYoutubeApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [playing, setPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [fileSize, setFileSize] = useState(null);
   const [lyrics, setLyrics] = useState([]);
+  const [matchingInProgress, setMatchingInProgress] = useState(false);
+  const [matchingComplete, setMatchingComplete] = useState(false);
+  const [matchedLyrics, setMatchedLyrics] = useState([]);
+  const [currentTime, setCurrentTime] = useState(0);
 
   const wavesurferRef = useRef(null);
   const audioRef = useRef(null);
   const containerRef = useRef(null);
-  const [audioLoaded, setAudioLoaded] = useState(false);
+  const animationFrameRef = useRef(null);
 
   /**
   * Constructs a URL-friendly song name.
@@ -36,7 +39,7 @@ function App() {
 
     setLoading(true);
     setError(null);
-    setAudioLoaded(false);
+    // Removed setAudioLoaded(false) since audioLoaded state is removed
 
     try {
       const response = await fetch('http://localhost:3001/api/process', {
@@ -114,6 +117,18 @@ function App() {
       wavesurferRef.current.on('error', (err) => {
         console.error('WaveSurfer error:', err);
       });
+
+      // Add timeupdate event
+      wavesurferRef.current.on('timeupdate', (time) => {
+        console.log('Current time:', time); // Debug log
+        setCurrentTime(time);
+      });
+
+      // Also listen to audioprocess event as backup
+      wavesurferRef.current.on('audioprocess', (time) => {
+        console.log('Audioprocess time:', time); // Debug log
+        setCurrentTime(time);
+      });
     }
 
     // Clean up WaveSurfer on unmount
@@ -164,19 +179,196 @@ function App() {
     }
   };
 
-  // Function to toggle play/pause
-  const togglePlay = () => {
-    if (!audioRef.current || !audioUrl) return;
-
-    if (playing) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play()
-        .catch(err => {
-          console.error("Play error:", err);
-          setError("Unable to play audio: " + err.message);
-        });
+  const handleAutoMatch = async () => {
+    if (!audioUrl || lyrics.length === 0) {
+      setError('Both audio and lyrics must be loaded first');
+      return;
     }
+
+    setMatchingInProgress(true);
+    setError(null);
+
+    try {
+      const songName = getSongName(artist, song);
+      const response = await fetch('http://localhost:3001/api/auto_match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          songName,
+          lyrics: lyrics,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to match lyrics');
+      }
+
+      const matchedData = await response.json();
+      setMatchedLyrics(matchedData.matched_lyrics);
+      setMatchingComplete(true);
+
+    } catch (error) {
+      console.error('Error matching lyrics:', error);
+      setError(error.message);
+    } finally {
+      setMatchingInProgress(false);
+    }
+  };
+
+  // Removed togglePlay function
+
+  // Add this function to find the current lyric
+  const getCurrentLyricIndex = useCallback((time) => {
+    if (!matchedLyrics || matchedLyrics.length === 0) return -1;
+    const index = matchedLyrics.findIndex(
+      (lyric) => time >= lyric.start && time <= lyric.end
+    );
+    console.log('Current lyric index:', index, 'for time:', time); // Debug log
+    return index;
+  }, [matchedLyrics]);
+
+  // Debug current time changes
+  useEffect(() => {
+    console.log('Current time updated:', currentTime);
+  }, [currentTime]);
+
+  // Update scroll effect with proper dependencies
+  useEffect(() => {
+    const currentIndex = getCurrentLyricIndex(currentTime);
+    if (currentIndex !== -1) {
+      const element = document.querySelector(`[data-lyric-index="${currentIndex}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentTime, getCurrentLyricIndex]);
+
+  // Add timeupdate event listener to the audio element
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      const handleTimeUpdate = () => {
+        setCurrentTime(audioElement.currentTime);
+        console.log('Audio currentTime:', audioElement.currentTime); // Debug log
+      };
+
+      audioElement.addEventListener('timeupdate', handleTimeUpdate);
+
+      return () => {
+        audioElement.removeEventListener('timeupdate', handleTimeUpdate);
+      };
+    }
+  }, []);
+
+  // New function to update time using requestAnimationFrame
+  const updateTime = useCallback(() => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+      animationFrameRef.current = requestAnimationFrame(updateTime);
+    }
+  }, []);
+
+  // Start and stop time tracking
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (!audioElement) return;
+
+    const handlePlay = () => {
+      console.log('Audio started playing');
+      animationFrameRef.current = requestAnimationFrame(updateTime);
+    };
+
+    const handlePause = () => {
+      console.log('Audio paused');
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+
+    audioElement.addEventListener('play', handlePlay);
+    audioElement.addEventListener('pause', handlePause);
+    audioElement.addEventListener('seeking', updateTime);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      audioElement.removeEventListener('play', handlePlay);
+      audioElement.removeEventListener('pause', handlePause);
+      audioElement.removeEventListener('seeking', updateTime);
+    };
+  }, [updateTime]);
+
+  // Render matched lyrics with current time tracking
+  const renderMatchedLyrics = () => {
+    if (!matchingComplete || !matchedLyrics) return null;
+
+    return (
+      <div style={{ marginTop: '20px' }}>
+        <h3>Matched Lyrics</h3>
+        <div style={{ 
+          maxHeight: '400px', 
+          overflowY: 'auto',
+          border: '1px solid #ccc',
+          padding: '10px',
+          scrollBehavior: 'smooth',
+          position: 'relative'
+        }}>
+          {matchedLyrics.map((item, index) => {
+            const isCurrentLyric = 
+              currentTime >= item.start && 
+              currentTime <= item.end;
+            
+            console.log(`Lyric ${index}:`, { 
+              start: item.start, 
+              end: item.end, 
+              current: currentTime, 
+              isActive: isCurrentLyric 
+            });
+
+            return (
+              <div 
+                key={index}
+                data-lyric-index={index}
+                style={{
+                  padding: '10px',
+                  backgroundColor: isCurrentLyric ? '#4CAF50' : 
+                                 item.confidence > 0.8 ? '#e8f5e9' : 
+                                 item.confidence > 0.6 ? '#fff3e0' : '#ffebee',
+                  marginBottom: '5px',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.3s ease',
+                  color: isCurrentLyric ? 'white' : 'black',
+                  cursor: 'pointer'
+                }}
+                onClick={() => {
+                  if (audioRef.current) {
+                    audioRef.current.currentTime = item.start;
+                  }
+                }}
+              >
+                <div style={{ 
+                  fontWeight: isCurrentLyric ? 'bold' : 'normal'
+                }}>
+                  {item.line}
+                </div>
+                <div style={{ 
+                  fontSize: '0.8em', 
+                  color: isCurrentLyric ? 'rgba(255,255,255,0.8)' : '#666'
+                }}>
+                  Current Time: {currentTime.toFixed(2)}s | 
+                  {`${item.start.toFixed(2)}s - ${item.end.toFixed(2)}s`}
+                  <span style={{ marginLeft: '10px' }}>
+                    Confidence: {(item.confidence * 100).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -234,6 +426,33 @@ function App() {
       >
         {loading ? 'Processing...' : 'Download and Process'}
       </button>
+
+      {/* Add the auto-match button */}
+      {audioUrl && lyrics.length > 0 && !matchingInProgress && !matchingComplete && (
+        <button
+          onClick={handleAutoMatch}
+          style={{ 
+            padding: '8px 16px', 
+            marginLeft: '10px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px'
+          }}
+        >
+          Start Auto Lyrics Matching
+        </button>
+      )}
+
+      {matchingInProgress && (
+        <div style={{ marginTop: '10px' }}>
+          <span>Matching lyrics to audio... Please wait</span>
+          {/* You could add a progress spinner here */}
+        </div>
+      )}
+
+      {renderMatchedLyrics()}
+
       <button
         onClick={handlePreviewLyrics}
         style={{ padding: '8px 16px', marginLeft: '10px' }}
@@ -270,17 +489,12 @@ function App() {
                 src={audioUrl}
                 preload="auto"
                 style={{ width: '100%', marginTop: '10px' }}
-                onCanPlay={() => {
-                  console.log("Audio can play now");
-                  setAudioLoaded(true);
-                }}
                 onError={(e) => {
                   console.error("Audio player error:", e);
                   console.log("Failed to load audio URL:", audioUrl);
                   setError("Error loading audio. Please try again.");
                 }}
-                onPlay={() => setPlaying(true)}
-                onPause={() => setPlaying(false)}
+                // Removed the onPlay and onPause handlers since we're not using the playing state
               />
 
               {/* Add a direct download link as a fallback */}
@@ -298,7 +512,18 @@ function App() {
                 <ul>
                   {lyrics.map((item, index) => (
                     <li key={index}>
-                      {item}
+                      {/* Check if item is an object or string */}
+                      {typeof item === 'object' ? item.text : item}
+                      {typeof item === 'object' && (
+                        <span style={{ 
+                          fontSize: '0.8em', 
+                          color: '#666', 
+                          marginLeft: '10px' 
+                        }}>
+                          ({item.start.toFixed(2)}s - {item.end.toFixed(2)}s)
+                          {item.confidence && ` Confidence: ${(item.confidence * 100).toFixed(1)}%`}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>

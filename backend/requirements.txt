@@ -1,5 +1,4 @@
 flask
-faster-whisper>=0.9.0
 numpy
 python-dotenv
 pydub
@@ -11,3 +10,4 @@ rapidfuzz
 librosa
 soundfile
 noisereduce
+whisper-timestamped

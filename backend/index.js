@@ -6,11 +6,15 @@ import path from 'path';
 import * as fsSync from 'fs';
 import { fileURLToPath } from 'url';
 import youtubeSearch from 'youtube-search';
-// Import youtube-dl-exec for more reliable downloads
 import youtubeDlExec from 'youtube-dl-exec';
+import { spawn } from 'child_process';
+import { ratio } from 'fuzzball';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Add path to virtual environment Python
+const VENV_PYTHON = path.join(__dirname, 'venv', 'Scripts', 'python.exe');
 
 const app = express();
 const port = 3001;
@@ -375,8 +379,117 @@ app.use('/audio', express.static(AUDIO_DIR, {
   }
 }));
 
+app.post('/api/lyrics', getLyrics);
+
+app.post('/api/auto_match', async (req, res) => {
+  const { songName, lyrics } = req.body;
+
+  if (!songName || !lyrics) {
+    return res.status(400).json({ error: 'Missing required parameters' });
+  }
+
+  try {
+    // Get the audio file path
+    const audioFiles = fsSync.readdirSync(AUDIO_DIR)
+      .filter(f => f.toLowerCase().includes(songName.toLowerCase()) && f.endsWith('.mp3'));
+
+    if (audioFiles.length === 0) {
+      throw new Error('Audio file not found');
+    }
+
+    const audioFile = path.join(AUDIO_DIR, audioFiles[0]);
+    
+    // Wait a moment to ensure file is completely written
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Verify file exists and is readable
+    try {
+      await fs.access(audioFile, fs.constants.R_OK);
+      const stats = await fs.stat(audioFile);
+      console.log(`File verified: ${audioFile}, size: ${stats.size} bytes`);
+    } catch (err) {
+      throw new Error(`File not accessible: ${err.message}`);
+    }
+
+    const scriptPath = path.join(__dirname, 'lyrics_matcher.py');
+    
+    // Prepare environment variables
+    const env = {
+      ...process.env,
+      PATH: `${process.env.PATH};C:\\Program Files\\ffmpeg\\bin`,
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUNBUFFERED: '1'
+    };
+    
+    console.log('Starting Python process with:');
+    console.log('Python path:', VENV_PYTHON);
+    console.log('Script path:', scriptPath);
+    console.log('Audio file:', audioFile);
+    
+    const pythonArgs = [
+      scriptPath,
+      '--audio_path', audioFile,
+      '--lyrics', JSON.stringify(lyrics)
+    ];
+    
+    console.log('Python arguments:', pythonArgs);
+    
+    const pythonProcess = spawn(VENV_PYTHON, pythonArgs, {
+      shell: false,
+      env: env
+    });
+
+    let outputData = '';
+    let errorData = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+      outputData += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error('Python error:', data.toString());
+      errorData += data.toString();
+    });
+
+    pythonProcess.on('error', (error) => {
+      console.error('Failed to start Python process:', error);
+      errorData += error.toString();
+    });
+
+    await new Promise((resolve, reject) => {
+      pythonProcess.on('close', (code) => {
+        console.log('Python process exited with code:', code);
+        if (code !== 0) {
+          reject(new Error(`Process failed with code ${code}: ${errorData}`));
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    try {
+      // Parse the output from Python script
+      const matchedData = JSON.parse(outputData.trim());
+      
+      if (matchedData.error) {
+        throw new Error(matchedData.error);
+      }
+
+      res.json({ 
+        matched_lyrics: matchedData,
+        message: 'Audio processing and lyrics matching completed successfully'
+      });
+    } catch (parseError) {
+      console.error('Failed to parse Python output:', outputData);
+      throw new Error(`Failed to parse Python output: ${parseError.message}`);
+    }
+
+  } catch (error) {
+    console.error('Error in auto matching:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
-
-app.post('/api/lyrics', getLyrics);

@@ -25,6 +25,26 @@ import librosa.effects
 import librosa.segment
 import numpy as np
 import whisper
+from speechbrain.pretrained import VAD
+from transformers import AutoModelForCTC, AutoProcessor
+import torch
+from dtaidistance import dtw
+from dtaidistance import dtw_visualisation as dtwvis
+import numpy as np
+from typing import List, Dict, Tuple
+import warnings
+warnings.filterwarnings("ignore")
+
+# Initialize models globally for better performance
+print("Initializing models...")
+vad_model = VAD.from_hparams(source="speechbrain/vad-crdnn-libriparty")
+korean_asr_processor = AutoProcessor.from_pretrained("kresnik/wav2vec2-large-xlsr-korean")
+korean_asr_model = AutoModelForCTC.from_pretrained("kresnik/wav2vec2-large-xlsr-korean")
+whisper_model = whisper.load_model(
+    "large-v3",
+    device="cuda" if torch.cuda.is_available() else "cpu",
+    download_root="./models"
+)
 
 YOUTUBE_API_KEY = 'AIzaSyCbbeb0vRSJuQEXTkNiGGRAX9XdRjsaHzw'
 GENIUS_API_KEY = 'I6mslHIdg8x1FSBNmfayrcqCPuZjk_jwLvaXk9gGHLdxI8TYXAhbVMg2rOsrXDy_'  # Replace with your Genius API token
@@ -144,161 +164,218 @@ def extract_vocals(audio_path):
         print(f"Error extracting vocals: {e}")
         return audio_path  # Return original audio if processing fails
 
-def get_audio_timestamps(audio_file):
-    """Get timestamped transcription using Whisper"""
+def extract_audio_features(audio: np.ndarray, sr: int) -> np.ndarray:
+    """Extract MFCC features from audio"""
+    mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
+    mfcc_delta = librosa.feature.delta(mfcc)
+    mfcc_delta2 = librosa.feature.delta(mfcc, order=2)
+    return np.concatenate([mfcc, mfcc_delta, mfcc_delta2])
+
+def detect_voice_activity(audio: np.ndarray, sr: int) -> List[Dict[str, float]]:
+    """Detect voice activity segments using SpeechBrain VAD"""
+    # Ensure audio is in the correct format (mono, float32)
+    if len(audio.shape) > 1:
+        audio = audio.mean(axis=1)
+    audio = torch.FloatTensor(audio).unsqueeze(0)
+    
+    # Get VAD predictions
+    probability = vad_model.get_speech_prob_chunk(audio)
+    predictions = (probability > 0.5).float()
+    
+    # Convert predictions to time segments
+    segments = []
+    is_speech = False
+    start_time = 0
+    
+    for i, pred in enumerate(predictions):
+        if pred and not is_speech:
+            start_time = i * 0.01  # VAD uses 10ms windows
+            is_speech = True
+        elif not pred and is_speech:
+            end_time = i * 0.01
+            segments.append({"start": start_time, "end": end_time})
+            is_speech = False
+    
+    return segments
+
+def korean_asr_transcribe(audio: np.ndarray, sr: int) -> List[Dict[str, any]]:
+    """Transcribe using Korean ASR model"""
+    inputs = korean_asr_processor(audio, sampling_rate=sr, return_tensors="pt")
+    with torch.no_grad():
+        logits = korean_asr_model(inputs.input_values).logits
+    predicted_ids = torch.argmax(logits, dim=-1)
+    transcription = korean_asr_processor.batch_decode(predicted_ids)
+    return transcription
+
+def get_audio_timestamps(audio_file: str) -> Dict:
+    """Enhanced audio transcription with multiple models"""
     try:
-        print("Loading Whisper model...")
-        # Use smaller model and enable better memory management
-        import torch
-        torch.cuda.empty_cache()
+        print("Processing audio...")
         
-        model = whisper.load_model(
-            "medium",  # Use medium model instead of large
-            device="cuda" if torch.cuda.is_available() else "cpu",
-            download_root="./models"
+        # Load and preprocess audio
+        audio, sr = librosa.load(audio_file, sr=16000)
+        
+        # Apply vocal isolation
+        y_harmonic, y_percussive = librosa.effects.hpss(audio)
+        vocals = nr.reduce_noise(
+            y=y_harmonic,
+            sr=sr,
+            prop_decrease=0.95,
+            n_fft=2048,
+            win_length=512
         )
         
-        # Split audio into chunks to prevent memory issues
-        def process_audio_chunk(chunk_file, offset=0):
-            result = model.transcribe(
-                chunk_file,
-                language="ko",
-                task="transcribe",
-                fp16=False,
-                initial_prompt="노래 가사:",  # Korean prompt for lyrics
-                verbose=False
-            )
-            # Adjust timestamps for chunk
-            for seg in result["segments"]:
-                seg["start"] += offset
-                seg["end"] += offset
-            return result["segments"]
+        # Detect voice activity segments
+        print("Detecting voice activity...")
+        vad_segments = detect_voice_activity(vocals, sr)
         
-        print("Processing audio in chunks...")
-        chunk_duration = 30  # seconds per chunk
-        audio = AudioSegment.from_wav(audio_file)
-        total_duration = len(audio) / 1000  # convert to seconds
-        
-        all_segments = []
-        for start in range(0, len(audio), chunk_duration * 1000):
-            chunk = audio[start:start + chunk_duration * 1000]
-            chunk_file = tempfile.mktemp('.wav')
-            chunk.export(chunk_file, format='wav')
+        # Process audio in chunks
+        def process_chunk(chunk: np.ndarray) -> Tuple[List, List]:
+            # Get Korean ASR transcription
+            korean_trans = korean_asr_transcribe(chunk, sr)
             
-            try:
-                segments = process_audio_chunk(chunk_file, start / 1000)
-                all_segments.extend(segments)
-                os.remove(chunk_file)
-                print(f"Processed chunk {start//1000} - {(start + chunk_duration)//1000}s")
-            except Exception as e:
-                print(f"Error processing chunk: {e}")
+            # Get Whisper transcription
+            with tempfile.NamedTemporaryFile(suffix='.wav') as temp_file:
+                sf.write(temp_file.name, chunk, sr)
+                whisper_result = whisper_model.transcribe(
+                    temp_file.name,
+                    language="ko",
+                    task="transcribe",
+                    word_timestamps=True,
+                    initial_prompt="노래 가사:",
+                    temperature=0.0
+                )
+            
+            return korean_trans, whisper_result["segments"]
+        
+        # Process each voice activity segment
+        print("Transcribing segments...")
+        all_segments = []
+        for segment in vad_segments:
+            start_idx = int(segment["start"] * sr)
+            end_idx = int(segment["end"] * sr)
+            chunk = vocals[start_idx:end_idx]
+            
+            if len(chunk) < sr * 0.5:  # Skip segments shorter than 0.5s
                 continue
+                
+            korean_trans, whisper_segments = process_chunk(chunk)
+            
+            # Combine transcriptions using confidence scores
+            for wseg in whisper_segments:
+                wseg["start"] += segment["start"]
+                wseg["end"] += segment["start"]
+                wseg["korean_asr_text"] = korean_trans[0] if korean_trans else ""
+                all_segments.append(wseg)
         
-        # Convert segments to our format
-        words_with_timing = []
-        for segment in all_segments:
-            words_with_timing.append({
-                "text": segment["text"].strip(),
-                "start": segment["start"],
-                "end": segment["end"],
-                "probability": segment.get("confidence", 0.0)
-            })
+        # Extract audio features for DTW
+        print("Extracting audio features...")
+        audio_features = extract_audio_features(vocals, sr)
         
-        # Save transcription output to file
-        transcription_output = {
-            "segments": words_with_timing,
-            "duration": total_duration
+        # Merge close segments and align with features
+        def merge_segments(segments: List[Dict], threshold: float = 0.3) -> List[Dict]:
+            merged = []
+            current = None
+            
+            for seg in sorted(segments, key=lambda x: x["start"]):
+                if not current:
+                    current = seg
+                    continue
+                
+                if seg["start"] - current["end"] < threshold:
+                    # Merge segments
+                    current["end"] = seg["end"]
+                    current["text"] = f"{current['text']} {seg['text']}"
+                    current["korean_asr_text"] = f"{current['korean_asr_text']} {seg['korean_asr_text']}"
+                else:
+                    merged.append(current)
+                    current = seg
+            
+            if current:
+                merged.append(current)
+            
+            return merged
+        
+        print("Merging and aligning segments...")
+        merged_segments = merge_segments(all_segments)
+        
+        # Add confidence scores based on ASR agreement
+        for segment in merged_segments:
+            whisper_text = segment["text"].lower()
+            korean_text = segment["korean_asr_text"].lower()
+            confidence = fuzz.ratio(whisper_text, korean_text) / 100.0
+            segment["confidence"] = confidence
+        
+        # Sort segments by start time
+        merged_segments.sort(key=lambda x: x["start"])
+        
+        return {
+            "segments": merged_segments,
+            "duration": len(audio) / sr,
+            "vad_segments": vad_segments,
+            "audio_features": audio_features.tolist()
         }
         
-        # Create transcriptions directory if it doesn't exist
-        os.makedirs('transcriptions', exist_ok=True)
-        
-        # Save raw transcription with timestamp
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = os.path.join('transcriptions', f'transcription_{timestamp}.json')
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(transcription_output, f, ensure_ascii=False, indent=2)
-        
-        print(f"\nSaved raw transcription to: {output_file}")
-        print(f"Transcribed {len(words_with_timing)} segments")
-        print("Sample transcriptions:")
-        for seg in words_with_timing[:3]:
-            print(f"{seg['start']:.2f}s - {seg['end']:.2f}s: {seg['text']}")
-        
-        return transcription_output
-        
     except Exception as e:
-        print(f"Error in transcription: {e}")
+        print(f"Error in enhanced transcription: {e}")
         import traceback
         traceback.print_exc()
         return None
 
-def align_lyrics_with_transcription(lyrics_lines, transcription):
-    """Match clean lyrics with transcribed segments using fuzzy matching"""
-    print("\nStarting lyrics alignment...")
-    print(f"Got {len(lyrics_lines)} lyrics lines")
-    print(f"Got {len(transcription['segments'])} transcribed segments")
-    
-    matched_lyrics = []
-    segments = transcription["segments"]
-    
-    for lyric_line in lyrics_lines:
-        print(f"\nMatching lyric: {lyric_line}")
+def align_lyrics_with_audio(lyrics_lines: List[str], transcription: Dict) -> List[Dict]:
+    """Align lyrics with audio using DTW and multiple transcription sources"""
+    try:
+        print("\nAligning lyrics with audio...")
+        print(f"Processing {len(lyrics_lines)} lyrics lines")
         
-        # Find best matching segment
-        best_match = process.extractOne(
-            lyric_line,
-            [seg["text"] for seg in segments],
-            scorer=fuzz.ratio,
-            score_cutoff=30
-        )
+        segments = transcription["segments"]
+        audio_features = np.array(transcription["audio_features"])
         
-        if best_match:
-            matched_text, score, idx = best_match
-            segment = segments[idx]
-            print(f"Found match ({score}%): {matched_text}")
-            print(f"Timing: {segment['start']:.2f}s - {segment['end']:.2f}s")
+        # Create features for lyrics (using length as proxy)
+        lyrics_features = np.array([len(line) for line in lyrics_lines])
+        
+        # Perform DTW alignment
+        print("Performing DTW alignment...")
+        path = dtw.warping_path(audio_features[0], lyrics_features)
+        
+        # Match lyrics to segments based on DTW path and confidence scores
+        matched_lyrics = []
+        for i, lyric_line in enumerate(lyrics_lines):
+            # Find corresponding audio segments from DTW path
+            corresponding_segments = [
+                segments[j] for j, k in path if k == i and j < len(segments)
+            ]
             
-            matched_lyrics.append({
-                "line": lyric_line,
-                "start": segment["start"],
-                "end": segment["end"],
-                "confidence": score / 100.0,
-                "transcribed": matched_text
-            })
-        else:
-            print("No good match found - using time estimate")
-            # Estimate position based on surrounding matches
-            if matched_lyrics:
-                last_end = matched_lyrics[-1]["end"]
-                duration_left = transcription["duration"] - last_end
-                est_duration = duration_left / (len(lyrics_lines) - len(matched_lyrics))
+            if corresponding_segments:
+                # Use segment with highest confidence
+                best_segment = max(corresponding_segments, key=lambda x: x.get("confidence", 0))
+                
                 matched_lyrics.append({
                     "line": lyric_line,
-                    "start": last_end + 0.1,
-                    "end": last_end + est_duration,
-                    "confidence": 0.3,
-                    "transcribed": "estimated"
+                    "start": best_segment["start"],
+                    "end": best_segment["end"],
+                    "confidence": best_segment.get("confidence", 0),
+                    "transcribed_text": best_segment["text"],
+                    "korean_asr_text": best_segment.get("korean_asr_text", "")
                 })
-            else:
-                # First line with no match
-                est_duration = transcription["duration"] / len(lyrics_lines)
-                matched_lyrics.append({
-                    "line": lyric_line,
-                    "start": 0.0,
-                    "end": est_duration,
-                    "confidence": 0.3,
-                    "transcribed": "estimated"
-                })
-    
-    print("\nAlignment Results:")
-    for match in matched_lyrics[:5]:
-        print(f"{match['start']:.2f}s - {match['end']:.2f}s: {match['line']}")
-        print(f"  Transcribed as: {match['transcribed']} ({match['confidence']:.2f})")
-    
-    return matched_lyrics
+        
+        # Sort by start time and adjust overlaps
+        matched_lyrics.sort(key=lambda x: x["start"])
+        
+        # Adjust overlapping timestamps
+        for i in range(1, len(matched_lyrics)):
+            if matched_lyrics[i]["start"] < matched_lyrics[i-1]["end"]:
+                mid_point = (matched_lyrics[i]["start"] + matched_lyrics[i-1]["end"]) / 2
+                matched_lyrics[i-1]["end"] = mid_point
+                matched_lyrics[i]["start"] = mid_point
+        
+        return matched_lyrics
+        
+    except Exception as e:
+        print(f"Error in lyrics alignment: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def save_timed_lyrics(matched_lyrics, song, artist):
     """Save timed lyrics in both SRT and JSON formats"""
@@ -439,7 +516,7 @@ def download_music(song, artist):
             
             # Match lyrics with timestamps
             print("\nMatching lyrics with timestamps...")
-            matched_lyrics = align_lyrics_with_transcription(lyrics_lines, transcription)
+            matched_lyrics = align_lyrics_with_audio(lyrics_lines, transcription)
             
             if not matched_lyrics:
                 print("Failed to match lyrics with timing!")
