@@ -58,6 +58,36 @@ def enhance_search_query(song, artist):
     clean_query = response.text.strip().replace('\n', ' ').split('**')[-1].strip()
     return clean_query if clean_query and len(clean_query) <= 100 else f"{artist} {song} MV"
 
+def clean_lyrics(lyrics):
+    """Clean lyrics by removing annotations and empty lines."""
+    if not lyrics:
+        return None
+        
+    # Split lyrics into lines
+    lines = lyrics.split('\n')
+    
+    # Clean each line
+    cleaned_lines = []
+    for line in lines:
+        # Skip empty lines
+        if not line.strip():
+            continue
+            
+        # Remove text within square brackets using regex
+        line = re.sub(r'\[.*?\]', '', line)
+        
+        # Remove any remaining square brackets
+        line = line.replace('[', '').replace(']', '')
+        
+        # Remove any leading/trailing whitespace
+        line = line.strip()
+        
+        # Only add non-empty lines
+        if line:
+            cleaned_lines.append(line)
+            
+    return cleaned_lines
+
 def get_lyrics(song, artist):
     """Get lyrics using Genius API"""
     try:
