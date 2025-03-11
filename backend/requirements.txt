@@ -1,13 +1,4 @@
-flask
-numpy
-python-dotenv
-pydub
-speechbrain
-transformers
+whisper-openai>=20231117
 torch
-dtaidistance
-rapidfuzz
-librosa
-soundfile
-noisereduce
-whisper-timestamped
+rapidfuzz>=3.0.0
+numpy

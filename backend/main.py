@@ -10,6 +10,8 @@ from pathlib import Path
 import sys
 import subprocess
 import shutil
+import whisper
+import re
 
 # Suppress symlink warning
 os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
@@ -94,13 +96,28 @@ def get_device():
         return "cpu"
 
 def clean_lyrics(lyrics_list):
-    """Clean lyrics by removing section headers and empty lines."""
+    """Clean lyrics by removing section headers and empty lines"""
     cleaned = []
     for line in lyrics_list:
         # Skip section headers and empty lines
-        if not line.strip() or line.strip().startswith('[') or line.strip().endswith(']'):
+        if not line or not isinstance(line, str):
             continue
-        cleaned.append(line.strip())
+            
+        line = line.strip()
+        if not line or line.startswith('[') or line.endswith(']'):
+            continue
+            
+        # Clean up the line
+        cleaned_line = re.sub(r'[\(\[\{].*?[\)\]\}]', '', line)  # Remove parentheses content
+        cleaned_line = re.sub(r'\s+', ' ', cleaned_line.strip())  # Normalize whitespace
+        
+        if cleaned_line:
+            cleaned.append(cleaned_line)
+    
+    print(f"Cleaned lyrics ({len(cleaned)} lines):", file=sys.stderr)
+    for line in cleaned[:5]:
+        print(f"  {line}", file=sys.stderr)
+    
     return cleaned
 
 def match_lyrics(audio_path, lyrics):
@@ -108,7 +125,6 @@ def match_lyrics(audio_path, lyrics):
         device = get_device()
         audio_path = Path(audio_path)
         print(f"Attempting to process audio file: {audio_path}", file=sys.stderr)
-        print(f"File exists: {audio_path.exists()}", file=sys.stderr)
         
         if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
@@ -118,55 +134,92 @@ def match_lyrics(audio_path, lyrics):
         if not cleaned_lyrics:
             raise ValueError("No valid lyrics after cleaning")
         
-        # Load model and processor
-        processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-large-960h")
-        model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-large-960h").to(device)
-
-        # Load and process audio
-        waveform, sample_rate = load_audio(str(audio_path))
-        waveform = process_audio(waveform, sample_rate)
+        # Load Whisper model with specific configuration
+        model = whisper.load_model(
+            "base",
+            device=device,
+            download_root="./models"
+        )
         
-        # Process in smaller chunks (5 seconds) for more accurate timing
-        chunk_length = 5 * sample_rate
+        # Transcribe with more specific parameters
+        result = model.transcribe(
+            str(audio_path),
+            language="en",
+            task="transcribe",
+            fp16=False,
+            verbose=True,
+            condition_on_previous_text=True,
+            initial_prompt="This is a song with lyrics."
+        )
+        
+        if not result or "segments" not in result:
+            raise ValueError("Transcription failed to produce segments")
+            
+        print(f"Transcription produced {len(result['segments'])} segments", file=sys.stderr)
+        
+        # Process segments and align with lyrics
         matched_lyrics = []
-        current_lyric_index = 0
+        lyrics_idx = 0
         
-        for i in range(0, waveform.shape[1], chunk_length):
-            if current_lyric_index >= len(cleaned_lyrics):
-                break
+        for segment in result["segments"]:
+            try:
+                # Ensure segment has required fields
+                if not all(k in segment for k in ["start", "end", "text"]):
+                    print(f"Skipping invalid segment: {segment}", file=sys.stderr)
+                    continue
                 
-            chunk = waveform[:, i:i + chunk_length]
-            
-            # Process audio chunk
-            inputs = processor(chunk.squeeze().numpy(), sampling_rate=16000, return_tensors="pt")
-            inputs = {k: v.to(device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = model(**inputs)
+                # Clean segment text
+                segment_text = segment["text"].strip().lower()
+                if not segment_text:
+                    continue
                 
-            # Get logits and check if there's significant audio
-            logits = outputs.logits
-            predictions = torch.argmax(logits, dim=-1)
-            has_speech = predictions.sum() > 0
-            
-            if has_speech:
-                start_time = i / sample_rate
-                end_time = min((i + chunk.shape[1]) / sample_rate, waveform.shape[1] / sample_rate)
+                # Find best matching lyric
+                best_match = None
+                best_ratio = 0
                 
-                matched_lyrics.append({
-                    "start": float(start_time),
-                    "end": float(end_time),
-                    "text": cleaned_lyrics[current_lyric_index],
-                    "confidence": float(torch.max(torch.softmax(logits, dim=-1)).cpu().numpy())
-                })
-                current_lyric_index += 1
+                # Look ahead in lyrics to find best match
+                search_range = min(lyrics_idx + 3, len(cleaned_lyrics))
+                for i in range(lyrics_idx, search_range):
+                    lyric = cleaned_lyrics[i].lower().strip()
+                    ratio = similarity_ratio(segment_text, lyric)
+                    
+                    print(f"Comparing: '{segment_text}' with '{lyric}' = {ratio}", file=sys.stderr)
+                    
+                    if ratio > best_ratio and ratio > 0.4:  # Lowered threshold
+                        best_ratio = ratio
+                        best_match = i
+                
+                if best_match is not None:
+                    matched_lyrics.append({
+                        "start": float(segment["start"]),
+                        "end": float(segment["end"]),
+                        "text": cleaned_lyrics[best_match],
+                        "confidence": segment.get("confidence", 0.8)
+                    })
+                    lyrics_idx = best_match + 1
+                    print(f"Matched: {cleaned_lyrics[best_match]}", file=sys.stderr)
+            
+            except Exception as seg_error:
+                print(f"Error processing segment: {seg_error}", file=sys.stderr)
+                continue
         
+        if not matched_lyrics:
+            raise ValueError("No lyrics could be matched with the audio")
+        
+        print(f"Successfully matched {len(matched_lyrics)} lyrics", file=sys.stderr)
         return matched_lyrics
 
     except Exception as e:
         print(f"Error processing audio: {str(e)}", file=sys.stderr)
-        print(f"Current working directory: {Path.cwd()}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         return None
+
+def similarity_ratio(s1, s2):
+    """Calculate similarity ratio between two strings using a more lenient approach"""
+    from rapidfuzz import fuzz
+    # Use partial ratio to catch partial matches
+    return fuzz.partial_ratio(s1, s2) / 100.0
 
 def setup_argparse():
     """Set up command line argument parsing."""
@@ -194,14 +247,14 @@ def main():
             if result:
                 print(json.dumps({
                     "matched_lyrics": result,
-                    "detected_language": "en",  # Add language detection logic here
+                    "detected_language": "en",
                     "status": "success"
                 }))
             else:
                 print(json.dumps({
-                    "error": "Failed to process audio",
+                    "error": "Failed to match lyrics with audio",
                     "status": "error"
-                }))
+                }), file=sys.stderr)
         else:
             print(json.dumps({
                 "error": f"Unknown mode: {args.mode}",
@@ -212,7 +265,7 @@ def main():
         print(json.dumps({
             "error": str(e),
             "status": "error"
-        }))
+        }), file=sys.stderr)
 
 if __name__ == "__main__":
     main()
