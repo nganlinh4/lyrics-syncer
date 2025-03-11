@@ -1,32 +1,73 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.env/
-.venv/
-models/
-audio/
+# Dependencies
+node_modules/
+/frontend/node_modules/
+/backend/node_modules/
+
+# Build outputs
+/frontend/build/
+/frontend/dist/
+/backend/build/
+/backend/dist/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+/backend/.env
+/frontend/.env
+
+# Media files
+/audio/
 *.mp3
-*.png
 *.wav
+*.ogg
+*.m4a
+*.webm
+
+# Generated files
+/lyrics/
+*.json
+!/package.json
+!/package-lock.json
+!/frontend/package.json
+!/frontend/package-lock.json
+!/backend/package.json
+!/backend/package-lock.json
+
+# Config files (except examples)
+/backend/config.json
+!/backend/config.example.json
 
 # IDE specific files
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# Node.js
-node_modules/
-
-# Build output
-build/
-dist/
-
-# React
 .DS_Store
 
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+debug.log
+
+# Python cache files (if any python scripts are used)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.env/
+.venv/
+
+# Test coverage
+/coverage
+.nyc_output
+
+# Temporary files
+*.tmp
+*.temp
 backend/config.json

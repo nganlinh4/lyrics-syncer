@@ -133,33 +133,35 @@ function App() {
     }
   }, [audioUrl]);
 
- const handlePreviewLyrics = () => {
+  const handlePreviewLyrics = async () => {
     if (!song || !artist) {
       setError("Please enter both song and artist.");
       setLyrics([]);
       return;
     }
 
-    fetch('http://localhost:3001/api/lyrics', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ artist, song }),
-    })
-    .then((response) => {
+    try {
+      setError(null);
+      const response = await fetch('http://localhost:3001/api/lyrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artist, song }),
+      });
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch lyrics: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to fetch lyrics: ${response.status}`);
       }
-      return response.json();
-    })
-    .then((data) => {
-      setLyrics(data.lyrics.split('\\n'));
-      setError(null); // Clear any previous error
-    })
-    .catch((error) => {
+
+      const data = await response.json();
+      // Split lyrics into an array, handling both \n and actual newlines
+      const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
+      setLyrics(lyricsArray);
+    } catch (error) {
       console.error("Error fetching lyrics:", error);
-      setLyrics([]); // Reset lyrics on error
-      setError("Error fetching lyrics from Genius."); // Set error message
-    });
+      setError(error.message);
+      setLyrics([]);
+    }
   };
 
   // Function to toggle play/pause
@@ -238,6 +240,18 @@ function App() {
       >
         Preview Lyrics
       </button>
+
+      {/* Add this right after the button to display the lyrics */}
+      {lyrics.length > 0 && (
+        <div style={{ marginTop: '20px' }}>
+          <h3>Lyrics Preview</h3>
+          <div style={{ whiteSpace: 'pre-line' }}>
+            {lyrics.map((line, index) => (
+              <div key={index}>{line}</div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{ color: 'red', marginBottom: '20px' }}>{error}</div>

@@ -29,10 +29,18 @@ app.use(cors({
 app.use(express.json());
 
 // Make sure audio directory exists
-const AUDIO_DIR = path.join(__dirname, '../audio');
-const LYRICS_DIR = path.join(__dirname, '../../frontend/public/lyrics');
-fsSync.mkdirSync(AUDIO_DIR, { recursive: true });
-fsSync.mkdirSync(LYRICS_DIR, { recursive: true });
+const AUDIO_DIR = path.join(__dirname, '..', 'audio');
+const LYRICS_DIR = path.join(__dirname, '..', 'lyrics');
+// Ensure directories exist with proper permissions
+try {
+  fsSync.mkdirSync(AUDIO_DIR, { recursive: true, mode: 0o755 });
+  fsSync.mkdirSync(LYRICS_DIR, { recursive: true, mode: 0o755 });
+  console.log(`Directories created/verified:
+    AUDIO_DIR: ${AUDIO_DIR}
+    LYRICS_DIR: ${LYRICS_DIR}`);
+} catch (error) {
+  console.error('Error creating directories:', error);
+}
 
 /**
  * Checks if a file exists.
@@ -176,80 +184,82 @@ const processSong = async (req, res) => {
         const audioFilePath = path.join(AUDIO_DIR, `${songName}.mp3`);
         const lyricsFilePath = path.join(LYRICS_DIR, `${songName} timed.json`);
 
+        // Create audio directory if it doesn't exist
+        await fs.mkdir(AUDIO_DIR, { recursive: true });
+
         // 1. Download (using youtube-dl-exec)
         if (!(await fileExists(audioFilePath))) {
-          // Wrap download logic in a promise
           await new Promise((resolve, reject) => {
             console.log(`Searching YouTube for: ${artist} ${song}`);
-            // Search YouTube for the song using youtube-search
             youtubeSearch(`${artist} ${song}`, { maxResults: 1, key: config.youtubeApiKey }).then(async searchResults => {
-              console.log('YouTube search results:', searchResults);
               if (searchResults.results.length === 0) {
                 reject('No videos found for this song/artist combination.');
                 return;
               }
 
               const videoId = searchResults.results[0].id;
-              if (!videoId) {
-                reject('No video ID found in search results.');
-                return;
-              }
-
-              console.log(`Downloading video with ID: ${videoId}`);
               const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-              
+              console.log(`Starting download process for video: ${videoUrl}`);
+
               try {
-                // Remove any existing file at this path
-                if (fsSync.existsSync(audioFilePath)) {
-                  try {
-                    fsSync.unlinkSync(audioFilePath);
-                    console.log(`Removed existing file: ${audioFilePath}`);
-                  } catch (err) {
-                    console.error(`Failed to remove existing file: ${err}`);
-                  }
-                }
+                // Use a temporary filename first
+                const tempFilePath = path.join(AUDIO_DIR, `temp_${Date.now()}.mp3`);
                 
-                // Using youtube-dl-exec instead of ytdl-core
-                console.log(`Starting download of ${videoUrl} to ${audioFilePath}`);
-                
-                // Use youtube-dl-exec's binary with proper options
-                const downloadProcess = youtubeDlExec(videoUrl, {
+                const downloadOptions = {
                   extractAudio: true,
                   audioFormat: 'mp3',
-                  audioQuality: 0, // Best quality
-                  output: audioFilePath,
+                  audioQuality: 0,
+                  output: tempFilePath,
                   noPlaylist: true,
-                  youtubeSkipDashManifest: true,
-                  addHeader: [
-                    'User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                  ]
-                });
-                
-                downloadProcess.then(() => {
-                  // Verify file exists and has content
-                  if (fsSync.existsSync(audioFilePath)) {
-                    const stats = fsSync.statSync(audioFilePath);
-                    if (stats.size > 0) {
-                      console.log(`Successfully downloaded ${songName}.mp3 (${stats.size} bytes)`);
+                  verbose: true,
+                  format: 'bestaudio',
+                  postprocessorArgs: ['-acodec', 'mp3', '-ac', '2', '-ab', '192k'],
+                };
+
+                console.log('Download options:', downloadOptions);
+                console.log(`Attempting to download to temporary file: ${tempFilePath}`);
+
+                try {
+                  const result = await youtubeDlExec(videoUrl, downloadOptions);
+                  console.log('Download process output:', result);
+                  
+                  // Check the AUDIO_DIR for any new files
+                  const files = fsSync.readdirSync(AUDIO_DIR);
+                  console.log('Files in audio directory:', files);
+
+                  // Find the downloaded file (it might have a different name)
+                  const downloadedFile = files.find(f => f.startsWith('temp_'));
+                  
+                  if (downloadedFile) {
+                    const downloadedPath = path.join(AUDIO_DIR, downloadedFile);
+                    console.log(`Found downloaded file: ${downloadedPath}`);
+                    
+                    // Rename to final filename
+                    fsSync.renameSync(downloadedPath, audioFilePath);
+                    console.log(`Renamed to final path: ${audioFilePath}`);
+                    
+                    if (fsSync.existsSync(audioFilePath)) {
+                      const stats = fsSync.statSync(audioFilePath);
+                      console.log(`Final file size: ${stats.size} bytes`);
                       resolve();
                     } else {
-                      reject(new Error('Downloaded file has 0 bytes size'));
+                      reject(new Error(`Failed to rename file to ${audioFilePath}`));
                     }
                   } else {
-                    reject(new Error('File not found after download completed'));
+                    console.log('No matching downloaded file found');
+                    reject(new Error('Download completed but file not found'));
                   }
-                }).catch(error => {
-                  console.error('Error during youtube-dl download:', error);
-                  reject(error);
-                });
-                
-              } catch (err) {
-                console.error('Error setting up YouTube download:', err);
-                reject(err);
+                } catch (dlError) {
+                  console.error('Download process error:', dlError);
+                  reject(dlError);
+                }
+              } catch (setupError) {
+                console.error('Setup error:', setupError);
+                reject(setupError);
               }
-            }).catch(err => {
-              console.error('YouTube search error:', err);
-              reject(err);
+            }).catch(searchError => {
+              console.error('YouTube search error:', searchError);
+              reject(searchError);
             });
           });
         }
@@ -324,6 +334,7 @@ const getLyrics = async (req, res) => {
             const configData = await fs.readFile(configPath, 'utf-8');
             config = JSON.parse(configData);
         }
+        
         if (!config.geniusApiKey) {
             return res.status(400).json({ error: 'Genius API key not set. Please provide it through the frontend.' });
         }
@@ -335,12 +346,13 @@ const getLyrics = async (req, res) => {
         if (!artist || !song) {
             return res.status(400).json({ error: 'Missing artist or song' });
         }
+
         const geniusSong = await geniusClient.songs.search(`${artist} ${song}`);
         if (geniusSong.length > 0) {
-          const lyrics = await geniusSong[0].lyrics();
-          res.json({ lyrics });
+            const lyrics = await geniusSong[0].lyrics();
+            res.json({ lyrics });
         } else {
-          res.status(404).json({error: "Lyrics not found"});
+            res.status(404).json({ error: "Lyrics not found" });
         }
 
     } catch (error) {

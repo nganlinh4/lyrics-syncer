@@ -4,89 +4,92 @@ A web application for creating YouTube videos with synchronized lyrics/subtitles
 
 ## Features
 
--   Synchronized lyrics/subtitles generation
--   Web interface for video creation and management
+- Synchronized lyrics/subtitles generation
+- Web interface for video creation and management
+- YouTube video audio extraction
+- Automatic lyrics fetching from Genius
+- Waveform visualization
+
+## Prerequisites
+
+- Node.js (v14 or higher)
+- npm or yarn
+- FFmpeg installed and available in system PATH
+
+## Configuration
+
+1. Create `backend/config.json` with your API keys:
+```json
+{
+    "youtubeApiKey": "YOUR_YOUTUBE_API_KEY",
+    "geniusApiKey": "YOUR_GENIUS_API_KEY"
+}
+```
 
 ## Setup
 
-1.  Clone the repository
-2.  Navigate to the `frontend` directory and install dependencies:
+1. Clone the repository
+2. Install frontend dependencies:
+```bash
+cd frontend
+npm install
+```
 
-    ```bash
-    cd frontend
-    npm install
-    ```
-
-3.  Navigate to the `backend` directory and install dependencies:
-
-    ```bash
-    cd ../backend
-    npm install
-    ```
-
-4.  Place audio files in the `audio/` directory
+3. Install backend dependencies:
+```bash
+cd ../backend
+npm install
+```
 
 ## Running the Application
 
-1.  Start the backend server:
+1. Start the backend server:
+```bash
+cd backend
+npm run dev
+```
 
-    ```
-    cd backend && npm run dev
-    ```
+2. Start the frontend:
+```bash
+cd frontend
+npm start
+```
 
-2.  Start the frontend:
-
-    ```
-    cd frontend && npm start
-    ```
+The application will be available at `http://localhost:3000`
 
 ## Directory Structure
 
--   `frontend/`: React frontend application
--   `backend/`: Node.js backend server
--   `audio/`: Audio files (not tracked in git)
--   `lyrics/`: Generated lyrics/subtitle files
--   `transcriptions/`: Generated transcription files (original Python app - to be migrated)
-- `models/`: Model files (original Python app - to be migrated)
+```
+.
+├── frontend/           # React frontend application
+├── backend/           # Node.js backend server
+├── audio/            # Downloaded audio files (not tracked in git)
+├── lyrics/           # Generated lyrics/subtitle files
+└── config/           # Configuration files
+```
 
 ## API Endpoints
 
-The backend server provides the following API endpoints:
-
 ### `GET /api/audio_data/:song_name`
-
 Retrieves audio data for a given song.
 
--   **Parameters:**
-    -   `song_name`: The name of the song (artist - song title, lowercase, spaces replaced with underscores).
--   **Response:**
-    -   `audio_url`: The URL of the audio file.
-    -   `duration`: The duration of the audio file (currently a placeholder).
-
 ### `GET /api/lyrics_timing/:song_name`
-
 Retrieves lyrics timing data for a given song.
 
--   **Parameters:**
-    -   `song_name`: The name of the song (artist - song title, lowercase, spaces replaced with underscores).
--   **Response:**
-    -   A JSON object containing the timed lyrics data.
-
 ### `POST /api/save_timing`
+Saves lyrics timing data for a song.
 
-Saves lyrics timing data for a given song.
+### `POST /api/process`
+Processes a new song (downloads audio and fetches lyrics).
 
--   **Parameters:**
-    -   `song_name`: The name of the song (in the request body).
-    -   `timing`: The lyrics timing data (in the request body).
-- **Response:**
-  - `{ success: true }`
+## Contributing
 
-### `GET /api/waveform/:song_name`
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-Retrieves the waveform SVG for a given song.
+## License
 
-- **Parameters:**
- - `song_name`: The name of the song (artist - song title, lowercase, spaces replaced with underscores).
-- **Response:**
- - `waveform_svg`: A string containing the SVG path data for the waveform.
+This project is licensed under the MIT License - see the LICENSE file for details
