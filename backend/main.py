@@ -12,6 +12,9 @@ import subprocess
 import shutil
 import whisper
 import re
+import google.generativeai as genai
+from typing import List, Dict
+from functools import lru_cache
 
 # Suppress symlink warning
 os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
@@ -25,160 +28,153 @@ def check_ffmpeg():
         )
     return ffmpeg_path
 
-def convert_to_wav(audio_path):
-    """Convert MP3 to WAV using FFmpeg."""
-    ffmpeg_path = check_ffmpeg()
-    wav_path = audio_path.with_suffix('.wav')
-    
-    command = [
-        ffmpeg_path,
-        '-i', str(audio_path),
-        '-acodec', 'pcm_s16le',
-        '-ac', '1',
-        '-ar', '16000',
-        '-y',
-        str(wav_path)
-    ]
-    
+@lru_cache(maxsize=1)
+def load_whisper_model():
+    """Cache the Whisper model loading to avoid reloading for each request"""
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Loading Whisper model on {device}...", file=sys.stderr)
+    return whisper.load_model("base").to(device)
+
+def get_word_timestamps(audio_path: str) -> List[Dict]:
+    """Get word-level timestamps from audio using Whisper"""
     try:
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        stdout, stderr = process.communicate()
-        
-        if process.returncode != 0:
-            print(f"FFmpeg stdout: {stdout}", file=sys.stderr)
-            print(f"FFmpeg stderr: {stderr}", file=sys.stderr)
-            raise subprocess.CalledProcessError(
-                process.returncode, 
-                command,
-                stdout,
-                stderr
-            )
-        
-        return wav_path
-    except Exception as e:
-        print(f"FFmpeg conversion error: {str(e)}", file=sys.stderr)
-        raise
-
-def load_audio(audio_path):
-    """Load audio file, converting from MP3 to WAV if necessary."""
-    try:
-        # Convert MP3 to WAV first
-        wav_path = convert_to_wav(Path(audio_path))
-        
-        # Load the WAV file
-        waveform, sample_rate = torchaudio.load(str(wav_path))
-        
-        # Clean up temporary WAV file
-        wav_path.unlink()
-        
-        return waveform, sample_rate
-    except Exception as e:
-        raise RuntimeError(f"Failed to load audio file: {str(e)}")
-
-def process_audio(waveform, sample_rate, target_sample_rate=16000):
-    if sample_rate != target_sample_rate:
-        resampler = torchaudio.transforms.Resample(sample_rate, target_sample_rate)
-        waveform = resampler(waveform)
-    return waveform
-
-def get_device():
-    """Get the best available device (CUDA GPU or CPU)."""
-    if torch.cuda.is_available():
-        print("Using CUDA GPU", file=sys.stderr)
-        return "cuda"
-    else:
-        print("WARNING: GPU not available, using CPU. This will be significantly slower.", file=sys.stderr)
-        return "cpu"
-
-def clean_lyrics(lyrics_list):
-    """Clean lyrics by removing section headers and empty lines"""
-    cleaned = []
-    for line in lyrics_list:
-        # Skip section headers and empty lines
-        if not line or not isinstance(line, str):
-            continue
-            
-        line = line.strip()
-        if not line or line.startswith('[') or line.endswith(']'):
-            continue
-            
-        # Clean up the line
-        cleaned_line = re.sub(r'[\(\[\{].*?[\)\]\}]', '', line)  # Remove parentheses content
-        cleaned_line = re.sub(r'\s+', ' ', cleaned_line.strip())  # Normalize whitespace
-        
-        if cleaned_line:
-            cleaned.append(cleaned_line)
-    
-    print(f"Cleaned lyrics ({len(cleaned)} lines):", file=sys.stderr)
-    for line in cleaned[:5]:
-        print(f"  {line}", file=sys.stderr)
-    
-    return cleaned
-
-def match_lyrics(audio_path, lyrics):
-    try:
-        # Initialize Whisper model
-        model = whisper.load_model("base")
-        
-        # Transcribe audio
+        model = load_whisper_model()
         result = model.transcribe(
             audio_path,
-            language="en",
-            task="transcribe",
-            fp16=False
+            language="ko",
+            word_timestamps=True,
+            initial_prompt="노래 가사:",
+            temperature=0.0,
+            no_speech_threshold=0.3,
+            compression_ratio_threshold=2.4,
+            condition_on_previous_text=True,
+            fp16=torch.cuda.is_available()
         )
         
-        # Process segments and match with lyrics
-        matched_lyrics = []
-        lyrics_idx = 0
-        
+        words = []
         for segment in result["segments"]:
-            try:
-                if lyrics_idx >= len(lyrics):
-                    break
-                    
-                start_time = segment["start"]
-                end_time = segment["end"]
-                
-                # Find best matching lyric
-                best_match = lyrics_idx
-                best_score = similarity_ratio(segment["text"].lower(), lyrics[lyrics_idx].lower())
-                
-                # Look ahead a few lyrics to find better matches
-                for j in range(lyrics_idx + 1, min(lyrics_idx + 3, len(lyrics))):
-                    score = similarity_ratio(segment["text"].lower(), lyrics[j].lower())
-                    if score > best_score:
-                        best_score = score
-                        best_match = j
-                
-                matched_lyrics.append({
-                    "start": float(start_time),
-                    "end": float(end_time),
-                    "text": lyrics[best_match],
-                    "confidence": float(best_score)
-                })
-                lyrics_idx = best_match + 1
-                
-            except Exception as seg_error:
-                print(f"Error processing segment: {seg_error}", file=sys.stderr)
+            print(f"Processing segment: {segment}", file=sys.stderr)
+            
+            if not "words" in segment:
+                print(f"No words in segment: {segment}", file=sys.stderr)
                 continue
+                
+            for word_info in segment["words"]:
+                try:
+                    print(f"Processing word: {word_info}", file=sys.stderr)
+                    
+                    # Handle both possible key formats ('word' or 'text')
+                    text = word_info.get('word') or word_info.get('text')
+                    start = float(word_info['start'])
+                    end = float(word_info['end'])
+                    
+                    if not text or not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
+                        print(f"Invalid word data: {word_info}", file=sys.stderr)
+                        continue
+                    
+                    words.append({
+                        "text": str(text).strip(),
+                        "start": start,
+                        "end": end,
+                        "probability": float(word_info.get('probability', 1.0))
+                    })
+                except Exception as word_error:
+                    print(f"Error processing word {word_info}: {word_error}", file=sys.stderr)
+                    continue
         
+        if not words:
+            raise ValueError("No valid words were extracted from the audio")
+            
+        # Filter out words with very low probability
+        words = [w for w in words if w["probability"] > 0.1]
+        
+        # Sort by start time
+        words.sort(key=lambda x: x["start"])
+        
+        print(f"Successfully extracted {len(words)} words", file=sys.stderr)
+        return words
+        
+    except Exception as e:
+        print(f"Error getting word timestamps: {str(e)}", file=sys.stderr)
+        print(f"Full error details: {type(e).__name__}", file=sys.stderr)
+        raise
+
+def match_lyrics_parallel(lyrics: List[str], word_timestamps: List[Dict]) -> List[Dict]:
+    """Match lyrics to word timestamps in parallel"""
+    try:
+        from lyrics_matcher import match_lyrics_parallel as matcher
+        return matcher(lyrics, word_timestamps)
+    except Exception as e:
+        print(f"Error in parallel matching: {e}", file=sys.stderr)
+        # Fallback to Gemini matching if parallel matching fails
+        return match_lyrics_with_gemini(word_timestamps, lyrics)
+
+def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> List[Dict]:
+    """Use Gemini to match word timestamps with lyrics"""
+    try:
+        # Configure Gemini
+        genai.configure(api_key='YOUR_GEMINI_API_KEY')
+        model = genai.GenerativeModel('gemini-pro')
+        
+        # Prepare input for Gemini
+        prompt = f"""
+Task: Match these word timestamps with the lyrics lines.
+Return ONLY a JSON array where each object has: start_time, end_time, and text (lyric line).
+Make sure:
+1. Each lyric line's timing makes sense sequentially
+2. Start and end times are floating point numbers
+3. Every lyric line must have timing
+4. Output must be valid JSON
+
+Word timestamps:
+{json.dumps(word_timestamps, indent=2)}
+
+Lyrics lines:
+{json.dumps(lyrics, indent=2)}
+
+Return ONLY the JSON array, no other text.
+"""
+
+        response = model.generate_content(prompt)
+        matched_lyrics = json.loads(response.text)
+        
+        # Validate and clean the response
+        cleaned_matches = []
+        for match in matched_lyrics:
+            cleaned_matches.append({
+                "start": float(match["start_time"]),
+                "end": float(match["end_time"]),
+                "text": str(match["text"]),
+                "confidence": 0.95  # High confidence since Gemini matched it
+            })
+        
+        return cleaned_matches
+        
+    except Exception as e:
+        print(f"Error matching lyrics with Gemini: {e}", file=sys.stderr)
+        raise
+
+def match_lyrics(audio_path: str, lyrics: List[str]) -> Dict:
+    """Main function to process audio and match lyrics"""
+    try:
+        # Get word-level timestamps
+        word_timestamps = get_word_timestamps(audio_path)
+        if not word_timestamps:
+            raise ValueError("No words detected in audio")
+            
+        # Match lyrics using Gemini
+        matched_lyrics = match_lyrics_with_gemini(word_timestamps, lyrics)
         if not matched_lyrics:
-            raise ValueError("No lyrics could be matched with the audio")
+            raise ValueError("Failed to match lyrics")
         
-        # Ensure the output is valid JSON
+        # Prepare result
         result = {
             "matched_lyrics": matched_lyrics,
-            "detected_language": "en",
+            "detected_language": "ko",  # Update based on actual detection
             "status": "success"
         }
         
-        # Print as JSON to stdout
+        # Output result
         print(json.dumps(result, ensure_ascii=False))
         sys.stdout.flush()
         
@@ -189,12 +185,6 @@ def match_lyrics(audio_path, lyrics):
         }
         print(json.dumps(error_result, ensure_ascii=False), file=sys.stderr)
         sys.exit(1)
-
-def similarity_ratio(s1, s2):
-    """Calculate similarity ratio between two strings using a more lenient approach"""
-    from rapidfuzz import fuzz
-    # Use partial ratio to catch partial matches
-    return fuzz.partial_ratio(s1, s2) / 100.0
 
 def setup_argparse():
     """Set up command line argument parsing."""

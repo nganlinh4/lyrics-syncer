@@ -11,9 +11,20 @@ import subprocess
 import os
 import shutil
 import warnings
+from typing import List, Dict
+from rapidfuzz import fuzz
+from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
 
 # Suppress specific Triton-related warnings
 warnings.filterwarnings("ignore", message="Failed to launch Triton kernels")
+
+@dataclass
+class MatchResult:
+    start: float
+    end: float
+    text: str
+    confidence: float
 
 def debug_print(*args, **kwargs):
     """Helper function to print debug messages to stderr"""
@@ -138,22 +149,63 @@ def process_audio(audio_path):
         debug_print(f"System PATH: {os.environ.get('PATH', '')}")
         raise
 
-def match_lyrics(segments, lyrics):
-    matched_lyrics = []
-    lyrics_words = [line.strip() for line in lyrics]
-    current_position = 0
+def match_line_to_segments(line: str, segments: List[Dict], threshold: float = 65.0) -> MatchResult:
+    """Match a single lyrics line to audio segments using fuzzy matching"""
+    best_match = None
+    best_score = 0
     
-    for segment in segments:
-        if current_position < len(lyrics_words):
-            matched_lyrics.append({
-                "start": segment["start"],
-                "end": segment["end"],
-                "line": lyrics_words[current_position],
-                "confidence": segment.get("confidence", 0.0)
-            })
-            current_position += 1
+    # Combine consecutive segments that might form the line
+    for i in range(len(segments)):
+        combined_text = ""
+        start_time = segments[i]["start"]
+        
+        for j in range(i, min(i + 3, len(segments))):  # Look ahead up to 3 segments
+            combined_text += " " + segments[j]["text"]
+            end_time = segments[j]["end"]
+            
+            score = fuzz.ratio(line.lower(), combined_text.lower())
+            if score > best_score and score >= threshold:
+                best_score = score
+                best_match = MatchResult(
+                    start=start_time,
+                    end=end_time,
+                    text=line,
+                    confidence=score / 100.0
+                )
     
-    return matched_lyrics
+    return best_match
+
+def match_lyrics_parallel(lyrics: List[str], segments: List[Dict]) -> List[Dict]:
+    """Match lyrics to segments using parallel processing"""
+    try:
+        print(f"Matching {len(lyrics)} lines to {len(segments)} segments...", file=sys.stderr)
+        
+        with ThreadPoolExecutor() as executor:
+            # Process lyrics lines in parallel
+            futures = [
+                executor.submit(match_line_to_segments, line, segments)
+                for line in lyrics
+            ]
+            
+            # Collect results
+            matches = []
+            for future in futures:
+                result = future.result()
+                if result:
+                    matches.append({
+                        "start": result.start,
+                        "end": result.end,
+                        "text": result.text,
+                        "confidence": result.confidence
+                    })
+        
+        # Sort matches by start time
+        matches.sort(key=lambda x: x["start"])
+        return matches
+        
+    except Exception as e:
+        print(f"Error in lyrics matching: {e}", file=sys.stderr)
+        raise
 
 def main():
     parser = argparse.ArgumentParser()
@@ -166,7 +218,7 @@ def main():
         
         lyrics = json.loads(args.lyrics)
         segments = process_audio(args.audio_path)
-        matched_lyrics = match_lyrics(segments, lyrics)
+        matched_lyrics = match_lyrics_parallel(lyrics, segments)
         
         # Output ONLY the JSON result to stdout
         print(json.dumps(matched_lyrics, ensure_ascii=False))

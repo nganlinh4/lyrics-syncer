@@ -3,15 +3,15 @@ import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import * as fsSync from 'fs';
 import youtubeSearch from 'youtube-search';
-import { refreshSpotifyToken, searchTrack } from './services/spotify.js';
 import youtubeDl from 'youtube-dl-exec';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 const PYTHON_SCRIPT_PATH = path.join(__dirname, 'main.py');
 
 const app = express();
@@ -304,17 +304,6 @@ const saveApiKey = async (req, res) => {
             case 'youtube':
                 config.youtubeApiKey = key;
                 break;
-            case 'spotify':
-                if (!secret) {
-                    return res.status(400).json({ error: 'Spotify client secret is required' });
-                }
-                config.spotify = {
-                    clientId: key,
-                    clientSecret: secret
-                };
-                // Refresh Spotify token with new credentials
-                await refreshSpotifyToken();
-                break;
             default:
                 return res.status(400).json({ error: 'Invalid key type' });
         }
@@ -384,9 +373,6 @@ app.use('/audio', express.static(AUDIO_DIR, {
 
 app.post('/api/lyrics', getLyrics);
 
-// Initialize Spotify token refresh
-refreshSpotifyToken();
-
 app.post('/api/auto_match', async (req, res) => {
     const { lyrics, artist, song } = req.body;
 
@@ -395,131 +381,107 @@ app.post('/api/auto_match', async (req, res) => {
     }
 
     try {
-        // Search for the track on Spotify
-        const track = await searchTrack(artist, song);
-        if (!track) {
-            throw new Error('Track not found on Spotify');
-        }
-
-        console.log('Found Spotify track:', track.name, 'by', track.artists[0].name);
-
-        // Calculate estimated durations based on track duration
-        const totalDuration = track.duration_ms / 1000; // Convert ms to seconds
-        
         // Calculate time points for each lyric line
         const matchedLyrics = lyrics.map((line, index) => {
             // Simple linear distribution of lyrics across the song duration
-            const progress = index / (lyrics.length - 1);
-            const start = progress * totalDuration;
-            const end = (index + 1) / lyrics.length * totalDuration;
-            
+            // You'll need to implement your own timing logic here
             return {
-                start: start,
-                end: end,
-                line: line,
-                confidence: 0.8 // Default confidence level
+                text: line,
+                timestamp: index // placeholder
             };
         });
 
-        console.log('Generated matched lyrics:', matchedLyrics.length, 'lines');
-
-        res.json({ 
-            matched_lyrics: matchedLyrics,
-            message: 'Lyrics matching completed successfully'
-        });
-
+        res.json({ matchedLyrics });
     } catch (error) {
         console.error('Error in auto_match:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-app.get('/api/synced-lyrics/:artist/:song', async (req, res) => {
+const matchLyrics = async (req, res) => {
     try {
-        const { artist, song } = req.params;
-        const trackData = await searchTrackWithLyrics(artist, song);
+        const { artist, song, audioPath, lyrics } = req.body;
         
-        if (!trackData) {
-            return res.status(404).json({ error: 'Track not found' });
+        if (!audioPath || !lyrics) {
+            return res.status(400).json({ error: 'Missing required parameters' });
         }
-        
-        res.json(trackData);
-    } catch (error) {
-        console.error('Error getting synced lyrics:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
 
-app.post('/api/match_lyrics', async (req, res) => {
-    const { artist, song, audioPath, lyrics } = req.body;
-    
-    try {
-        // Clean the audio path and ensure .mp3 extension
+        // Clean the audio path by removing query parameters
         const cleanAudioPath = audioPath.split('?')[0];
-        const audioPathWithExt = cleanAudioPath.endsWith('.mp3') 
-            ? cleanAudioPath 
-            : `${cleanAudioPath}.mp3`;
         
-        // Use absolute paths
-        const absoluteAudioPath = path.join(__dirname, '..', audioPathWithExt);
-        
-        // Verify the audio file exists
-        if (!await fileExists(absoluteAudioPath)) {
-            throw new Error(`Audio file not found at: ${absoluteAudioPath}`);
+        // Ensure the audio file exists
+        const absoluteAudioPath = path.join(AUDIO_DIR, path.basename(cleanAudioPath));
+        if (!fsSync.existsSync(absoluteAudioPath)) {
+            return res.status(404).json({ 
+                error: `Audio file not found: ${cleanAudioPath}`,
+                status: 'error'
+            });
         }
 
-        // Create promise to handle Python process
-        const pythonResult = await new Promise((resolve, reject) => {
-            const pythonProcess = spawn('python', [
-                PYTHON_SCRIPT_PATH,
-                '--mode', 'match',
-                '--audio', absoluteAudioPath,
-                '--lyrics', JSON.stringify(lyrics),
-                '--artist', artist,
-                '--song', song
-            ]);
+        // Construct absolute path to the Python script
+        const scriptPath = path.join(__dirname, 'main.py');
 
-            let outputData = '';
-            let errorData = '';
-
-            pythonProcess.stdout.on('data', (data) => {
-                outputData += data.toString();
-            });
-
-            pythonProcess.stderr.on('data', (data) => {
-                errorData += data.toString();
-                console.error('Python error:', data.toString());
-            });
-
-            pythonProcess.on('close', (code) => {
-                if (code !== 0) {
-                    reject(new Error(`Python process failed: ${errorData}`));
-                    return;
-                }
-                
-                try {
-                    const result = JSON.parse(outputData);
-                    resolve(result);
-                } catch (e) {
-                    reject(new Error(`Failed to parse Python output: ${outputData}\nError: ${e.message}`));
-                }
-            });
+        console.log('Debug info:', {
+            scriptPath,
+            absoluteAudioPath,
+            exists: fsSync.existsSync(absoluteAudioPath),
+            size: fsSync.statSync(absoluteAudioPath).size
         });
 
-        // Send response
-        res.json({
-            matched_lyrics: pythonResult.matched_lyrics,
-            detected_language: pythonResult.detected_language
+        // Prepare the command with cleaned audio path
+        const pythonProcess = spawn('python', [
+            scriptPath,
+            '--mode', 'match',
+            '--audio', absoluteAudioPath,
+            '--lyrics', JSON.stringify(lyrics),
+            '--artist', artist,
+            '--song', song
+        ]);
+
+        let stdoutData = '';
+        let stderrData = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+            stdoutData += data.toString();
+            console.log('Python stdout:', data.toString());
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            stderrData += data.toString();
+            console.error('Python stderr:', data.toString());
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                console.error('Python process error:', stderrData);
+                return res.status(500).json({ 
+                    error: stderrData || 'Failed to process lyrics',
+                    status: 'error'
+                });
+            }
+
+            try {
+                const result = JSON.parse(stdoutData);
+                res.json(result);
+            } catch (error) {
+                console.error('Error parsing Python output:', error);
+                res.status(500).json({ 
+                    error: 'Failed to parse matching results',
+                    status: 'error'
+                });
+            }
         });
 
     } catch (error) {
-        console.error('Error in lyrics matching:', error);
+        console.error("Error in /api/match_lyrics:", error);
         res.status(500).json({ 
             error: error.message,
-            details: error.stack
+            status: 'error'
         });
     }
-});
+};
+
+app.post('/api/match_lyrics', matchLyrics);
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

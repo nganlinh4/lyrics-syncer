@@ -1,4 +1,4 @@
-whisper-openai>=20231117
+faster-whisper>=0.9.0
 torch
 rapidfuzz>=3.0.0
 numpy

@@ -4,7 +4,6 @@ A web application for creating YouTube videos with synchronized lyrics/subtitles
 
 ## Features
 
-- Synchronized lyrics/subtitles generation using Spotify API
 - Web interface for video creation and management
 - YouTube video audio extraction
 - Automatic lyrics fetching from Genius
@@ -22,11 +21,7 @@ A web application for creating YouTube videos with synchronized lyrics/subtitles
 ```json
 {
     "youtubeApiKey": "YOUR_YOUTUBE_API_KEY",
-    "geniusApiKey": "YOUR_GENIUS_API_KEY",
-    "spotify": {
-        "clientId": "YOUR_SPOTIFY_CLIENT_ID",
-        "clientSecret": "YOUR_SPOTIFY_CLIENT_SECRET"
-    }
+    "geniusApiKey": "YOUR_GENIUS_API_KEY"
 }
 ```
 

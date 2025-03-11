@@ -17,10 +17,6 @@ function App() {
   const [youtubeKeyStatus, setYoutubeKeyStatus] = useState(() => localStorage.getItem('youtubeApiKey') ? 'saved' : 'empty');
   const [geniusApiKey, setGeniusApiKey] = useState(() => localStorage.getItem('geniusApiKey') || '');
   const [geniusKeyStatus, setGeniusKeyStatus] = useState(() => localStorage.getItem('geniusApiKey') ? 'saved' : 'empty');
-  const [spotifyClientId, setSpotifyClientId] = useState(() => localStorage.getItem('spotifyClientId') || '');
-  const [spotifyClientIdStatus, setSpotifyClientIdStatus] = useState(() => localStorage.getItem('spotifyClientId') ? 'saved' : 'empty');
-  const [spotifyClientSecret, setSpotifyClientSecret] = useState(() => localStorage.getItem('spotifyClientSecret') || '');
-  const [spotifyClientSecretStatus, setSpotifyClientSecretStatus] = useState(() => localStorage.getItem('spotifyClientSecret') ? 'saved' : 'empty');
   const [processingStatus, setProcessingStatus] = useState('');
   const [matchingProgress, setMatchingProgress] = useState(0);
   const [languageDetected, setLanguageDetected] = useState('');
@@ -72,21 +68,16 @@ function App() {
     };
   }, []);
 
-  const handleSaveApiKey = async (type, key, secret = null) => {
+  const handleSaveApiKey = async (type, key) => {
     try {
       if (!type || !key) {
         throw new Error('API key and type are required');
       }
 
-      const keyToSend = type === 'genius' ? geniusApiKey : key;
-      const body = secret !== null 
-        ? { type, key: keyToSend, secret }
-        : { type, key: keyToSend };
-
       const response = await fetch('http://localhost:3001/api/save_api_key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ type, key }),
       });
 
       if (!response.ok) {
@@ -97,23 +88,17 @@ function App() {
       // Update localStorage and status based on type
       switch(type) {
         case 'youtube':
-          localStorage.setItem('youtubeApiKey', keyToSend);
-          setYoutubeApiKey(keyToSend);
+          localStorage.setItem('youtubeApiKey', key);
+          setYoutubeApiKey(key);
           setYoutubeKeyStatus('saved');
           break;
         case 'genius':
-          localStorage.setItem('geniusApiKey', keyToSend);
-          setGeniusApiKey(keyToSend);
+          localStorage.setItem('geniusApiKey', key);
+          setGeniusApiKey(key);
           setGeniusKeyStatus('saved');
           break;
-        case 'spotify':
-          localStorage.setItem('spotifyClientId', keyToSend);
-          localStorage.setItem('spotifyClientSecret', secret);
-          setSpotifyClientId(keyToSend);
-          setSpotifyClientSecret(secret);
-          setSpotifyClientIdStatus('saved');
-          setSpotifyClientSecretStatus('saved');
-          break;
+        default:
+          throw new Error('Invalid key type');
       }
     } catch (error) {
       setError(error.message);
@@ -251,50 +236,39 @@ function App() {
   };
 
   const handleAdvancedMatch = async () => {
-    if (!audioUrl || lyrics.length === 0) {
-      setError('Both audio and lyrics must be loaded first');
-      return;
-    }
-
-    setMatchingInProgress(true);
-    setProcessingStatus('Initializing...');
-    setError(null);
-
     try {
-      // Extract song name from audio URL
-      const songName = audioUrl.split('/').pop().replace('.mp3', '');
-      
-      const response = await fetch('http://localhost:3001/api/match_lyrics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          artist,
-          song,
-          audioPath: `audio/${songName}`,
-          lyrics: lyrics
-        }),
-      });
+        setLoading(true);
+        setError(null);
 
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
+        // Clean up the audio URL to get just the path
+        const cleanAudioPath = audioUrl.split('?')[0].replace('http://localhost:3001/', '');
 
-      if (!response.ok) {
-        throw new Error(`Failed to match lyrics: ${responseText}`);
-      }
+        const response = await fetch('http://localhost:3001/api/match_lyrics', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                artist,
+                song,
+                audioPath: cleanAudioPath,
+                lyrics
+            }),
+        });
 
-      const data = JSON.parse(responseText);
-      
-      // Update UI with results
-      setMatchedLyrics(data.matched_lyrics);
-      setLanguageDetected(data.detected_language || 'Unknown');
-      setMatchingComplete(true);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Failed to match lyrics: ${errorData.error || response.statusText}`);
+        }
 
+        const result = await response.json();
+        // Handle successful response...
+        
     } catch (error) {
-      console.error('Error matching lyrics:', error);
-      setError(error.message);
+        console.error('Error matching lyrics:', error);
+        setError(error.message);
     } finally {
-      setMatchingInProgress(false);
-      setProcessingStatus('');
+        setLoading(false);
     }
   };
 
@@ -546,44 +520,6 @@ function App() {
           <button onClick={() => handleSaveApiKey('youtube', youtubeApiKey)}>Save YouTube API Key</button>
           <StatusIndicator status={youtubeKeyStatus} />
         </div>
-
-        {/* Add Spotify API inputs */}
-        <div style={{ marginTop: '15px' }}>
-          <div>
-            <label htmlFor="spotifyClientId">Spotify Client ID:</label>
-            <input
-              type="text"
-              id="spotifyClientId"
-              value={spotifyClientId}
-              onChange={(e) => {
-                setSpotifyClientId(e.target.value);
-                setSpotifyClientIdStatus('empty');
-              }}
-              style={{ marginRight: '10px', width: '300px' }}
-            />
-            <StatusIndicator status={spotifyClientIdStatus} />
-          </div>
-          <div style={{ marginTop: '5px' }}>
-            <label htmlFor="spotifyClientSecret">Spotify Client Secret:</label>
-            <input
-              type="password"
-              id="spotifyClientSecret"
-              value={spotifyClientSecret}
-              onChange={(e) => {
-                setSpotifyClientSecret(e.target.value);
-                setSpotifyClientSecretStatus('empty');
-              }}
-              style={{ marginRight: '10px', width: '300px' }}
-            />
-            <StatusIndicator status={spotifyClientSecretStatus} />
-          </div>
-          <button 
-            onClick={() => handleSaveApiKey('spotify', spotifyClientId, spotifyClientSecret)}
-            style={{ marginTop: '5px' }}
-          >
-            Save Spotify API Keys
-          </button>
-        </div>
       </div>
 
       <button
@@ -594,7 +530,6 @@ function App() {
         {loading ? 'Processing...' : 'Download and Process'}
       </button>
 
-      {/* Add the auto-match button */}
       {audioUrl && lyrics.length > 0 && !matchingInProgress && !matchingComplete && (
         <button
           onClick={handleAutoMatch}
@@ -611,7 +546,6 @@ function App() {
         </button>
       )}
 
-      {/* Add advanced matching button */}
       {audioUrl && lyrics.length > 0 && !matchingInProgress && !matchingComplete && (
         <button
           onClick={handleAdvancedMatch}
@@ -628,7 +562,6 @@ function App() {
         </button>
       )}
 
-      {/* Add processing status indicator */}
       {matchingInProgress && (
         <div style={{ 
           marginTop: '20px',
@@ -636,21 +569,23 @@ function App() {
           backgroundColor: '#f5f5f5',
           borderRadius: '4px'
         }}>
-          <div>{processingStatus}</div>
-          <div style={{ 
-            marginTop: '10px',
-            height: '4px',
-            backgroundColor: '#e0e0e0',
-            borderRadius: '2px'
-          }}>
-            <div style={{
-              width: `${matchingProgress}%`,
-              height: '100%',
-              backgroundColor: '#2196F3',
-              borderRadius: '2px',
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
+          <p>Processing: {processingStatus}</p>
+          {matchingProgress > 0 && (
+            <div style={{ 
+              width: '100%',
+              height: '20px',
+              backgroundColor: '#ddd',
+              borderRadius: '10px',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: `${matchingProgress}%`,
+                height: '100%',
+                backgroundColor: '#4CAF50',
+                transition: 'width 0.3s ease-in-out'
+              }}></div>
+            </div>
+          )}
         </div>
       )}
 
@@ -674,7 +609,6 @@ function App() {
         Preview Lyrics
       </button>
 
-      {/* Add this right after the button to display the lyrics */}
       {lyrics.length > 0 && (
         <div style={{ marginTop: '20px' }}>
           <h3>Lyrics Preview</h3>
@@ -690,6 +624,7 @@ function App() {
         <div style={{ color: 'red', marginBottom: '20px' }}>{error}</div>
       )}
 
+      {/* Audio player section */}
       <div>
         {audioUrl && (
           <>
@@ -708,10 +643,8 @@ function App() {
                   console.log("Failed to load audio URL:", audioUrl);
                   setError("Error loading audio. Please try again.");
                 }}
-                // Removed the onPlay and onPause handlers since we're not using the playing state
               />
 
-              {/* Add a direct download link as a fallback */}
               <div style={{ marginTop: '10px' }}>
                 <a href={audioUrl} target="_blank" rel="noopener noreferrer">
                   Direct Download Link
@@ -719,30 +652,7 @@ function App() {
               </div>
             </div>
 
-            {fileSize && <div>File Size: {Math.round(fileSize / 1024)} KB</div>}
-            {lyrics.length > 0 && (
-              <div>
-                <h3>Lyrics</h3>
-                <ul>
-                  {lyrics.map((item, index) => (
-                    <li key={index}>
-                      {/* Check if item is an object or string */}
-                      {typeof item === 'object' ? item.text : item}
-                      {typeof item === 'object' && (
-                        <span style={{ 
-                          fontSize: '0.8em', 
-                          color: '#666', 
-                          marginLeft: '10px' 
-                        }}>
-                          ({item.start.toFixed(2)}s - {item.end.toFixed(2)}s)
-                          {item.confidence && ` Confidence: ${(item.confidence * 100).toFixed(1)}%`}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {fileSize > 0 && <div>File Size: {Math.round(fileSize / 1024)} KB</div>}
           </>
         )}
       </div>
