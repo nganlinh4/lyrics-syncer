@@ -1,14 +1,14 @@
 import express from 'express';
-import helmet from 'helmet';
 import cors from 'cors';
-import fs from 'fs/promises';
+import helmet from 'helmet';
 import path from 'path';
-import * as fsSync from 'fs';
 import { fileURLToPath } from 'url';
-import youtubeSearch from 'youtube-search';
-import youtubeDlExec from 'youtube-dl-exec';
 import { spawn } from 'child_process';
-import { ratio } from 'fuzzball';
+import fs from 'fs/promises';
+import * as fsSync from 'fs';
+import youtubeSearch from 'youtube-search';
+import { refreshSpotifyToken, searchTrack, getAudioAnalysis } from './services/spotify.js';
+import youtubeDl from 'youtube-dl-exec';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,7 +67,7 @@ async function fileExists(filePath) {
  * @returns {string} The URL-friendly song name.
  */
 const getSongName = (artist, song) => {
-    return `${artist} - ${song}`.toLowerCase().replace(/\s+/g, '_');
+    return `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
 };
 
 /**
@@ -79,7 +79,12 @@ const getAudioData = async (req, res) => {
   try {
     const { song_name } = req.params;
     const files = await fs.readdir(AUDIO_DIR);
-    const audioFiles = files.filter(f => f.endsWith('.mp3') && f.startsWith(song_name));
+    
+    // Make the search case-insensitive
+    const audioFiles = files.filter(f => 
+      f.toLowerCase().endsWith('.mp3') && 
+      f.toLowerCase().includes(song_name.toLowerCase())
+    );
 
     if (audioFiles.length > 0) {
         const audioFilePath = path.join(AUDIO_DIR, audioFiles[0]);
@@ -148,28 +153,23 @@ const saveTiming = async (req, res) => {
 };
 
 /**
- * Handles the entire song processing pipeline: download, lyrics, transcription, alignment.
+ * Handles the entire song processing pipeline: download and audio processing.
  * @param {express.Request} req The request object.
  * @param {express.Response} res The response object.
  */
 const processSong = async (req, res) => {
     try {
-      // Read the API key from config.json
-      let config = {};
-      const configPath = path.join(__dirname, 'config.json');
-      if (await fileExists(configPath)) {
-          const configData = await fs.readFile(configPath, 'utf-8');
-          config = JSON.parse(configData);
-      }
-      if (!config.geniusApiKey) {
-          return res.status(400).json({ error: 'Genius API key not set. Please provide it through the frontend.' });
-      }
-      if (!config.youtubeApiKey) {
-          return res.status(400).json({ error: 'YouTube API key not set. Please provide it through the frontend.' });
-      }
+        // Read the API key from config.json
+        let config = {};
+        const configPath = path.join(__dirname, 'config.json');
+        if (await fileExists(configPath)) {
+            const configData = await fs.readFile(configPath, 'utf-8');
+            config = JSON.parse(configData);
+        }
+        if (!config.youtubeApiKey) {
+            return res.status(400).json({ error: 'YouTube API key not set. Please provide it through the frontend.' });
+        }
 
-        const { default: Genius } = await import('genius-lyrics');
-        const geniusClient = new Genius.Client(config.geniusApiKey);
         const { artist, song } = req.body;
         if (!artist || !song) {
             return res.status(400).json({ error: 'Missing artist or song' });
@@ -179,114 +179,103 @@ const processSong = async (req, res) => {
         const safeSongName = song.replace(/[^a-zA-Z0-9\s-]/g, '');
         const safeArtistName = artist.replace(/[^a-zA-Z0-9\s-]/g, '');
 
-        if (safeSongName !== song || safeArtistName !== artist)
-        {
-            return res.status(400).json({ error: 'Invalid characters in song or artist name.'});
+        if (safeSongName !== song || safeArtistName !== artist) {
+            return res.status(400).json({ error: 'Invalid characters in song or artist name.' });
         }
 
         const songName = getSongName(artist, song);
         const audioFilePath = path.join(AUDIO_DIR, `${songName}.mp3`);
-        const lyricsFilePath = path.join(LYRICS_DIR, `${songName} timed.json`);
+        const tempDir = path.join(AUDIO_DIR, 'temp');
 
-        // Create audio directory if it doesn't exist
+        // Create directories if they don't exist
         await fs.mkdir(AUDIO_DIR, { recursive: true });
+        await fs.mkdir(tempDir, { recursive: true });
 
-        // 1. Download (using youtube-dl-exec)
+        // Download (using youtube-dl-exec)
         if (!(await fileExists(audioFilePath))) {
-          await new Promise((resolve, reject) => {
-            console.log(`Searching YouTube for: ${artist} ${song}`);
-            youtubeSearch(`${artist} ${song}`, { maxResults: 1, key: config.youtubeApiKey }).then(async searchResults => {
-              if (searchResults.results.length === 0) {
-                reject('No videos found for this song/artist combination.');
-                return;
-              }
-
-              const videoId = searchResults.results[0].id;
-              const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-              console.log(`Starting download process for video: ${videoUrl}`);
-
-              try {
-                // Use a temporary filename first
-                const tempFilePath = path.join(AUDIO_DIR, `temp_${Date.now()}.mp3`);
-                
-                const downloadOptions = {
-                  extractAudio: true,
-                  audioFormat: 'mp3',
-                  audioQuality: 0,
-                  output: tempFilePath,
-                  noPlaylist: true,
-                  verbose: true,
-                  format: 'bestaudio',
-                  postprocessorArgs: ['-acodec', 'mp3', '-ac', '2', '-ab', '192k'],
-                };
-
-                console.log('Download options:', downloadOptions);
-                console.log(`Attempting to download to temporary file: ${tempFilePath}`);
-
-                try {
-                  const result = await youtubeDlExec(videoUrl, downloadOptions);
-                  console.log('Download process output:', result);
-                  
-                  // Check the AUDIO_DIR for any new files
-                  const files = fsSync.readdirSync(AUDIO_DIR);
-                  console.log('Files in audio directory:', files);
-
-                  // Find the downloaded file (it might have a different name)
-                  const downloadedFile = files.find(f => f.startsWith('temp_'));
-                  
-                  if (downloadedFile) {
-                    const downloadedPath = path.join(AUDIO_DIR, downloadedFile);
-                    console.log(`Found downloaded file: ${downloadedPath}`);
-                    
-                    // Rename to final filename
-                    fsSync.renameSync(downloadedPath, audioFilePath);
-                    console.log(`Renamed to final path: ${audioFilePath}`);
-                    
-                    if (fsSync.existsSync(audioFilePath)) {
-                      const stats = fsSync.statSync(audioFilePath);
-                      console.log(`Final file size: ${stats.size} bytes`);
-                      resolve();
-                    } else {
-                      reject(new Error(`Failed to rename file to ${audioFilePath}`));
+            await new Promise((resolve, reject) => {
+                console.log(`Searching YouTube for: ${artist} ${song}`);
+                youtubeSearch(`${artist} ${song}`, { maxResults: 1, key: config.youtubeApiKey }).then(async searchResults => {
+                    if (searchResults.results.length === 0) {
+                        reject('No videos found for this song/artist combination.');
+                        return;
                     }
-                  } else {
-                    console.log('No matching downloaded file found');
-                    reject(new Error('Download completed but file not found'));
-                  }
-                } catch (dlError) {
-                  console.error('Download process error:', dlError);
-                  reject(dlError);
-                }
-              } catch (setupError) {
-                console.error('Setup error:', setupError);
-                reject(setupError);
-              }
-            }).catch(searchError => {
-              console.error('YouTube search error:', searchError);
-              reject(searchError);
+
+                    const videoId = searchResults.results[0].id;
+                    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                    console.log(`Starting download process for video: ${videoUrl}`);
+
+                    try {
+                        // Use a temporary directory and let youtube-dl name the file
+                        const tempFilename = `temp_${Date.now()}`;
+                        const tempFilePath = path.join(tempDir, tempFilename);
+                        
+                        const downloadOptions = {
+                            extractAudio: true,
+                            audioFormat: 'mp3',
+                            audioQuality: 0,
+                            output: `${tempFilePath}.%(ext)s`,
+                            noPlaylist: true,
+                            verbose: true,
+                            format: 'bestaudio',
+                            postprocessorArgs: ['-acodec', 'mp3', '-ac', '2', '-ab', '192k'],
+                        };
+
+                        console.log('Download options:', downloadOptions);
+                        console.log(`Attempting to download to temporary directory: ${tempDir}`);
+
+                        // Download the file
+                        await youtubeDl(videoUrl, downloadOptions);
+
+                        // Find the downloaded file in the temp directory
+                        const files = await fs.readdir(tempDir);
+                        const downloadedFile = files.find(f => f.startsWith(tempFilename));
+
+                        if (!downloadedFile) {
+                            throw new Error('Downloaded file not found in temp directory');
+                        }
+
+                        const downloadedPath = path.join(tempDir, downloadedFile);
+                        console.log(`Moving file from ${downloadedPath} to ${audioFilePath}`);
+
+                        // Ensure the source file exists before attempting to move it
+                        if (await fileExists(downloadedPath)) {
+                            await fs.rename(downloadedPath, audioFilePath);
+                        } else {
+                            throw new Error(`Downloaded file not found at ${downloadedPath}`);
+                        }
+
+                        // Clean up temp directory
+                        const remainingFiles = await fs.readdir(tempDir);
+                        await Promise.all(
+                            remainingFiles.map(file => 
+                                fs.unlink(path.join(tempDir, file)).catch(console.error)
+                            )
+                        );
+
+                        resolve();
+                    } catch (error) {
+                        console.error('Error during download:', error);
+                        reject(error);
+                    }
+                }).catch(error => {
+                    console.error('Error during YouTube search:', error);
+                    reject(error);
+                });
             });
-          });
         }
 
-        // 2. Fetch Lyrics
-        const geniusSong = await geniusClient.songs.search(`${artist} ${song}`);
-        if (geniusSong.length > 0) {
-          const lyrics = await geniusSong[0].lyrics();
+        // Return success response with audio file information
+        const stats = await fs.stat(audioFilePath);
+        const timestamp = Date.now();
+        const audioUrl = `http://localhost:${port}/audio/${path.basename(audioFilePath)}?t=${timestamp}`;
 
-          // 3. TODO: Generate Timestamped Transcription (Placeholder)
-          const transcription = [{ start: 0, end: 10, text: "Placeholder transcription" }];
-
-          // 4. TODO: Align Lyrics (Placeholder)
-          const alignedLyrics = [{ start: 0, end: 10, line: "Placeholder lyrics" }];
-
-          // 5. Save Timed Lyrics
-          await fs.writeFile(lyricsFilePath, JSON.stringify(alignedLyrics, null, 2), 'utf-8');
-          res.json({ success: true, message: `Processed ${songName}`, lyrics: lyrics });
-
-        }
-        else {
-          res.status(404).json({error: "Lyrics not found"});
-        }
+        res.json({
+            success: true,
+            message: `Processed ${songName}`,
+            audio_url: audioUrl,
+            size: stats.size
+        });
 
     } catch (error) {
         console.error("Error in /api/process:", error);
@@ -297,23 +286,39 @@ const processSong = async (req, res) => {
 
 const saveApiKey = async (req, res) => {
     try {
-        const { apiKey, keyType } = req.body;
-        if (!apiKey || !keyType) {
+        const { type, key, secret } = req.body;
+        if (!type || !key) {
             return res.status(400).json({ error: 'API key and key type are required' });
         }
+
         const configPath = path.join(__dirname, 'config.json');
         let config = {};
+        
         if (await fileExists(configPath)) {
             const configData = await fs.readFile(configPath, 'utf-8');
             config = JSON.parse(configData);
         }
 
-        if (keyType === 'genius') {
-            config.geniusApiKey = apiKey;
-        } else if (keyType === 'youtube') {
-            config.youtubeApiKey = apiKey;
-        } else {
-            return res.status(400).json({ error: 'Invalid key type' });
+        switch(type) {
+            case 'genius':
+                config.geniusApiKey = key;
+                break;
+            case 'youtube':
+                config.youtubeApiKey = key;
+                break;
+            case 'spotify':
+                if (!secret) {
+                    return res.status(400).json({ error: 'Spotify client secret is required' });
+                }
+                config.spotify = {
+                    clientId: key,
+                    clientSecret: secret
+                };
+                // Refresh Spotify token with new credentials
+                await refreshSpotifyToken();
+                break;
+            default:
+                return res.status(400).json({ error: 'Invalid key type' });
         }
 
         await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
@@ -381,113 +386,69 @@ app.use('/audio', express.static(AUDIO_DIR, {
 
 app.post('/api/lyrics', getLyrics);
 
+// Initialize Spotify token refresh
+refreshSpotifyToken();
+
 app.post('/api/auto_match', async (req, res) => {
-  const { songName, lyrics } = req.body;
+    const { lyrics, artist, song } = req.body;
 
-  if (!songName || !lyrics) {
-    return res.status(400).json({ error: 'Missing required parameters' });
-  }
-
-  try {
-    // Get the audio file path
-    const audioFiles = fsSync.readdirSync(AUDIO_DIR)
-      .filter(f => f.toLowerCase().includes(songName.toLowerCase()) && f.endsWith('.mp3'));
-
-    if (audioFiles.length === 0) {
-      throw new Error('Audio file not found');
+    if (!lyrics || !artist || !song) {
+        return res.status(400).json({ error: 'Missing required parameters' });
     }
 
-    const audioFile = path.join(AUDIO_DIR, audioFiles[0]);
-    
-    // Wait a moment to ensure file is completely written
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Verify file exists and is readable
     try {
-      await fs.access(audioFile, fs.constants.R_OK);
-      const stats = await fs.stat(audioFile);
-      console.log(`File verified: ${audioFile}, size: ${stats.size} bytes`);
-    } catch (err) {
-      throw new Error(`File not accessible: ${err.message}`);
-    }
-
-    const scriptPath = path.join(__dirname, 'lyrics_matcher.py');
-    
-    // Prepare environment variables
-    const env = {
-      ...process.env,
-      PATH: `${process.env.PATH};C:\\Program Files\\ffmpeg\\bin`,
-      PYTHONIOENCODING: 'utf-8',
-      PYTHONUNBUFFERED: '1'
-    };
-    
-    console.log('Starting Python process with:');
-    console.log('Python path:', VENV_PYTHON);
-    console.log('Script path:', scriptPath);
-    console.log('Audio file:', audioFile);
-    
-    const pythonArgs = [
-      scriptPath,
-      '--audio_path', audioFile,
-      '--lyrics', JSON.stringify(lyrics)
-    ];
-    
-    console.log('Python arguments:', pythonArgs);
-    
-    const pythonProcess = spawn(VENV_PYTHON, pythonArgs, {
-      shell: false,
-      env: env
-    });
-
-    let outputData = '';
-    let errorData = '';
-
-    pythonProcess.stdout.on('data', (data) => {
-      outputData += data.toString();
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      console.error('Python error:', data.toString());
-      errorData += data.toString();
-    });
-
-    pythonProcess.on('error', (error) => {
-      console.error('Failed to start Python process:', error);
-      errorData += error.toString();
-    });
-
-    await new Promise((resolve, reject) => {
-      pythonProcess.on('close', (code) => {
-        console.log('Python process exited with code:', code);
-        if (code !== 0) {
-          reject(new Error(`Process failed with code ${code}: ${errorData}`));
-        } else {
-          resolve();
+        // Search for the track on Spotify
+        const track = await searchTrack(artist, song);
+        if (!track) {
+            throw new Error('Track not found on Spotify');
         }
-      });
-    });
 
-    try {
-      // Parse the output from Python script
-      const matchedData = JSON.parse(outputData.trim());
-      
-      if (matchedData.error) {
-        throw new Error(matchedData.error);
-      }
+        console.log('Found Spotify track:', track.name, 'by', track.artists[0].name);
 
-      res.json({ 
-        matched_lyrics: matchedData,
-        message: 'Audio processing and lyrics matching completed successfully'
-      });
-    } catch (parseError) {
-      console.error('Failed to parse Python output:', outputData);
-      throw new Error(`Failed to parse Python output: ${parseError.message}`);
+        // Get audio analysis from Spotify
+        const analysis = await getAudioAnalysis(track.id);
+        if (!analysis) {
+            throw new Error('Could not get audio analysis from Spotify');
+        }
+
+        console.log('Got audio analysis, segments:', analysis.segments.length);
+
+        // Match lyrics with segments
+        const segments = analysis.segments;
+        const totalDuration = analysis.track.duration;
+        
+        // Calculate time points for each lyric line
+        const matchedLyrics = lyrics.map((line, index) => {
+            // Calculate relative position in the song
+            const progress = index / (lyrics.length - 1);
+            const timePosition = progress * totalDuration;
+            
+            // Find the closest segment
+            const segment = segments.find(seg => seg.start >= timePosition) || segments[segments.length - 1];
+            
+            // Calculate end time (either next segment start or current segment end)
+            const nextSegment = segments.find(seg => seg.start > segment.start);
+            const endTime = nextSegment ? nextSegment.start : (segment.start + segment.duration);
+            
+            return {
+                start: segment.start,
+                end: endTime,
+                line: line,
+                confidence: segment.confidence || 0.8
+            };
+        });
+
+        console.log('Generated matched lyrics:', matchedLyrics.length, 'lines');
+
+        res.json({ 
+            matched_lyrics: matchedLyrics,
+            message: 'Lyrics matching completed successfully'
+        });
+
+    } catch (error) {
+        console.error('Error in auto_match:', error);
+        res.status(500).json({ error: error.message });
     }
-
-  } catch (error) {
-    console.error('Error in auto matching:', error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 app.listen(port, () => {

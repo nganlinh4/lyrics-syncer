@@ -2,99 +2,31 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 
 function App() {
-  const [song, setSong] = useState('');
   const [artist, setArtist] = useState('');
-  const [geniusApiKey, setGeniusApiKey] = useState('');
-  const [youtubeApiKey, setYoutubeApiKey] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [fileSize, setFileSize] = useState(null);
+  const [song, setSong] = useState('');
   const [lyrics, setLyrics] = useState([]);
+  const [audioUrl, setAudioUrl] = useState('');
+  const [matchedLyrics, setMatchedLyrics] = useState([]);
   const [matchingInProgress, setMatchingInProgress] = useState(false);
   const [matchingComplete, setMatchingComplete] = useState(false);
-  const [matchedLyrics, setMatchedLyrics] = useState([]);
+  const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [fileSize, setFileSize] = useState(0);
+  const [youtubeApiKey, setYoutubeApiKey] = useState(() => localStorage.getItem('youtubeApiKey') || '');
+  const [youtubeKeyStatus, setYoutubeKeyStatus] = useState(() => localStorage.getItem('youtubeApiKey') ? 'saved' : 'empty');
+  const [geniusApiKey, setGeniusApiKey] = useState(() => localStorage.getItem('geniusApiKey') || '');
+  const [geniusKeyStatus, setGeniusKeyStatus] = useState(() => localStorage.getItem('geniusApiKey') ? 'saved' : 'empty');
+  const [spotifyClientId, setSpotifyClientId] = useState(() => localStorage.getItem('spotifyClientId') || '');
+  const [spotifyClientIdStatus, setSpotifyClientIdStatus] = useState(() => localStorage.getItem('spotifyClientId') ? 'saved' : 'empty');
+  const [spotifyClientSecret, setSpotifyClientSecret] = useState(() => localStorage.getItem('spotifyClientSecret') || '');
+  const [spotifyClientSecretStatus, setSpotifyClientSecretStatus] = useState(() => localStorage.getItem('spotifyClientSecret') ? 'saved' : 'empty');
 
+  // Refs
   const wavesurferRef = useRef(null);
-  const audioRef = useRef(null);
   const containerRef = useRef(null);
+  const audioRef = useRef(null);
   const animationFrameRef = useRef(null);
-
-  /**
-  * Constructs a URL-friendly song name.
-  * @param {string} artist The artist name.
-  * @param {string} song The song name.
-  * @returns {string} The URL-friendly song name.
-  */
-  const getSongName = (artist, song) => {
-    return `${artist} - ${song}`.toLowerCase().replace(/\s+/g, '_');
-  };
-
-  const handleDownload = async () => {
-    if (!song || !artist) {
-      setError('Please enter both song and artist.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    // Removed setAudioLoaded(false) since audioLoaded state is removed
-
-    try {
-      const response = await fetch('http://localhost:3001/api/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artist, song }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to process song: ${response.status} - ${errorData.error}`);
-      }
-
-      const songName = getSongName(artist, song);
-      const audioDataResponse = await fetch(`http://localhost:3001/api/audio_data/${songName}`);
-
-      if (!audioDataResponse.ok) {
-        const errorData = await audioDataResponse.json();
-        throw new Error(`Failed to fetch audio data: ${audioDataResponse.status} - ${errorData.error}`);
-      }
-
-      const audioData = await audioDataResponse.json();
-      console.log("Audio data received:", audioData);
-
-      // Set file size
-      setFileSize(audioData.size);
-
-      // Use the URL exactly as provided by the backend
-      setAudioUrl(audioData.audio_url);
-
-    } catch (error) {
-      console.error("Error processing song:", error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveApiKey = async (keyType) => {
-    try {
-      const response = await fetch('http://localhost:3001/api/save_api_key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: keyType === 'genius' ? geniusApiKey : youtubeApiKey, keyType }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to save API key: ${response.status} - ${errorData.error}`);
-      }
-      alert(`${keyType.charAt(0).toUpperCase() + keyType.slice(1)} API Key saved!`);
-    } catch (error) {
-      setError(error.message);
-    }
-  };
 
   // Initialize WaveSurfer when the component mounts
   useEffect(() => {
@@ -109,7 +41,6 @@ function App() {
         responsive: true
       });
 
-      // Handle WaveSurfer events
       wavesurferRef.current.on('ready', () => {
         console.log('WaveSurfer is ready');
       });
@@ -118,20 +49,15 @@ function App() {
         console.error('WaveSurfer error:', err);
       });
 
-      // Add timeupdate event
       wavesurferRef.current.on('timeupdate', (time) => {
-        console.log('Current time:', time); // Debug log
         setCurrentTime(time);
       });
 
-      // Also listen to audioprocess event as backup
       wavesurferRef.current.on('audioprocess', (time) => {
-        console.log('Audioprocess time:', time); // Debug log
         setCurrentTime(time);
       });
     }
 
-    // Clean up WaveSurfer on unmount
     return () => {
       if (wavesurferRef.current) {
         wavesurferRef.current.destroy();
@@ -139,6 +65,108 @@ function App() {
       }
     };
   }, []);
+
+  const handleSaveApiKey = async (type, key, secret = null) => {
+    try {
+      if (!type || !key) {
+        throw new Error('API key and type are required');
+      }
+
+      const keyToSend = type === 'genius' ? geniusApiKey : key;
+      const body = secret !== null 
+        ? { type, key: keyToSend, secret }
+        : { type, key: keyToSend };
+
+      const response = await fetch('http://localhost:3001/api/save_api_key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save API key');
+      }
+
+      // Update localStorage and status based on type
+      switch(type) {
+        case 'youtube':
+          localStorage.setItem('youtubeApiKey', keyToSend);
+          setYoutubeApiKey(keyToSend);
+          setYoutubeKeyStatus('saved');
+          break;
+        case 'genius':
+          localStorage.setItem('geniusApiKey', keyToSend);
+          setGeniusApiKey(keyToSend);
+          setGeniusKeyStatus('saved');
+          break;
+        case 'spotify':
+          localStorage.setItem('spotifyClientId', keyToSend);
+          localStorage.setItem('spotifyClientSecret', secret);
+          setSpotifyClientId(keyToSend);
+          setSpotifyClientSecret(secret);
+          setSpotifyClientIdStatus('saved');
+          setSpotifyClientSecretStatus('saved');
+          break;
+      }
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Validate inputs
+      if (!song || !artist) {
+        throw new Error('Please enter both song and artist');
+      }
+
+      // Call the process endpoint
+      const response = await fetch('http://localhost:3001/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ song, artist }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to process: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Update lyrics if they were returned
+      if (data.lyrics) {
+        const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
+        setLyrics(lyricsArray);
+      }
+
+      // Update audio URL
+      const songName = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
+      const audioResponse = await fetch(`http://localhost:3001/api/audio_data/${encodeURIComponent(songName)}`);
+      if (!audioResponse.ok) {
+        throw new Error('Failed to get audio data');
+      }
+      
+      const audioData = await audioResponse.json();
+      setAudioUrl(audioData.audio_url);
+      
+      // Optional: Update file size if available
+      if (audioData.size) {
+        setFileSize(audioData.size);
+      }
+
+    } catch (error) {
+      setError(error.message);
+      console.error('Download error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Load audio into WaveSurfer when URL changes
   useEffect(() => {
@@ -180,8 +208,8 @@ function App() {
   };
 
   const handleAutoMatch = async () => {
-    if (!audioUrl || lyrics.length === 0) {
-      setError('Both audio and lyrics must be loaded first');
+    if (!lyrics.length === 0) {
+      setError('Lyrics must be loaded first');
       return;
     }
 
@@ -189,13 +217,13 @@ function App() {
     setError(null);
 
     try {
-      const songName = getSongName(artist, song);
       const response = await fetch('http://localhost:3001/api/auto_match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          songName,
-          lyrics: lyrics,
+          artist,
+          song,
+          lyrics: lyrics
         }),
       });
 
@@ -204,8 +232,8 @@ function App() {
         throw new Error(errorData.error || 'Failed to match lyrics');
       }
 
-      const matchedData = await response.json();
-      setMatchedLyrics(matchedData.matched_lyrics);
+      const { matched_lyrics } = await response.json();
+      setMatchedLyrics(matched_lyrics);
       setMatchingComplete(true);
 
     } catch (error) {
@@ -261,15 +289,15 @@ function App() {
     }
   }, []);
 
-  // New function to update time using requestAnimationFrame
+  // Update time tracking with better precision
   const updateTime = useCallback(() => {
-    if (audioRef.current) {
+    if (audioRef.current && !audioRef.current.paused) {
       setCurrentTime(audioRef.current.currentTime);
       animationFrameRef.current = requestAnimationFrame(updateTime);
     }
   }, []);
 
-  // Start and stop time tracking
+  // Enhanced time tracking setup
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;
@@ -286,9 +314,14 @@ function App() {
       }
     };
 
+    const handleSeeking = () => {
+      setCurrentTime(audioElement.currentTime);
+    };
+
     audioElement.addEventListener('play', handlePlay);
     audioElement.addEventListener('pause', handlePause);
-    audioElement.addEventListener('seeking', updateTime);
+    audioElement.addEventListener('seeking', handleSeeking);
+    audioElement.addEventListener('seeked', handleSeeking);
 
     return () => {
       if (animationFrameRef.current) {
@@ -296,11 +329,12 @@ function App() {
       }
       audioElement.removeEventListener('play', handlePlay);
       audioElement.removeEventListener('pause', handlePause);
-      audioElement.removeEventListener('seeking', updateTime);
+      audioElement.removeEventListener('seeking', handleSeeking);
+      audioElement.removeEventListener('seeked', handleSeeking);
     };
   }, [updateTime]);
 
-  // Render matched lyrics with current time tracking
+  // Optimized render function for matched lyrics
   const renderMatchedLyrics = () => {
     if (!matchingComplete || !matchedLyrics) return null;
 
@@ -319,13 +353,6 @@ function App() {
             const isCurrentLyric = 
               currentTime >= item.start && 
               currentTime <= item.end;
-            
-            console.log(`Lyric ${index}:`, { 
-              start: item.start, 
-              end: item.end, 
-              current: currentTime, 
-              isActive: isCurrentLyric 
-            });
 
             return (
               <div 
@@ -338,13 +365,18 @@ function App() {
                                  item.confidence > 0.6 ? '#fff3e0' : '#ffebee',
                   marginBottom: '5px',
                   borderRadius: '4px',
-                  transition: 'background-color 0.3s ease',
+                  transition: 'all 0.3s ease',
                   color: isCurrentLyric ? 'white' : 'black',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
+                  boxShadow: isCurrentLyric ? '0 2px 5px rgba(0,0,0,0.2)' : 'none'
                 }}
                 onClick={() => {
                   if (audioRef.current) {
                     audioRef.current.currentTime = item.start;
+                    if (audioRef.current.paused) {
+                      audioRef.current.play();
+                    }
                   }
                 }}
               >
@@ -355,9 +387,9 @@ function App() {
                 </div>
                 <div style={{ 
                   fontSize: '0.8em', 
-                  color: isCurrentLyric ? 'rgba(255,255,255,0.8)' : '#666'
+                  color: isCurrentLyric ? 'rgba(255,255,255,0.8)' : '#666',
+                  marginTop: '4px'
                 }}>
-                  Current Time: {currentTime.toFixed(2)}s | 
                   {`${item.start.toFixed(2)}s - ${item.end.toFixed(2)}s`}
                   <span style={{ marginLeft: '10px' }}>
                     Confidence: {(item.confidence * 100).toFixed(1)}%
@@ -371,8 +403,33 @@ function App() {
     );
   };
 
+  // Auto-scroll effect for current lyric
+  useEffect(() => {
+    const currentIndex = getCurrentLyricIndex(currentTime);
+    if (currentIndex !== -1) {
+      const element = document.querySelector(`[data-lyric-index="${currentIndex}"]`);
+      if (element) {
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center'
+        });
+      }
+    }
+  }, [currentTime, getCurrentLyricIndex]);
+
+  // Add status indicator component
+  const StatusIndicator = ({ status }) => (
+    <span style={{
+      marginLeft: '10px',
+      color: status === 'saved' ? '#4CAF50' : '#666',
+      fontSize: '0.8em'
+    }}>
+      {status === 'saved' ? '✓ Saved' : 'Not saved'}
+    </span>
+  );
+
   return (
-    <div style={{ padding: '20px' }}>
+    <div className="container">
       <h1>Lyrics Timing App</h1>
 
       <div style={{ marginBottom: '20px' }}>
@@ -400,10 +457,14 @@ function App() {
             type="text"
             id="geniusApiKey"
             value={geniusApiKey}
-            onChange={(e) => setGeniusApiKey(e.target.value)}
+            onChange={(e) => {
+              setGeniusApiKey(e.target.value);
+              setGeniusKeyStatus('empty');
+            }}
             style={{ marginRight: '10px', width: '300px' }}
           />
-          <button onClick={() => handleSaveApiKey('genius')}>Save Genius API Key</button>
+          <button onClick={() => handleSaveApiKey('genius', geniusApiKey)}>Save Genius API Key</button>
+          <StatusIndicator status={geniusKeyStatus} />
         </div>
 
         <div style={{ marginTop: '15px' }}>
@@ -412,10 +473,52 @@ function App() {
             type="text"
             id="youtubeApiKey"
             value={youtubeApiKey}
-            onChange={(e) => setYoutubeApiKey(e.target.value)}
+            onChange={(e) => {
+              setYoutubeApiKey(e.target.value);
+              setYoutubeKeyStatus('empty');
+            }}
             style={{ marginRight: '10px', width: '300px' }}
           />
-          <button onClick={() => handleSaveApiKey('youtube')}>Save YouTube API Key</button>
+          <button onClick={() => handleSaveApiKey('youtube', youtubeApiKey)}>Save YouTube API Key</button>
+          <StatusIndicator status={youtubeKeyStatus} />
+        </div>
+
+        {/* Add Spotify API inputs */}
+        <div style={{ marginTop: '15px' }}>
+          <div>
+            <label htmlFor="spotifyClientId">Spotify Client ID:</label>
+            <input
+              type="text"
+              id="spotifyClientId"
+              value={spotifyClientId}
+              onChange={(e) => {
+                setSpotifyClientId(e.target.value);
+                setSpotifyClientIdStatus('empty');
+              }}
+              style={{ marginRight: '10px', width: '300px' }}
+            />
+            <StatusIndicator status={spotifyClientIdStatus} />
+          </div>
+          <div style={{ marginTop: '5px' }}>
+            <label htmlFor="spotifyClientSecret">Spotify Client Secret:</label>
+            <input
+              type="password"
+              id="spotifyClientSecret"
+              value={spotifyClientSecret}
+              onChange={(e) => {
+                setSpotifyClientSecret(e.target.value);
+                setSpotifyClientSecretStatus('empty');
+              }}
+              style={{ marginRight: '10px', width: '300px' }}
+            />
+            <StatusIndicator status={spotifyClientSecretStatus} />
+          </div>
+          <button 
+            onClick={() => handleSaveApiKey('spotify', spotifyClientId, spotifyClientSecret)}
+            style={{ marginTop: '5px' }}
+          >
+            Save Spotify API Keys
+          </button>
         </div>
       </div>
 
@@ -440,7 +543,7 @@ function App() {
             borderRadius: '4px'
           }}
         >
-          Start Auto Lyrics Matching
+          Get Lyrics Matching
         </button>
       )}
 
