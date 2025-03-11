@@ -21,6 +21,9 @@ function App() {
   const [spotifyClientIdStatus, setSpotifyClientIdStatus] = useState(() => localStorage.getItem('spotifyClientId') ? 'saved' : 'empty');
   const [spotifyClientSecret, setSpotifyClientSecret] = useState(() => localStorage.getItem('spotifyClientSecret') || '');
   const [spotifyClientSecretStatus, setSpotifyClientSecretStatus] = useState(() => localStorage.getItem('spotifyClientSecret') ? 'saved' : 'empty');
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [matchingProgress, setMatchingProgress] = useState(0);
+  const [languageDetected, setLanguageDetected] = useState('');
 
   // Refs
   const wavesurferRef = useRef(null);
@@ -244,6 +247,52 @@ function App() {
     }
   };
 
+  const handleAdvancedMatch = async () => {
+    if (!audioUrl || lyrics.length === 0) {
+      setError('Both audio and lyrics must be loaded first');
+      return;
+    }
+
+    setMatchingInProgress(true);
+    setProcessingStatus('Initializing...');
+    setError(null);
+
+    try {
+      // Extract song name from audio URL
+      const songName = audioUrl.split('/').pop().replace('.mp3', '');
+      
+      const response = await fetch('http://localhost:3001/api/match_lyrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          artist,
+          song,
+          audioPath: `audio/${songName}`,
+          lyrics: lyrics
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to match lyrics');
+      }
+
+      const data = await response.json();
+      
+      // Update UI with results
+      setMatchedLyrics(data.matched_lyrics);
+      setLanguageDetected(data.detected_language || 'Unknown');
+      setMatchingComplete(true);
+
+    } catch (error) {
+      console.error('Error matching lyrics:', error);
+      setError(error.message);
+    } finally {
+      setMatchingInProgress(false);
+      setProcessingStatus('');
+    }
+  };
+
   // Removed togglePlay function
 
   // Add this function to find the current lyric
@@ -346,13 +395,14 @@ function App() {
           overflowY: 'auto',
           border: '1px solid #ccc',
           padding: '10px',
-          scrollBehavior: 'smooth',
-          position: 'relative'
+          borderRadius: '4px'
         }}>
           {matchedLyrics.map((item, index) => {
-            const isCurrentLyric = 
-              currentTime >= item.start && 
-              currentTime <= item.end;
+            const isCurrentLyric = currentTime >= item.start && currentTime <= item.end;
+            const confidenceColor = 
+              item.confidence > 0.9 ? '#4CAF50' :
+              item.confidence > 0.7 ? '#FFA726' :
+              '#F44336';
 
             return (
               <div 
@@ -360,40 +410,30 @@ function App() {
                 data-lyric-index={index}
                 style={{
                   padding: '10px',
-                  backgroundColor: isCurrentLyric ? '#4CAF50' : 
-                                 item.confidence > 0.8 ? '#e8f5e9' : 
-                                 item.confidence > 0.6 ? '#fff3e0' : '#ffebee',
+                  backgroundColor: isCurrentLyric ? '#e3f2fd' : 'white',
                   marginBottom: '5px',
                   borderRadius: '4px',
-                  transition: 'all 0.3s ease',
-                  color: isCurrentLyric ? 'white' : 'black',
                   cursor: 'pointer',
-                  transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
-                  boxShadow: isCurrentLyric ? '0 2px 5px rgba(0,0,0,0.2)' : 'none'
+                  borderLeft: `4px solid ${confidenceColor}`,
+                  transition: 'all 0.3s ease'
                 }}
                 onClick={() => {
                   if (audioRef.current) {
                     audioRef.current.currentTime = item.start;
-                    if (audioRef.current.paused) {
-                      audioRef.current.play();
-                    }
+                    audioRef.current.play();
                   }
                 }}
               >
+                <div>{item.line}</div>
                 <div style={{ 
-                  fontWeight: isCurrentLyric ? 'bold' : 'normal'
+                  fontSize: '0.8em',
+                  color: '#666',
+                  marginTop: '4px',
+                  display: 'flex',
+                  justifyContent: 'space-between'
                 }}>
-                  {item.line}
-                </div>
-                <div style={{ 
-                  fontSize: '0.8em', 
-                  color: isCurrentLyric ? 'rgba(255,255,255,0.8)' : '#666',
-                  marginTop: '4px'
-                }}>
-                  {`${item.start.toFixed(2)}s - ${item.end.toFixed(2)}s`}
-                  <span style={{ marginLeft: '10px' }}>
-                    Confidence: {(item.confidence * 100).toFixed(1)}%
-                  </span>
+                  <span>{`${item.start.toFixed(2)}s - ${item.end.toFixed(2)}s`}</span>
+                  <span>Confidence: {(item.confidence * 100).toFixed(1)}%</span>
                 </div>
               </div>
             );
@@ -547,10 +587,57 @@ function App() {
         </button>
       )}
 
+      {/* Add advanced matching button */}
+      {audioUrl && lyrics.length > 0 && !matchingInProgress && !matchingComplete && (
+        <button
+          onClick={handleAdvancedMatch}
+          style={{ 
+            padding: '8px 16px', 
+            marginLeft: '10px',
+            backgroundColor: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px'
+          }}
+        >
+          Advanced Lyrics Matching (ML)
+        </button>
+      )}
+
+      {/* Add processing status indicator */}
       {matchingInProgress && (
-        <div style={{ marginTop: '10px' }}>
-          <span>Matching lyrics to audio... Please wait</span>
-          {/* You could add a progress spinner here */}
+        <div style={{ 
+          marginTop: '20px',
+          padding: '15px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '4px'
+        }}>
+          <div>{processingStatus}</div>
+          <div style={{ 
+            marginTop: '10px',
+            height: '4px',
+            backgroundColor: '#e0e0e0',
+            borderRadius: '2px'
+          }}>
+            <div style={{
+              width: `${matchingProgress}%`,
+              height: '100%',
+              backgroundColor: '#2196F3',
+              borderRadius: '2px',
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* Add language detection info */}
+      {languageDetected && (
+        <div style={{
+          marginTop: '10px',
+          fontSize: '0.9em',
+          color: '#666'
+        }}>
+          Detected Language: {languageDetected}
         </div>
       )}
 

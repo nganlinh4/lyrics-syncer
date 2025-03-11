@@ -12,9 +12,7 @@ import youtubeDl from 'youtube-dl-exec';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Add path to virtual environment Python
-const VENV_PYTHON = path.join(__dirname, 'venv', 'Scripts', 'python.exe');
+const PYTHON_SCRIPT_PATH = path.join(__dirname, 'main.py');
 
 const app = express();
 const port = 3001;
@@ -456,11 +454,31 @@ app.post('/api/match_lyrics', async (req, res) => {
     const { artist, song, audioPath, lyrics } = req.body;
     
     try {
-        // Spawn Python process
+        // Clean the audio path and ensure .mp3 extension
+        const cleanAudioPath = audioPath.split('?')[0];
+        const audioPathWithExt = cleanAudioPath.endsWith('.mp3') 
+            ? cleanAudioPath 
+            : `${cleanAudioPath}.mp3`;
+        
+        // Log the paths for debugging
+        console.log('Current directory:', __dirname);
+        console.log('Python script path:', PYTHON_SCRIPT_PATH);
+        console.log('Original audio path:', audioPath);
+        console.log('Final audio path:', audioPathWithExt);
+
+        // Use absolute paths
+        const absoluteAudioPath = path.join(__dirname, '..', audioPathWithExt);
+        
+        // Verify the audio file exists before proceeding
+        if (!await fileExists(absoluteAudioPath)) {
+            throw new Error(`Audio file not found at: ${absoluteAudioPath}`);
+        }
+
+        // Spawn Python process with full path
         const pythonProcess = spawn('python', [
-            'main.py',
+            PYTHON_SCRIPT_PATH,
             '--mode', 'match',
-            '--audio', audioPath,
+            '--audio', absoluteAudioPath,
             '--lyrics', JSON.stringify(lyrics),
             '--artist', artist,
             '--song', song
@@ -471,16 +489,18 @@ app.post('/api/match_lyrics', async (req, res) => {
 
         pythonProcess.stdout.on('data', (data) => {
             outputData += data.toString();
+            console.log('Python output:', data.toString());
         });
 
         pythonProcess.stderr.on('data', (data) => {
             errorData += data.toString();
+            console.error('Python error:', data.toString());
         });
 
         pythonProcess.on('close', (code) => {
             if (code !== 0) {
                 console.error('Python process error:', errorData);
-                return res.status(500).json({ error: 'Failed to process lyrics matching' });
+                return res.status(500).json({ error: `Failed to process lyrics matching: ${errorData}` });
             }
 
             try {
