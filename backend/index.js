@@ -7,7 +7,7 @@ import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import * as fsSync from 'fs';
 import youtubeSearch from 'youtube-search';
-import { refreshSpotifyToken, searchTrack, getAudioAnalysis } from './services/spotify.js';
+import { refreshSpotifyToken, searchTrack } from './services/spotify.js';
 import youtubeDl from 'youtube-dl-exec';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -405,36 +405,21 @@ app.post('/api/auto_match', async (req, res) => {
 
         console.log('Found Spotify track:', track.name, 'by', track.artists[0].name);
 
-        // Get audio analysis from Spotify
-        const analysis = await getAudioAnalysis(track.id);
-        if (!analysis) {
-            throw new Error('Could not get audio analysis from Spotify');
-        }
-
-        console.log('Got audio analysis, segments:', analysis.segments.length);
-
-        // Match lyrics with segments
-        const segments = analysis.segments;
-        const totalDuration = analysis.track.duration;
+        // Calculate estimated durations based on track duration
+        const totalDuration = track.duration_ms / 1000; // Convert ms to seconds
         
         // Calculate time points for each lyric line
         const matchedLyrics = lyrics.map((line, index) => {
-            // Calculate relative position in the song
+            // Simple linear distribution of lyrics across the song duration
             const progress = index / (lyrics.length - 1);
-            const timePosition = progress * totalDuration;
-            
-            // Find the closest segment
-            const segment = segments.find(seg => seg.start >= timePosition) || segments[segments.length - 1];
-            
-            // Calculate end time (either next segment start or current segment end)
-            const nextSegment = segments.find(seg => seg.start > segment.start);
-            const endTime = nextSegment ? nextSegment.start : (segment.start + segment.duration);
+            const start = progress * totalDuration;
+            const end = (index + 1) / lyrics.length * totalDuration;
             
             return {
-                start: segment.start,
-                end: endTime,
+                start: start,
+                end: end,
                 line: line,
-                confidence: segment.confidence || 0.8
+                confidence: 0.8 // Default confidence level
             };
         });
 
@@ -447,6 +432,67 @@ app.post('/api/auto_match', async (req, res) => {
 
     } catch (error) {
         console.error('Error in auto_match:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/synced-lyrics/:artist/:song', async (req, res) => {
+    try {
+        const { artist, song } = req.params;
+        const trackData = await searchTrackWithLyrics(artist, song);
+        
+        if (!trackData) {
+            return res.status(404).json({ error: 'Track not found' });
+        }
+        
+        res.json(trackData);
+    } catch (error) {
+        console.error('Error getting synced lyrics:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/match_lyrics', async (req, res) => {
+    const { artist, song, audioPath, lyrics } = req.body;
+    
+    try {
+        // Spawn Python process
+        const pythonProcess = spawn('python', [
+            'main.py',
+            '--mode', 'match',
+            '--audio', audioPath,
+            '--lyrics', JSON.stringify(lyrics),
+            '--artist', artist,
+            '--song', song
+        ]);
+
+        let outputData = '';
+        let errorData = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+            outputData += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            errorData += data.toString();
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                console.error('Python process error:', errorData);
+                return res.status(500).json({ error: 'Failed to process lyrics matching' });
+            }
+
+            try {
+                const result = JSON.parse(outputData);
+                res.json(result);
+            } catch (e) {
+                res.status(500).json({ error: 'Failed to parse Python output' });
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in lyrics matching:', error);
         res.status(500).json({ error: error.message });
     }
 });

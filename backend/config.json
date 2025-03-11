@@ -1,10 +1,7 @@
 {
-  "spotifyClientId": "your_actual_client_id_here",
-  "spotifyClientSecret": "your_actual_client_secret_here",
-  "geniusApiKey": "GS7kme_ZAkJWgIOkikBFYwBrMv1wK6H1_Oc1X0GEUxDg-3fkKUDTkXTxzjBZEGqq",
-  "youtubeApiKey": "AIzaSyCbbeb0vRSJuQEXTkNiGGRAX9XdRjsaHzw",
-  "spotify": {
-    "clientId": "c33f20836a56471582520315915af162",
-    "clientSecret": "423d203945584a9b95b782792e1743b1"
-  }
+    "youtubeApiKey": "YOUR_YOUTUBE_API_KEY",
+    "geniusApiKey": "YOUR_GENIUS_API_KEY",
+    "spotifyClientId": "YOUR_SPOTIFY_CLIENT_ID",
+    "spotifyClientSecret": "YOUR_SPOTIFY_CLIENT_SECRET",
+    "spotifySpDc": "YOUR_SPOTIFY_SP_DC_COOKIE"
 }
