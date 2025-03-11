@@ -460,60 +460,64 @@ app.post('/api/match_lyrics', async (req, res) => {
             ? cleanAudioPath 
             : `${cleanAudioPath}.mp3`;
         
-        // Log the paths for debugging
-        console.log('Current directory:', __dirname);
-        console.log('Python script path:', PYTHON_SCRIPT_PATH);
-        console.log('Original audio path:', audioPath);
-        console.log('Final audio path:', audioPathWithExt);
-
         // Use absolute paths
         const absoluteAudioPath = path.join(__dirname, '..', audioPathWithExt);
         
-        // Verify the audio file exists before proceeding
+        // Verify the audio file exists
         if (!await fileExists(absoluteAudioPath)) {
             throw new Error(`Audio file not found at: ${absoluteAudioPath}`);
         }
 
-        // Spawn Python process with full path
-        const pythonProcess = spawn('python', [
-            PYTHON_SCRIPT_PATH,
-            '--mode', 'match',
-            '--audio', absoluteAudioPath,
-            '--lyrics', JSON.stringify(lyrics),
-            '--artist', artist,
-            '--song', song
-        ]);
+        // Create promise to handle Python process
+        const pythonResult = await new Promise((resolve, reject) => {
+            const pythonProcess = spawn('python', [
+                PYTHON_SCRIPT_PATH,
+                '--mode', 'match',
+                '--audio', absoluteAudioPath,
+                '--lyrics', JSON.stringify(lyrics),
+                '--artist', artist,
+                '--song', song
+            ]);
 
-        let outputData = '';
-        let errorData = '';
+            let outputData = '';
+            let errorData = '';
 
-        pythonProcess.stdout.on('data', (data) => {
-            outputData += data.toString();
-            console.log('Python output:', data.toString());
+            pythonProcess.stdout.on('data', (data) => {
+                outputData += data.toString();
+            });
+
+            pythonProcess.stderr.on('data', (data) => {
+                errorData += data.toString();
+                console.error('Python error:', data.toString());
+            });
+
+            pythonProcess.on('close', (code) => {
+                if (code !== 0) {
+                    reject(new Error(`Python process failed: ${errorData}`));
+                    return;
+                }
+                
+                try {
+                    const result = JSON.parse(outputData);
+                    resolve(result);
+                } catch (e) {
+                    reject(new Error(`Failed to parse Python output: ${outputData}\nError: ${e.message}`));
+                }
+            });
         });
 
-        pythonProcess.stderr.on('data', (data) => {
-            errorData += data.toString();
-            console.error('Python error:', data.toString());
-        });
-
-        pythonProcess.on('close', (code) => {
-            if (code !== 0) {
-                console.error('Python process error:', errorData);
-                return res.status(500).json({ error: `Failed to process lyrics matching: ${errorData}` });
-            }
-
-            try {
-                const result = JSON.parse(outputData);
-                res.json(result);
-            } catch (e) {
-                res.status(500).json({ error: 'Failed to parse Python output' });
-            }
+        // Send response
+        res.json({
+            matched_lyrics: pythonResult.matched_lyrics,
+            detected_language: pythonResult.detected_language
         });
 
     } catch (error) {
         console.error('Error in lyrics matching:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ 
+            error: error.message,
+            details: error.stack
+        });
     }
 });
 

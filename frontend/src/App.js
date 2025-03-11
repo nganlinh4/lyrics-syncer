@@ -24,6 +24,7 @@ function App() {
   const [processingStatus, setProcessingStatus] = useState('');
   const [matchingProgress, setMatchingProgress] = useState(0);
   const [languageDetected, setLanguageDetected] = useState('');
+  const [currentLyricIndex, setCurrentLyricIndex] = useState(-1);
 
   // Refs
   const wavesurferRef = useRef(null);
@@ -54,10 +55,12 @@ function App() {
 
       wavesurferRef.current.on('timeupdate', (time) => {
         setCurrentTime(time);
+        updateCurrentLyric(time);
       });
 
       wavesurferRef.current.on('audioprocess', (time) => {
         setCurrentTime(time);
+        updateCurrentLyric(time);
       });
     }
 
@@ -272,12 +275,14 @@ function App() {
         }),
       });
 
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to match lyrics');
+        throw new Error(`Failed to match lyrics: ${responseText}`);
       }
 
-      const data = await response.json();
+      const data = JSON.parse(responseText);
       
       // Update UI with results
       setMatchedLyrics(data.matched_lyrics);
@@ -298,12 +303,22 @@ function App() {
   // Add this function to find the current lyric
   const getCurrentLyricIndex = useCallback((time) => {
     if (!matchedLyrics || matchedLyrics.length === 0) return -1;
-    const index = matchedLyrics.findIndex(
+    
+    return matchedLyrics.findIndex(
       (lyric) => time >= lyric.start && time <= lyric.end
     );
-    console.log('Current lyric index:', index, 'for time:', time); // Debug log
-    return index;
   }, [matchedLyrics]);
+
+  const updateCurrentLyric = useCallback((time) => {
+    if (!matchedLyrics || matchedLyrics.length === 0) return;
+    
+    const index = getCurrentLyricIndex(time);
+    
+    if (index !== currentLyricIndex) {
+      setCurrentLyricIndex(index);
+      console.log('Current lyric updated:', index, matchedLyrics[index]?.text);
+    }
+  }, [matchedLyrics, currentLyricIndex, getCurrentLyricIndex]);
 
   // Debug current time changes
   useEffect(() => {
@@ -398,7 +413,7 @@ function App() {
           borderRadius: '4px'
         }}>
           {matchedLyrics.map((item, index) => {
-            const isCurrentLyric = currentTime >= item.start && currentTime <= item.end;
+            const isCurrentLyric = index === currentLyricIndex;
             const confidenceColor = 
               item.confidence > 0.9 ? '#4CAF50' :
               item.confidence > 0.7 ? '#FFA726' :
@@ -415,16 +430,25 @@ function App() {
                   borderRadius: '4px',
                   cursor: 'pointer',
                   borderLeft: `4px solid ${confidenceColor}`,
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
+                  boxShadow: isCurrentLyric ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
                 }}
                 onClick={() => {
                   if (audioRef.current) {
                     audioRef.current.currentTime = item.start;
                     audioRef.current.play();
                   }
+                  if (wavesurferRef.current) {
+                    wavesurferRef.current.seekTo(item.start / wavesurferRef.current.getDuration());
+                  }
                 }}
               >
-                <div>{item.line}</div>
+                <div style={{
+                  fontWeight: isCurrentLyric ? '600' : 'normal'
+                }}>
+                  {item.text || item.line}
+                </div>
                 <div style={{ 
                   fontSize: '0.8em',
                   color: '#666',

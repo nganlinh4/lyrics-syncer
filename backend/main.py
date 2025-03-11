@@ -122,83 +122,48 @@ def clean_lyrics(lyrics_list):
 
 def match_lyrics(audio_path, lyrics):
     try:
-        device = get_device()
-        audio_path = Path(audio_path)
-        print(f"Attempting to process audio file: {audio_path}", file=sys.stderr)
+        # Initialize Whisper model
+        model = whisper.load_model("base")
         
-        if not audio_path.exists():
-            raise FileNotFoundError(f"Audio file not found: {audio_path}")
-            
-        # Clean lyrics first
-        cleaned_lyrics = clean_lyrics(lyrics)
-        if not cleaned_lyrics:
-            raise ValueError("No valid lyrics after cleaning")
-        
-        # Load Whisper model with specific configuration
-        model = whisper.load_model(
-            "base",
-            device=device,
-            download_root="./models"
-        )
-        
-        # Transcribe with more specific parameters
+        # Transcribe audio
         result = model.transcribe(
-            str(audio_path),
+            audio_path,
             language="en",
             task="transcribe",
-            fp16=False,
-            verbose=True,
-            condition_on_previous_text=True,
-            initial_prompt="This is a song with lyrics."
+            fp16=False
         )
         
-        if not result or "segments" not in result:
-            raise ValueError("Transcription failed to produce segments")
-            
-        print(f"Transcription produced {len(result['segments'])} segments", file=sys.stderr)
-        
-        # Process segments and align with lyrics
+        # Process segments and match with lyrics
         matched_lyrics = []
         lyrics_idx = 0
         
         for segment in result["segments"]:
             try:
-                # Ensure segment has required fields
-                if not all(k in segment for k in ["start", "end", "text"]):
-                    print(f"Skipping invalid segment: {segment}", file=sys.stderr)
-                    continue
-                
-                # Clean segment text
-                segment_text = segment["text"].strip().lower()
-                if not segment_text:
-                    continue
+                if lyrics_idx >= len(lyrics):
+                    break
+                    
+                start_time = segment["start"]
+                end_time = segment["end"]
                 
                 # Find best matching lyric
-                best_match = None
-                best_ratio = 0
+                best_match = lyrics_idx
+                best_score = similarity_ratio(segment["text"].lower(), lyrics[lyrics_idx].lower())
                 
-                # Look ahead in lyrics to find best match
-                search_range = min(lyrics_idx + 3, len(cleaned_lyrics))
-                for i in range(lyrics_idx, search_range):
-                    lyric = cleaned_lyrics[i].lower().strip()
-                    ratio = similarity_ratio(segment_text, lyric)
-                    
-                    print(f"Comparing: '{segment_text}' with '{lyric}' = {ratio}", file=sys.stderr)
-                    
-                    if ratio > best_ratio and ratio > 0.4:  # Lowered threshold
-                        best_ratio = ratio
-                        best_match = i
+                # Look ahead a few lyrics to find better matches
+                for j in range(lyrics_idx + 1, min(lyrics_idx + 3, len(lyrics))):
+                    score = similarity_ratio(segment["text"].lower(), lyrics[j].lower())
+                    if score > best_score:
+                        best_score = score
+                        best_match = j
                 
-                if best_match is not None:
-                    matched_lyrics.append({
-                        "start": float(segment["start"]),
-                        "end": float(segment["end"]),
-                        "text": cleaned_lyrics[best_match],
-                        "confidence": segment.get("confidence", 0.8)
-                    })
-                    lyrics_idx = best_match + 1
-                    print(f"Matched: {cleaned_lyrics[best_match]}", file=sys.stderr)
-            
+                matched_lyrics.append({
+                    "start": float(start_time),
+                    "end": float(end_time),
+                    "text": lyrics[best_match],
+                    "confidence": float(best_score)
+                })
+                lyrics_idx = best_match + 1
+                
             except Exception as seg_error:
                 print(f"Error processing segment: {seg_error}", file=sys.stderr)
                 continue
@@ -206,14 +171,24 @@ def match_lyrics(audio_path, lyrics):
         if not matched_lyrics:
             raise ValueError("No lyrics could be matched with the audio")
         
-        print(f"Successfully matched {len(matched_lyrics)} lyrics", file=sys.stderr)
-        return matched_lyrics
-
+        # Ensure the output is valid JSON
+        result = {
+            "matched_lyrics": matched_lyrics,
+            "detected_language": "en",
+            "status": "success"
+        }
+        
+        # Print as JSON to stdout
+        print(json.dumps(result, ensure_ascii=False))
+        sys.stdout.flush()
+        
     except Exception as e:
-        print(f"Error processing audio: {str(e)}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
-        return None
+        error_result = {
+            "error": str(e),
+            "status": "error"
+        }
+        print(json.dumps(error_result, ensure_ascii=False), file=sys.stderr)
+        sys.exit(1)
 
 def similarity_ratio(s1, s2):
     """Calculate similarity ratio between two strings using a more lenient approach"""
@@ -242,30 +217,15 @@ def main():
             if not audio_path.exists():
                 raise FileNotFoundError(f"Audio file not found: {audio_path}")
             
-            result = match_lyrics(str(audio_path), lyrics)
-            
-            if result:
-                print(json.dumps({
-                    "matched_lyrics": result,
-                    "detected_language": "en",
-                    "status": "success"
-                }))
-            else:
-                print(json.dumps({
-                    "error": "Failed to match lyrics with audio",
-                    "status": "error"
-                }), file=sys.stderr)
-        else:
-            print(json.dumps({
-                "error": f"Unknown mode: {args.mode}",
-                "status": "error"
-            }))
+            match_lyrics(str(audio_path), lyrics)
             
     except Exception as e:
-        print(json.dumps({
+        error_result = {
             "error": str(e),
             "status": "error"
-        }), file=sys.stderr)
+        }
+        print(json.dumps(error_result, ensure_ascii=False), file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
