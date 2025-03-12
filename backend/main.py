@@ -42,9 +42,9 @@ def get_word_timestamps(audio_path: str) -> List[Dict]:
         model = load_whisper_model()
         result = model.transcribe(
             audio_path,
-            language="ko",
+            language="en",
             word_timestamps=True,
-            initial_prompt="노래 가사:",
+            initial_prompt="Song lyrics:",
             temperature=0.0,
             no_speech_threshold=0.3,
             compression_ratio_threshold=2.4,
@@ -110,67 +110,94 @@ def match_lyrics_parallel(lyrics: List[str], word_timestamps: List[Dict]) -> Lis
         # Fallback to Gemini matching if parallel matching fails
         return match_lyrics_with_gemini(word_timestamps, lyrics)
 
-def clean_gemini_response(response_text: str) -> str:
+def clean_lyrics_text(text: str) -> str:
+    """Remove song structure markers and clean lyrics text"""
+    # Remove common song structure markers
+    markers = [r'\[Verse \d+\]', r'\[Chorus\]', r'\[Refrain\]', r'\[Bridge\]', r'\[Outro\]', r'\[Intro\]']
+    cleaned = text
+    for marker in markers:
+        cleaned = re.sub(marker, '', cleaned, flags=re.IGNORECASE)
+    return cleaned.strip()
+
+def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
     """Clean Gemini response text to extract valid JSON"""
-    # Remove any markdown code block indicators
-    cleaned = re.sub(r'```(?:json)?\n?|\n?```', '', response_text)
+    cleaned = ''
     
-    # Remove any leading/trailing whitespace
-    cleaned = cleaned.strip()
-    
-    # Replace problematic Unicode characters
-    char_replacements = {
-        '"': '"',  # Smart quotes
-        '"': '"',
-        ''': "'",
-        ''': "'",
-        '–': '-',  # Em dash
-        '—': '-',
-        '\u200b': '',  # Zero-width space
-        '\ufeff': ''   # BOM
-    }
-    
-    # Handle escaped quotes in text content
-    cleaned = re.sub(r'\\+"', '"', cleaned)  # Replace multiple backslashes before quotes
-    cleaned = re.sub(r'(?<!\\)"', '\\"', cleaned)  # Escape unescaped quotes
-    
-    for old, new in char_replacements.items():
-        cleaned = cleaned.replace(old, new)
-    
-    # Find the JSON array
     try:
-        # First try to parse as-is
-        json.loads(cleaned)
-        return cleaned
-    except json.JSONDecodeError:
-        # If that fails, try to extract the array portion
-        array_match = re.search(r'\[[\s\S]*\]', cleaned)
-        if array_match:
-            try:
-                array_text = array_match.group(0)
-                # Validate it's proper JSON
-                parsed = json.loads(array_text)
-                if not isinstance(parsed, list):
-                    raise ValueError("Extracted content is not a JSON array")
-                # Verify expected structure
-                for item in parsed:
-                    if not all(k in item for k in ('start_time', 'end_time', 'text')):
-                        raise ValueError(f"Missing required fields in item: {item}")
-                    # Validate numeric fields
-                    if not isinstance(item['start_time'], (int, float)) or not isinstance(item['end_time'], (int, float)):
-                        raise ValueError(f"Invalid timestamp format in item: {item}")
-                    item['text'] = str(item['text'])  # Ensure text is string
-                return array_text
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON in extracted array: {str(e)}")
-            except Exception as e:
-                raise ValueError(f"Error validating response structure: {str(e)}")
-    
-    raise ValueError("Could not find valid JSON array in response")
-    
-def encode_file_content(content: str) -> str:
-    """Encode content to handle special characters properly"""
-    return content.encode('utf-8', errors='replace').decode('utf-8')
+        # Remove markdown code blocks
+        cleaned = re.sub(r'```(?:json)?\s*|\s*```', '', response_text)
+        cleaned = cleaned.strip()
+
+        # Replace problematic characters
+        char_replacements = {
+            '"': '"',  # Smart quotes
+            '"': '"',
+            ''': "'",
+            ''': "'",
+            '–': '-',  # Em dash
+            '—': '-',
+            '': '',  # Zero-width space
+            '': ''   # BOM
+        }
+        
+        for old, new in char_replacements.items():
+            if old in cleaned:
+                cleaned = cleaned.replace(old, new)
+                
+        # Normalize array formatting
+        cleaned = re.sub(r'}\s*,?\s*,?\s*{', '}, {', cleaned)  # Fix object separators
+        cleaned = re.sub(r',\s*,', ',', cleaned)  # Remove double commas
+        
+        # Fix quote escaping in text fields
+        def fix_text(match):
+            text = match.group(1)
+            text = text.replace('\\', '').replace('""', '"')
+            return f'"text": "{text}"'
+            
+        cleaned = re.sub(r'"text":\s*"([^"]*)"', fix_text, cleaned)
+        
+        # Normalize whitespace
+        lines = []
+        for line in cleaned.split('\n'):
+            line = line.strip()
+            if line:
+                # Remove extra whitespace around colons and commas
+                line = re.sub(r'\s*:\s*', ': ', line)
+                line = re.sub(r'\s*,\s*', ', ', line)
+                lines.append(line)
+                
+        cleaned = '\n'.join(lines)
+        
+        # Ensure valid JSON structure
+        try:
+            data = json.loads(cleaned)
+            if not isinstance(data, list):
+                raise ValueError("Root element must be an array")
+                
+            # Normalize all entries
+            normalized = []
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                    
+                # Convert fields to expected format
+                normalized.append({
+                    "start_time": float(item.get("start") or item.get("start_time", 0)),
+                    "end_time": float(item.get("end") or item.get("end_time", 0)),
+                    "text": str(item.get("text", "")).strip()
+                })
+                
+            return json.dumps(normalized, indent=2)
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {str(e)}", file=sys.stderr)
+            if debug_file:
+                print(f"See response file for details: {debug_file}", file=sys.stderr)
+            raise ValueError(f"Invalid JSON in response: {str(e)}")
+            
+    except Exception as e:
+        print(f"Error cleaning response: {str(e)}", file=sys.stderr)
+        raise
 
 def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> List[Dict]:
     """Use Gemini to match word timestamps with lyrics"""
@@ -182,8 +209,21 @@ def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> 
             
         if not config.get('geminiApiKey'):
             raise ValueError("Gemini API key not found in config")
+        
+        # Clean word timestamps
+        cleaned_timestamps = []
+        for word in word_timestamps:
+            # Skip structure markers
+            if not re.match(r'\[(.*?)\]', word['text']):
+                cleaned_timestamps.append({
+                    'text': clean_lyrics_text(word['text']),
+                    'start': word['start'],
+                    'end': word['end']
+                })
+        # Clean lyrics
+        cleaned_lyrics = [clean_lyrics_text(line) for line in lyrics if clean_lyrics_text(line)]
 
-        # Configure Gemini with new syntax
+        # Configure Gemini
         from google import genai
         client = genai.Client(api_key=config['geminiApiKey'])
         
@@ -198,10 +238,10 @@ Make sure:
 4. Output must be valid JSON
 
 Word timestamps:
-{json.dumps(word_timestamps, indent=2, ensure_ascii=False)}
+{json.dumps(cleaned_timestamps, indent=2, ensure_ascii=False)}
 
 Lyrics lines:
-{json.dumps(lyrics, indent=2, ensure_ascii=False)}
+{json.dumps(cleaned_lyrics, indent=2, ensure_ascii=False)}
 
 Return ONLY the JSON array, no other text.
 """
@@ -214,7 +254,7 @@ Return ONLY the JSON array, no other text.
         # Save files with proper UTF-8 encoding
         prompt_file = os.path.join(debug_dir, f'gemini_prompt_{timestamp}.txt')
         with open(prompt_file, 'w', encoding='utf-8') as f:
-            f.write(encode_file_content(prompt))
+            f.write(prompt)
 
         # Generate response
         response = client.models.generate_content(
@@ -225,12 +265,12 @@ Return ONLY the JSON array, no other text.
         # Save raw response for debugging
         response_file = os.path.join(debug_dir, f'gemini_response_{timestamp}.txt')
         with open(response_file, 'w', encoding='utf-8') as f:
-            f.write(encode_file_content(response.text))
+            f.write(response.text)
 
         print(f"Debug files saved:\nPrompt: {prompt_file}\nResponse: {response_file}", file=sys.stderr)
 
         # Clean and parse the response
-        cleaned_response = clean_gemini_response(response.text)
+        cleaned_response = clean_gemini_response(response.text, response_file)
         matched_lyrics = json.loads(cleaned_response)
         
         # Validate and clean the response
@@ -265,7 +305,7 @@ def match_lyrics(audio_path: str, lyrics: List[str]) -> Dict:
         # Prepare result
         result = {
             "matched_lyrics": matched_lyrics,
-            "detected_language": "ko",  # Update based on actual detection
+            "detected_language": "en",  # English lyrics detection
             "status": "success"
         }
         
