@@ -113,26 +113,55 @@ def match_lyrics_parallel(lyrics: List[str], word_timestamps: List[Dict]) -> Lis
 def clean_gemini_response(response_text: str) -> str:
     """Clean Gemini response text to extract valid JSON"""
     # Remove any markdown code block indicators
-    cleaned = response_text.replace('```json', '').replace('```', '')
+    cleaned = re.sub(r'```(?:json)?\n?|\n?```', '', response_text)
     
     # Remove any leading/trailing whitespace
     cleaned = cleaned.strip()
     
-    # If response starts with a newline, remove it
-    cleaned = cleaned.lstrip('\n')
+    # Replace problematic Unicode characters
+    char_replacements = {
+        '"': '"',  # Smart quotes
+        '"': '"',
+        ''': "'",
+        ''': "'",
+        '–': '-',  # Em dash
+        '—': '-',
+        '\u200b': '',  # Zero-width space
+        '\ufeff': ''   # BOM
+    }
+    for old, new in char_replacements.items():
+        cleaned = cleaned.replace(old, new)
     
-    # If there's any text before or after the JSON array, remove it
-    if cleaned.startswith('[') and cleaned.endswith(']'):
+    # Find the JSON array
+    try:
+        # First try to parse as-is
+        json.loads(cleaned)
         return cleaned
+    except json.JSONDecodeError:
+        # If that fails, try to extract the array portion
+        array_match = re.search(r'\[[\s\S]*\]', cleaned)
+        if array_match:
+            try:
+                array_text = array_match.group(0)
+                # Validate it's proper JSON
+                parsed = json.loads(array_text)
+                if not isinstance(parsed, list):
+                    raise ValueError("Extracted content is not a JSON array")
+                # Verify expected structure
+                for item in parsed:
+                    if not all(k in item for k in ('start_time', 'end_time', 'text')):
+                        raise ValueError("Missing required fields in JSON structure")
+                return array_text
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in extracted array: {str(e)}")
+            except Exception as e:
+                raise ValueError(f"Error validating response structure: {str(e)}")
     
-    # Try to find JSON array within the text
-    start_idx = cleaned.find('[')
-    end_idx = cleaned.rfind(']')
-    
-    if start_idx != -1 and end_idx != -1:
-        return cleaned[start_idx:end_idx + 1]
-        
     raise ValueError("Could not find valid JSON array in response")
+    
+def encode_file_content(content: str) -> str:
+    """Encode content to handle special characters properly"""
+    return content.encode('utf-8', errors='replace').decode('utf-8')
 
 def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> List[Dict]:
     """Use Gemini to match word timestamps with lyrics"""
@@ -175,8 +204,8 @@ Return ONLY the JSON array, no other text.
         
         # Save files with proper UTF-8 encoding
         prompt_file = os.path.join(debug_dir, f'gemini_prompt_{timestamp}.txt')
-        with open(prompt_file, 'w', encoding='utf-8', errors='ignore') as f:
-            f.write(prompt)
+        with open(prompt_file, 'w', encoding='utf-8') as f:
+            f.write(encode_file_content(prompt))
 
         # Generate response
         response = client.models.generate_content(
@@ -186,8 +215,8 @@ Return ONLY the JSON array, no other text.
 
         # Save raw response for debugging
         response_file = os.path.join(debug_dir, f'gemini_response_{timestamp}.txt')
-        with open(response_file, 'w', encoding='utf-8', errors='ignore') as f:
-            f.write(response.text)
+        with open(response_file, 'w', encoding='utf-8') as f:
+            f.write(encode_file_content(response.text))
 
         print(f"Debug files saved:\nPrompt: {prompt_file}\nResponse: {response_file}", file=sys.stderr)
 
