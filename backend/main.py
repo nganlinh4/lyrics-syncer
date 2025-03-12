@@ -223,7 +223,7 @@ Requirements:
 2. Start and end times must be floating point numbers representing ABSOLUTE seconds especially cases after 60.00 seconds (e.g., 75.20, not 1.15).
 3. Every lyric line must have corresponding start and end times.
 4. Output must be valid JSON with no extra text.
-5. The 'text' field in your output should EXACTLY match the lines from 'Lyrics lines' below, but if no vocal detected in some parts, try to add some descriptive texts in square brackets, dont force yourself to connect the vocal lyrics strictly in time.
+5. The 'text' field in your output MUST EXACTLY match the lines from 'Lyrics lines' below.
 6. The provided audio may be in any language. Analyze the audio content to determine timing.
 7. >>> CRITICAL information: This song's duration is {get_audio_duration(audio_path)} seconds, so think carefully about the last lyrics timing, it CANNOT BE LONGER.
 8. If the provided lyrics have romanized Korean, turn it to actual Korean when responding.
@@ -231,7 +231,7 @@ Requirements:
 Lyrics lines:
 {json.dumps(filtered_lyrics, indent=2, ensure_ascii=False)}
 
-IMPORTANT: Your output's timing MUST come from analyzing the audio content. Return ONLY the JSON array following the schema, no other text.
+IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyrics lines' above, and the timing MUST come from analyzing the audio content. Return ONLY the JSON array following the schema, no other text.
 """
 
         # Upload the audio file using the File API
