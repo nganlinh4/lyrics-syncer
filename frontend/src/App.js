@@ -620,19 +620,23 @@ function App() {
         {loading ? 'Processing...' : 'Download and Process'}
       </button>
 
-      {audioUrl && lyrics.length > 0 && !matchingInProgress && !matchingComplete && (
+      {/* Modified condition to always show the button when audio and lyrics are available */}
+      {audioUrl && lyrics.length > 0 && (
         <button
           onClick={handleAdvancedMatch}
+          disabled={matchingInProgress}
           style={{ 
             padding: '8px 16px', 
             marginLeft: '10px',
             backgroundColor: '#2196F3',
             color: 'white',
             border: 'none',
-            borderRadius: '4px'
+            borderRadius: '4px',
+            cursor: matchingInProgress ? 'not-allowed' : 'pointer',
+            opacity: matchingInProgress ? 0.7 : 1
           }}
         >
-          Advanced Lyrics Matching (ML)
+          {matchingInProgress ? 'Matching in Progress...' : 'Advanced Lyrics Matching (ML)'}
         </button>
       )}
 
