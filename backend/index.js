@@ -199,8 +199,9 @@ const processSong = async (req, res) => {
         // Download (using youtube-dl-exec)
         if (!(await fileExists(audioFilePath))) {
             await new Promise((resolve, reject) => {
-                console.log(`Searching YouTube for: ${artist} ${song}`);
-                youtubeSearch(`${artist} ${song}`, { maxResults: 1, key: config.youtubeApiKey }).then(async searchResults => {
+                const searchQuery = `${artist} ${song}${req.body.audioOnly ? ' audio' : ''}`;
+                console.log(`Searching YouTube for: ${searchQuery}`);
+                youtubeSearch(searchQuery, { maxResults: 1, key: config.youtubeApiKey }).then(async searchResults => {
                     if (searchResults.results.length === 0) {
                         reject('No videos found for this song/artist combination.');
                         return;

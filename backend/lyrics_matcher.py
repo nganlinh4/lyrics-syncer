@@ -50,8 +50,17 @@ def check_ffmpeg():
     return ffmpeg_path
 
 def normalize_text(text: str) -> str:
-    """Normalize Unicode text for comparison"""
-    return unicodedata.normalize('NFKC', text)
+    """Normalize Unicode text for comparison, preserving Vietnamese characters"""
+    if not isinstance(text, str):
+        return ""
+    
+    # Normalize Unicode but preserve Vietnamese diacritics
+    normalized = unicodedata.normalize('NFC', text)
+    
+    # Remove any control characters but keep Vietnamese characters
+    cleaned = ''.join(char for char in normalized if unicodedata.category(char)[0] != 'C')
+    
+    return cleaned.strip()
 
 def process_audio(audio_path):
     try:
@@ -151,34 +160,51 @@ def process_audio(audio_path):
 
 def match_line_to_segments(line: str, segments: List[Dict], threshold: float = 60.0) -> Optional[Dict]:
     """Match a single lyrics line to audio segments using fuzzy matching"""
+    if not line or not isinstance(line, str):
+        return None
+        
     best_match = None
     best_score = 0
     
-    normalized_line = normalize_text(line)
-    
-    for segment in segments:
-        normalized_segment = normalize_text(segment['text'])
+    try:
+        normalized_line = normalize_text(line)
+        if not normalized_line:
+            return None
         
-        # Try different matching strategies
-        scores = [
-            fuzz.ratio(normalized_line, normalized_segment),
-            fuzz.partial_ratio(normalized_line, normalized_segment),
-            fuzz.token_sort_ratio(normalized_line, normalized_segment),
-        ]
+        for segment in segments:
+            if not segment.get('text'):
+                continue
+                
+            normalized_segment = normalize_text(segment['text'])
+            if not normalized_segment:
+                continue
+            
+            # Try different matching strategies with Vietnamese-aware comparison
+            scores = [
+                fuzz.ratio(normalized_line, normalized_segment),
+                fuzz.partial_ratio(normalized_line, normalized_segment),
+                fuzz.token_sort_ratio(normalized_line, normalized_segment),
+                # Add WRatio for better Unicode handling
+                fuzz.WRatio(normalized_line, normalized_segment)
+            ]
+            
+            score = max(scores)
+            
+            if score > best_score and score >= threshold:
+                best_score = score
+                best_match = {
+                    'start': float(segment['start']),
+                    'end': float(segment['end']),
+                    'text': line,  # Keep original text with diacritics
+                    'confidence': score / 100.0,
+                    'language': segment.get('language', 'unknown')
+                }
         
-        score = max(scores)
+        return best_match
         
-        if score > best_score and score >= threshold:
-            best_score = score
-            best_match = {
-                'start': segment['start'],
-                'end': segment['end'],
-                'text': line,  # Keep original text
-                'confidence': score / 100.0,
-                'language': segment.get('language', 'unknown')
-            }
-    
-    return best_match
+    except Exception as e:
+        debug_print(f"Error matching line '{line}': {str(e)}")
+        return None
 
 def match_lyrics_parallel(lyrics: List[str], segments: List[Dict]) -> List[Dict]:
     """Match lyrics to segments using parallel processing"""

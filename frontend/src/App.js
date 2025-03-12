@@ -78,6 +78,8 @@ function App() {
   const [matchingProgress, setMatchingProgress] = useState(0);
   const [languageDetected, setLanguageDetected] = useState('');
   const [currentLyricIndex, setCurrentLyricIndex] = useState(-1);
+  // Add new state for audio-only preference
+  const [audioOnly, setAudioOnly] = useState(() => localStorage.getItem('audioOnly') === 'true');
 
   // Refs
   const wavesurferRef = useRef(null);
@@ -182,7 +184,11 @@ function App() {
       const response = await fetch('http://localhost:3001/api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ song, artist }),
+        body: JSON.stringify({ 
+          song, 
+          artist,
+          audioOnly 
+        }),
       });
 
       if (!response.ok) {
@@ -536,17 +542,29 @@ function App() {
       <h1>Lyrics Timing App</h1>
 
       <div style={{ marginBottom: '20px' }}>
-        <label htmlFor="song">Song:</label>
-        <input
-          type="text"
-          id="song"
-          value={song}
-          onChange={(e) => {
-            setSong(e.target.value);
-            localStorage.setItem('lastSong', e.target.value);
-          }}
-          style={{ marginRight: '10px' }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+          <label htmlFor="song">Song:</label>
+          <input
+            type="text"
+            id="song"
+            value={song}
+            onChange={(e) => {
+              setSong(e.target.value);
+              localStorage.setItem('lastSong', e.target.value);
+            }}
+          />
+          <label>
+            <input
+              type="checkbox"
+              checked={audioOnly}
+              onChange={(e) => {
+                setAudioOnly(e.target.checked);
+                localStorage.setItem('audioOnly', e.target.checked);
+              }}
+            />
+            Audio
+          </label>
+        </div>
 
         <label htmlFor="artist">Artist:</label>
         <input
