@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import List, Dict
 import re
 from google import genai
+import subprocess
 
 
 # Suppress symlink warning
@@ -183,6 +184,14 @@ def save_debug_file(filename: str, content: str):
         print(f"Error saving debug file: {str(e)}", file=sys.stderr)
         return None
 
+def get_audio_duration(audio_path: str) -> float:
+    """Get the duration of the audio file in seconds."""
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT
+    )
+    return float(result.stdout)
 
 def match_lyrics_with_gemini(audio_path: str, lyrics: List[str]) -> List[Dict]:
     """Match lyrics to audio using Gemini, uploading the audio via the File API."""
@@ -211,11 +220,12 @@ Return: list[LyricLine]
 
 Requirements:
 1. Each lyric line's timing must be derived directly from the audio.
-2. Start and end times must be floating point numbers representing seconds.
+2. Start and end times must be floating point numbers representing ABSOLUTE seconds especially cases after 60.00 seconds (e.g., 75.20, not 1.15).
 3. Every lyric line must have corresponding start and end times.
 4. Output must be valid JSON with no extra text.
 5. The 'text' field in your output MUST EXACTLY match the lines from 'Lyrics lines' below.
 6. The provided audio may be in any language. Analyze the audio content to determine timing.
+7. Additional information: This song's duration is {get_audio_duration(audio_path)} seconds.
 
 Lyrics lines:
 {json.dumps(filtered_lyrics, indent=2, ensure_ascii=False)}
