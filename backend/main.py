@@ -232,7 +232,7 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
 
         # Generate response using the Client and the uploaded file
         response = client.models.generate_content(
-            model='gemini-2.0-pro-exp-02-05',  # Use with client.models
+            model='gemini-2.0-flash-thinking-exp-01-21',  # Use with client.models
             contents=[prompt, myfile]  # Pass prompt and File object
         )
 
