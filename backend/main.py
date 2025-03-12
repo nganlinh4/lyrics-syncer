@@ -129,6 +129,11 @@ def clean_gemini_response(response_text: str) -> str:
         '\u200b': '',  # Zero-width space
         '\ufeff': ''   # BOM
     }
+    
+    # Handle escaped quotes in text content
+    cleaned = re.sub(r'\\+"', '"', cleaned)  # Replace multiple backslashes before quotes
+    cleaned = re.sub(r'(?<!\\)"', '\\"', cleaned)  # Escape unescaped quotes
+    
     for old, new in char_replacements.items():
         cleaned = cleaned.replace(old, new)
     
@@ -150,7 +155,11 @@ def clean_gemini_response(response_text: str) -> str:
                 # Verify expected structure
                 for item in parsed:
                     if not all(k in item for k in ('start_time', 'end_time', 'text')):
-                        raise ValueError("Missing required fields in JSON structure")
+                        raise ValueError(f"Missing required fields in item: {item}")
+                    # Validate numeric fields
+                    if not isinstance(item['start_time'], (int, float)) or not isinstance(item['end_time'], (int, float)):
+                        raise ValueError(f"Invalid timestamp format in item: {item}")
+                    item['text'] = str(item['text'])  # Ensure text is string
                 return array_text
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON in extracted array: {str(e)}")

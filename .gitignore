@@ -71,3 +71,8 @@ venv/
 # Temporary files
 *.tmp
 *.temp
+
+# ML model files
+/backend/models/
+*.pt
+*.pth
