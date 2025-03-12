@@ -336,6 +336,8 @@ Return ONLY the JSON array following the schema, no other text.
         response_text = response.text
         
         # Clean and parse response
+        debug_file = save_debug_file(f'gemini_response_{timestamp}.txt', response_text)
+        print(f"Debug files saved: {prompt_file}, {debug_file}", file=sys.stderr)
         cleaned_response = clean_gemini_response(response_text)
         matched_lyrics = json.loads(cleaned_response)
         
