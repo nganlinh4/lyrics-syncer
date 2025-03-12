@@ -65,7 +65,14 @@ async function fileExists(filePath) {
  * @returns {string} The URL-friendly song name.
  */
 const getSongName = (artist, song) => {
-    return `${encodeURIComponent(artist.trim())}_-_${encodeURIComponent(song.trim())}`;
+    // Handle all Unicode characters safely
+    const sanitize = (str) => {
+        return str
+            .normalize('NFKC')  // Normalize Unicode characters
+            .replace(/[\/<>:"|?*\\]/g, '')  // Remove invalid filename characters
+            .replace(/\s+/g, '_');  // Replace spaces with underscores
+    };
+    return `${sanitize(artist)}_-_${sanitize(song)}`;
 };
 
 /**
@@ -173,12 +180,12 @@ const processSong = async (req, res) => {
             return res.status(400).json({ error: 'Missing artist or song' });
         }
 
-        // Validate song and artist to prevent directory traversal
-        const safeSongName = song.replace(/[^\p{L}\p{N}\s-]/gu, '');
-        const safeArtistName = artist.replace(/[^\p{L}\p{N}\s-]/gu, '');
+        // Validate song and artist names more permissively
+        const sanitizedSong = song.normalize('NFKC').replace(/[\/<>:"|?*\\]/g, '');
+        const sanitizedArtist = artist.normalize('NFKC').replace(/[\/<>:"|?*\\]/g, '');
 
-        if (path.normalize(song) !== song || path.normalize(artist) !== artist) {
-            return res.status(400).json({ error: 'Invalid characters in song or artist name.' });
+        if (!sanitizedSong || !sanitizedArtist) {
+            return res.status(400).json({ error: 'Invalid song or artist name after sanitization.' });
         }
 
         const songName = getSongName(artist, song);

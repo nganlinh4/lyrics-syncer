@@ -15,7 +15,7 @@ import re
 import google.generativeai as genai
 from typing import List, Dict
 from functools import lru_cache
-import datetime
+from datetime import datetime
 
 # Suppress symlink warning
 os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
@@ -37,13 +37,25 @@ def load_whisper_model():
     return whisper.load_model("base").to(device)
 
 def get_word_timestamps(audio_path: str) -> List[Dict]:
-    """Get word-level timestamps from audio using Whisper"""
+    """Get word-level timestamps from audio using Whisper with language auto-detection"""
     try:
         model = load_whisper_model()
+        
+        # First detect the language
+        audio = whisper.load_audio(audio_path)
+        audio = whisper.pad_or_trim(audio)
+        mel = whisper.log_mel_spectrogram(audio).to(model.device)
+        _, probs = model.detect_language(mel)
+        detected_lang = max(probs, key=probs.get)
+        
+        print(f"Detected language: {detected_lang}", file=sys.stderr)
+        
+        # Now transcribe with the detected language
         result = model.transcribe(
             audio_path,
+            language=detected_lang,  # Use detected language
             word_timestamps=True,
-            initial_prompt="Song lyrics:",
+            initial_prompt=None,  # Remove language-specific prompt
             temperature=0.0,
             no_speech_threshold=0.3,
             compression_ratio_threshold=2.4,
@@ -53,50 +65,33 @@ def get_word_timestamps(audio_path: str) -> List[Dict]:
         
         words = []
         for segment in result["segments"]:
-            print(f"Processing segment: {segment}", file=sys.stderr)
-            
             if not "words" in segment:
-                print(f"No words in segment: {segment}", file=sys.stderr)
                 continue
                 
             for word_info in segment["words"]:
                 try:
-                    print(f"Processing word: {word_info}", file=sys.stderr)
-                    
-                    # Handle both possible key formats ('word' or 'text')
                     text = word_info.get('word') or word_info.get('text')
                     start = float(word_info['start'])
                     end = float(word_info['end'])
                     
                     if not text or not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
-                        print(f"Invalid word data: {word_info}", file=sys.stderr)
                         continue
                     
                     words.append({
                         "text": str(text).strip(),
                         "start": start,
                         "end": end,
-                        "probability": float(word_info.get('probability', 1.0))
+                        "probability": float(word_info.get('probability', 1.0)),
+                        "language": detected_lang  # Include detected language
                     })
                 except Exception as word_error:
                     print(f"Error processing word {word_info}: {word_error}", file=sys.stderr)
                     continue
         
-        if not words:
-            raise ValueError("No valid words were extracted from the audio")
-            
-        # Filter out words with very low probability
-        words = [w for w in words if w["probability"] > 0.1]
-        
-        # Sort by start time
-        words.sort(key=lambda x: x["start"])
-        
-        print(f"Successfully extracted {len(words)} words", file=sys.stderr)
         return words
         
     except Exception as e:
         print(f"Error getting word timestamps: {str(e)}", file=sys.stderr)
-        print(f"Full error details: {type(e).__name__}", file=sys.stderr)
         raise
 
 def match_lyrics_parallel(lyrics: List[str], word_timestamps: List[Dict]) -> List[Dict]:
@@ -270,7 +265,7 @@ def save_debug_file(filename: str, content: str):
         return None
 
 def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> List[Dict]:
-    """Use Gemini to match word timestamps with lyrics"""
+    """Match lyrics to word timestamps using Gemini"""
     try:
         # Read config file
         config_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -280,79 +275,83 @@ def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> 
         if not config.get('geminiApiKey'):
             raise ValueError("Gemini API key not found in config")
         
-        # Clean word timestamps
+        # Clean timestamps and include language info
         cleaned_timestamps = []
         for word in word_timestamps:
-            # Skip structure markers
-            if not re.match(r'\[(.*?)\]', word['text']):
+            if word["probability"] > 0.1:
                 cleaned_timestamps.append({
                     'text': clean_lyrics_text(word['text']),
                     'start': word['start'],
-                    'end': word['end']
+                    'end': word['end'],
+                    'language': word.get('language', 'unknown')
                 })
-        # Clean lyrics
-        cleaned_lyrics = [clean_lyrics_text(line) for line in lyrics if clean_lyrics_text(line)]
+
+        # Filter out song structure markers from lyrics
+        filtered_lyrics = [line for line in lyrics if not line.strip().startswith('[') and line.strip()]
 
         # Configure Gemini
         from google import genai
         client = genai.Client(api_key=config['geminiApiKey'])
         
-        # Prepare input for Gemini with schema definition
+        # Prepare input for Gemini with emphasis on exact lyrics matching
         prompt = f"""
-Task: Match these word timestamps with the lyrics lines. The lyrics may contain inconsistent or bad formatting - please ignore these formatting issues and focus on matching content.
+Task: Match these word timestamps with the lyrics lines. The text may be in any language - please handle all languages appropriately.
 
 Use this JSON schema:
-LyricLine = {{'start': float, 'end': float, 'text': str}}
+LyricLine = {{'start': float, 'end': float, 'text': str, 'language': str}}
 Return: list[LyricLine]
 
 Requirements:
 1. Each lyric line's timing must make sense sequentially
 2. Start and end times must be floating point numbers
 3. Every lyric line must have timing
-4. Output must be valid JSON with no extra text or markdown formatting
-5. Ignore any unusual formatting or errors in the lyrics lines - focus on matching content, not exact formatting
+4. Output must be valid JSON with no extra text
+5. Handle text in any language appropriately
+6. CRITICAL: The 'text' field in your output MUST EXACTLY match the lines from 'Lyrics lines' below
+7. Use word timestamps ONLY for timing information, not for text content
 
 Word timestamps:
 {json.dumps(cleaned_timestamps, indent=2, ensure_ascii=False)}
 
 Lyrics lines:
-{json.dumps(cleaned_lyrics, indent=2, ensure_ascii=False)}
+{json.dumps(filtered_lyrics, indent=2, ensure_ascii=False)}
 
-Important: Some lyrics may have inconsistent capitalization, punctuation, or special characters. Focus on matching the core text content.
-
-Return ONLY the JSON array following the schema, no other text or explanations.
+IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyrics lines' above.
+Return ONLY the JSON array following the schema, no other text.
 """
         # Save prompt for debugging
         debug_dir = os.path.join(os.path.dirname(__file__), 'debug')
         os.makedirs(debug_dir, exist_ok=True)
         
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
-        # Save files with proper UTF-8 encoding using the new helper function
+        # Save files with proper UTF-8 encoding using the helper function
         prompt_file = save_debug_file(f'gemini_prompt_{timestamp}.txt', prompt)
 
-        # Generate response
+        # Generate response using correct Gemini API syntax
         response = client.models.generate_content(
             model="gemini-2.0-pro-exp-02-05",
             contents=prompt
         )
-
-        # Save raw response for debugging
-        response_file = save_debug_file(f'gemini_response_{timestamp}.txt', response.text)
-
-        print(f"Debug files saved:\nPrompt: {prompt_file}\nResponse: {response_file}", file=sys.stderr)
-
-        # Clean and parse the response
-        cleaned_response = clean_gemini_response(response.text, response_file)
+        response_text = response.text
+        
+        # Clean and parse response
+        cleaned_response = clean_gemini_response(response_text)
         matched_lyrics = json.loads(cleaned_response)
         
-        # Validate and clean the response
+        # Verify that returned lyrics match the input lyrics
+        returned_texts = [line['text'] for line in matched_lyrics]
+        if not all(lyric in returned_texts for lyric in filtered_lyrics):
+            raise ValueError("Gemini response does not contain all original lyrics lines")
+        
+        # Clean and return matches
         cleaned_matches = []
         for match in matched_lyrics:
             cleaned_matches.append({
                 "start": float(match.get("start") or match.get("start_time", 0)),
                 "end": float(match.get("end") or match.get("end_time", 0)),
                 "text": str(match.get("text", "")).strip(),
+                "language": match.get("language", "unknown"),
                 "confidence": 0.95  # High confidence since Gemini matched it
             })
         
@@ -378,7 +377,7 @@ def match_lyrics(audio_path: str, lyrics: List[str]) -> Dict:
         # Prepare result
         result = {
             "matched_lyrics": matched_lyrics,
-            "detected_language": result.get("language", "auto"),  # Get detected language from Whisper
+            "detected_language": "en",  # English lyrics detection
             "status": "success"
         }
         

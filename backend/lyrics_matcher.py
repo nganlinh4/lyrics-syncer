@@ -11,8 +11,9 @@ import subprocess
 import os
 import shutil
 import warnings
-from typing import List, Dict
-from rapidfuzz import fuzz
+from typing import List, Dict, Optional
+import unicodedata
+from rapidfuzz import fuzz, process
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 
@@ -47,6 +48,10 @@ def check_ffmpeg():
             "FFmpeg not found in system PATH. Please install FFmpeg or ensure it's in your PATH."
         )
     return ffmpeg_path
+
+def normalize_text(text: str) -> str:
+    """Normalize Unicode text for comparison"""
+    return unicodedata.normalize('NFKC', text)
 
 def process_audio(audio_path):
     try:
@@ -120,24 +125,19 @@ def process_audio(audio_path):
         debug_print("Transcribing audio...")
         result = model.transcribe(
             str(wav_path),
-            language="ko",
             word_timestamps=True,
             fp16=(device == "cuda")
         )
         
-        # Clean up temporary WAV file
-        if wav_path.exists():
-            wav_path.unlink()
-            debug_print(f"Cleaned up temporary WAV file: {wav_path}")
-        
-        # Process segments
+        # Process segments with language detection
         processed_segments = []
         for segment in result["segments"]:
             processed_segment = {
                 "start": segment["start"],
                 "end": segment["end"],
                 "text": segment["text"],
-                "confidence": segment.get("confidence", 0.0)
+                "confidence": segment.get("confidence", 0.0),
+                "language": segment.get("language", "unknown")
             }
             processed_segments.append(processed_segment)
         
@@ -149,29 +149,34 @@ def process_audio(audio_path):
         debug_print(f"System PATH: {os.environ.get('PATH', '')}")
         raise
 
-def match_line_to_segments(line: str, segments: List[Dict], threshold: float = 65.0) -> MatchResult:
+def match_line_to_segments(line: str, segments: List[Dict], threshold: float = 60.0) -> Optional[Dict]:
     """Match a single lyrics line to audio segments using fuzzy matching"""
     best_match = None
     best_score = 0
     
-    # Combine consecutive segments that might form the line
-    for i in range(len(segments)):
-        combined_text = ""
-        start_time = segments[i]["start"]
+    normalized_line = normalize_text(line)
+    
+    for segment in segments:
+        normalized_segment = normalize_text(segment['text'])
         
-        for j in range(i, min(i + 3, len(segments))):  # Look ahead up to 3 segments
-            combined_text += " " + segments[j]["text"]
-            end_time = segments[j]["end"]
-            
-            score = fuzz.ratio(line.lower(), combined_text.lower())
-            if score > best_score and score >= threshold:
-                best_score = score
-                best_match = MatchResult(
-                    start=start_time,
-                    end=end_time,
-                    text=line,
-                    confidence=score / 100.0
-                )
+        # Try different matching strategies
+        scores = [
+            fuzz.ratio(normalized_line, normalized_segment),
+            fuzz.partial_ratio(normalized_line, normalized_segment),
+            fuzz.token_sort_ratio(normalized_line, normalized_segment),
+        ]
+        
+        score = max(scores)
+        
+        if score > best_score and score >= threshold:
+            best_score = score
+            best_match = {
+                'start': segment['start'],
+                'end': segment['end'],
+                'text': line,  # Keep original text
+                'confidence': score / 100.0,
+                'language': segment.get('language', 'unknown')
+            }
     
     return best_match
 
