@@ -46,14 +46,6 @@ npm install
 ```bash
 cd backend
 ./venv/Scripts/activate
-
-# For CUDA support (replace XX with your CUDA version, e.g., 11.8, 12.1)
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Install other dependencies
-pip install transformers numpy faster-whisper
-
-# Start the development server
 npm run dev
 ```
 

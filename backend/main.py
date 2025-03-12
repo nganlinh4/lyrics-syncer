@@ -15,6 +15,7 @@ import re
 import google.generativeai as genai
 from typing import List, Dict
 from functools import lru_cache
+import datetime
 
 # Suppress symlink warning
 os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
@@ -109,12 +110,44 @@ def match_lyrics_parallel(lyrics: List[str], word_timestamps: List[Dict]) -> Lis
         # Fallback to Gemini matching if parallel matching fails
         return match_lyrics_with_gemini(word_timestamps, lyrics)
 
+def clean_gemini_response(response_text: str) -> str:
+    """Clean Gemini response text to extract valid JSON"""
+    # Remove any markdown code block indicators
+    cleaned = response_text.replace('```json', '').replace('```', '')
+    
+    # Remove any leading/trailing whitespace
+    cleaned = cleaned.strip()
+    
+    # If response starts with a newline, remove it
+    cleaned = cleaned.lstrip('\n')
+    
+    # If there's any text before or after the JSON array, remove it
+    if cleaned.startswith('[') and cleaned.endswith(']'):
+        return cleaned
+    
+    # Try to find JSON array within the text
+    start_idx = cleaned.find('[')
+    end_idx = cleaned.rfind(']')
+    
+    if start_idx != -1 and end_idx != -1:
+        return cleaned[start_idx:end_idx + 1]
+        
+    raise ValueError("Could not find valid JSON array in response")
+
 def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> List[Dict]:
     """Use Gemini to match word timestamps with lyrics"""
     try:
-        # Configure Gemini
-        genai.configure(api_key='YOUR_GEMINI_API_KEY')
-        model = genai.GenerativeModel('gemini-pro')
+        # Read config file
+        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            
+        if not config.get('geminiApiKey'):
+            raise ValueError("Gemini API key not found in config")
+
+        # Configure Gemini with new syntax
+        from google import genai
+        client = genai.Client(api_key=config['geminiApiKey'])
         
         # Prepare input for Gemini
         prompt = f"""
@@ -127,16 +160,40 @@ Make sure:
 4. Output must be valid JSON
 
 Word timestamps:
-{json.dumps(word_timestamps, indent=2)}
+{json.dumps(word_timestamps, indent=2, ensure_ascii=False)}
 
 Lyrics lines:
-{json.dumps(lyrics, indent=2)}
+{json.dumps(lyrics, indent=2, ensure_ascii=False)}
 
 Return ONLY the JSON array, no other text.
 """
+        # Save prompt for debugging
+        debug_dir = os.path.join(os.path.dirname(__file__), 'debug')
+        os.makedirs(debug_dir, exist_ok=True)
+        
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Save files with proper UTF-8 encoding
+        prompt_file = os.path.join(debug_dir, f'gemini_prompt_{timestamp}.txt')
+        with open(prompt_file, 'w', encoding='utf-8', errors='ignore') as f:
+            f.write(prompt)
 
-        response = model.generate_content(prompt)
-        matched_lyrics = json.loads(response.text)
+        # Generate response
+        response = client.models.generate_content(
+            model="gemini-2.0-pro-exp-02-05",
+            contents=prompt
+        )
+
+        # Save raw response for debugging
+        response_file = os.path.join(debug_dir, f'gemini_response_{timestamp}.txt')
+        with open(response_file, 'w', encoding='utf-8', errors='ignore') as f:
+            f.write(response.text)
+
+        print(f"Debug files saved:\nPrompt: {prompt_file}\nResponse: {response_file}", file=sys.stderr)
+
+        # Clean and parse the response
+        cleaned_response = clean_gemini_response(response.text)
+        matched_lyrics = json.loads(cleaned_response)
         
         # Validate and clean the response
         cleaned_matches = []
@@ -151,7 +208,7 @@ Return ONLY the JSON array, no other text.
         return cleaned_matches
         
     except Exception as e:
-        print(f"Error matching lyrics with Gemini: {e}", file=sys.stderr)
+        print(f"Error matching lyrics with Gemini: {str(e)}", file=sys.stderr)
         raise
 
 def match_lyrics(audio_path: str, lyrics: List[str]) -> Dict:
