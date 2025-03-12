@@ -42,7 +42,6 @@ def get_word_timestamps(audio_path: str) -> List[Dict]:
         model = load_whisper_model()
         result = model.transcribe(
             audio_path,
-            language="en",
             word_timestamps=True,
             initial_prompt="Song lyrics:",
             temperature=0.0,
@@ -379,7 +378,7 @@ def match_lyrics(audio_path: str, lyrics: List[str]) -> Dict:
         # Prepare result
         result = {
             "matched_lyrics": matched_lyrics,
-            "detected_language": "en",  # English lyrics detection
+            "detected_language": result.get("language", "auto"),  # Get detected language from Whisper
             "status": "success"
         }
         

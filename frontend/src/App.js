@@ -199,7 +199,7 @@ function App() {
       }
 
       // Update audio URL
-      const songName = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
+      const songName = `${encodeURIComponent(artist.trim())}_-_${encodeURIComponent(song.trim())}`;
       const audioResponse = await fetch(`http://localhost:3001/api/audio_data/${encodeURIComponent(songName)}`);
       if (!audioResponse.ok) {
         throw new Error('Failed to get audio data');
@@ -543,6 +543,7 @@ function App() {
           value={song}
           onChange={(e) => {
             setSong(e.target.value);
+            setMatchingComplete(false);
             localStorage.setItem('lastSong', e.target.value);
           }}
           style={{ marginRight: '10px' }}
@@ -555,10 +556,13 @@ function App() {
           value={artist}
           onChange={(e) => {
             setArtist(e.target.value);
+            setMatchingComplete(false);
             localStorage.setItem('lastArtist', e.target.value);
           }}
           style={{ marginRight: '10px' }}
         />
+        
+        {languageDetected && <div style={{ fontSize: '0.8em', color: '#666', marginTop: '5px' }}>Input supports Korean characters (한글)</div>}
 
         <div style={{ marginTop: '15px' }}>
           <label htmlFor="geniusApiKey">Genius API Key:</label>

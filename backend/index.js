@@ -65,7 +65,7 @@ async function fileExists(filePath) {
  * @returns {string} The URL-friendly song name.
  */
 const getSongName = (artist, song) => {
-    return `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
+    return `${encodeURIComponent(artist.trim())}_-_${encodeURIComponent(song.trim())}`;
 };
 
 /**
@@ -174,10 +174,10 @@ const processSong = async (req, res) => {
         }
 
         // Validate song and artist to prevent directory traversal
-        const safeSongName = song.replace(/[^a-zA-Z0-9\s-]/g, '');
-        const safeArtistName = artist.replace(/[^a-zA-Z0-9\s-]/g, '');
+        const safeSongName = song.replace(/[^\p{L}\p{N}\s-]/gu, '');
+        const safeArtistName = artist.replace(/[^\p{L}\p{N}\s-]/gu, '');
 
-        if (safeSongName !== song || safeArtistName !== artist) {
+        if (path.normalize(song) !== song || path.normalize(artist) !== artist) {
             return res.status(400).json({ error: 'Invalid characters in song or artist name.' });
         }
 
