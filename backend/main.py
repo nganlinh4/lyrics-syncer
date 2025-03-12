@@ -148,10 +148,16 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
         cleaned = re.sub(r'}\s*,?\s*,?\s*{', '}, {', cleaned)  # Fix object separators
         cleaned = re.sub(r',\s*,', ',', cleaned)  # Remove double commas
         
-        # Fix quote escaping in text fields
+        # Fix quote escaping in text fields, but preserve intentional escaped quotes
         def fix_text(match):
             text = match.group(1)
-            text = text.replace('\\', '').replace('""', '"')
+            # Don't replace escaped quotes (\"...\") as they may be intentional
+            if '\\"' in text:
+                # Keep the escaped quotes intact, but fix double escapes
+                text = text.replace('\\\\"', '\\"').replace('""', '"')
+            else:
+                # Just fix standard escaping issues
+                text = text.replace('\\\\', '\\').replace('\\\"', '\"').replace('""', '"')
             return f'"text": "{text}"'
             
         cleaned = re.sub(r'"text":\s*"([^"]*)"', fix_text, cleaned)
@@ -168,36 +174,101 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
                 
         cleaned = '\n'.join(lines)
         
-        # Ensure valid JSON structure
+        # Try to extract and parse all JSON objects
         try:
+            # First attempt to parse the entire text as JSON
             data = json.loads(cleaned)
-            if not isinstance(data, list):
-                raise ValueError("Root element must be an array")
-                
-            # Normalize all entries
-            normalized = []
-            for item in data:
-                if not isinstance(item, dict):
-                    continue
-                    
-                # Convert fields to expected format
-                normalized.append({
-                    "start_time": float(item.get("start") or item.get("start_time", 0)),
-                    "end_time": float(item.get("end") or item.get("end_time", 0)),
-                    "text": str(item.get("text", "")).strip()
-                })
-                
-            return json.dumps(normalized, indent=2)
-            
         except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {str(e)}", file=sys.stderr)
+            print(f"Initial JSON parsing failed: {str(e)}", file=sys.stderr)
+            
+            # More aggressive JSON repair - extract all JSON-like objects
             if debug_file:
-                print(f"See response file for details: {debug_file}", file=sys.stderr)
-            raise ValueError(f"Invalid JSON in response: {str(e)}")
+                print(f"Attempting to repair malformed JSON from: {debug_file}", file=sys.stderr)
+            
+            # Extract all objects that look like valid entries
+            pattern = r'\{\s*"start"\s*:\s*(\d+\.\d+|\d+)\s*,\s*"end"\s*:\s*(\d+\.\d+|\d+)\s*,\s*"text"\s*:\s*"([^"]*)"\s*\}'
+            matches = re.findall(pattern, cleaned)
+            
+            if not matches:
+                raise ValueError("Could not extract valid JSON objects from response")
+            
+            # Reconstruct valid JSON array from extracted objects
+            data = []
+            for start, end, text in matches:
+                data.append({
+                    "start": float(start),
+                    "end": float(end),
+                    "text": text
+                })
+            
+            print(f"Extracted {len(data)} valid entries from malformed JSON", file=sys.stderr)
+        
+        # Ensure we have a list
+        if not isinstance(data, list):
+            raise ValueError("Root element must be an array")
+            
+        # Sort entries by start time to fix out-of-order entries
+        data.sort(key=lambda x: float(x.get("start") or x.get("start_time", 0)))
+        
+        # Normalize all entries
+        normalized = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+                
+            # Convert fields to expected format
+            normalized.append({
+                "start_time": float(item.get("start") or item.get("start_time", 0)),
+                "end_time": float(item.get("end") or item.get("end_time", 0)),
+                "text": str(item.get("text", "")).strip()
+            })
+            
+        return json.dumps(normalized, indent=2)
             
     except Exception as e:
         print(f"Error cleaning response: {str(e)}", file=sys.stderr)
-        raise
+        
+        # Last resort: try to extract data manually with regex if debug file exists
+        if debug_file and os.path.exists(debug_file):
+            try:
+                print(f"Attempting emergency extraction from {debug_file}", file=sys.stderr)
+                with open(debug_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                pattern = r'\{\s*"start"\s*:\s*(\d+\.\d+|\d+)\s*,\s*"end"\s*:\s*(\d+\.\d+|\d+)\s*,\s*"text"\s*:\s*"([^"]*)"\s*\}'
+                matches = re.findall(pattern, content)
+                
+                if matches:
+                    data = []
+                    for start, end, text in matches:
+                        data.append({
+                            "start_time": float(start),
+                            "end_time": float(end),
+                            "text": text
+                        })
+                    
+                    # Sort by start time
+                    data.sort(key=lambda x: x["start_time"])
+                    print(f"Emergency extraction successful: {len(data)} entries recovered", file=sys.stderr)
+                    return json.dumps(data, indent=2)
+            except Exception as rescue_error:
+                print(f"Emergency extraction failed: {rescue_error}", file=sys.stderr)
+        
+        raise ValueError(f"Invalid JSON in response: {str(e)}")
+
+def save_debug_file(filename: str, content: str):
+    """Save debug content with proper UTF-8 encoding"""
+    try:
+        debug_dir = os.path.join(os.path.dirname(__file__), 'debug')
+        os.makedirs(debug_dir, exist_ok=True)
+        
+        file_path = os.path.join(debug_dir, filename)
+        with open(file_path, 'w', encoding='utf-8', errors='replace') as f:
+            f.write(content)
+        return file_path
+    except Exception as e:
+        print(f"Error saving debug file: {str(e)}", file=sys.stderr)
+        return None
 
 def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> List[Dict]:
     """Use Gemini to match word timestamps with lyrics"""
@@ -227,15 +298,20 @@ def match_lyrics_with_gemini(word_timestamps: List[Dict], lyrics: List[str]) -> 
         from google import genai
         client = genai.Client(api_key=config['geminiApiKey'])
         
-        # Prepare input for Gemini
+        # Prepare input for Gemini with schema definition
         prompt = f"""
-Task: Match these word timestamps with the lyrics lines.
-Return ONLY a JSON array where each object has: start_time, end_time, and text (lyric line).
-Make sure:
-1. Each lyric line's timing makes sense sequentially
-2. Start and end times are floating point numbers
+Task: Match these word timestamps with the lyrics lines. The lyrics may contain inconsistent or bad formatting - please ignore these formatting issues and focus on matching content.
+
+Use this JSON schema:
+LyricLine = {{'start': float, 'end': float, 'text': str}}
+Return: list[LyricLine]
+
+Requirements:
+1. Each lyric line's timing must make sense sequentially
+2. Start and end times must be floating point numbers
 3. Every lyric line must have timing
-4. Output must be valid JSON
+4. Output must be valid JSON with no extra text or markdown formatting
+5. Ignore any unusual formatting or errors in the lyrics lines - focus on matching content, not exact formatting
 
 Word timestamps:
 {json.dumps(cleaned_timestamps, indent=2, ensure_ascii=False)}
@@ -243,7 +319,9 @@ Word timestamps:
 Lyrics lines:
 {json.dumps(cleaned_lyrics, indent=2, ensure_ascii=False)}
 
-Return ONLY the JSON array, no other text.
+Important: Some lyrics may have inconsistent capitalization, punctuation, or special characters. Focus on matching the core text content.
+
+Return ONLY the JSON array following the schema, no other text or explanations.
 """
         # Save prompt for debugging
         debug_dir = os.path.join(os.path.dirname(__file__), 'debug')
@@ -251,10 +329,8 @@ Return ONLY the JSON array, no other text.
         
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         
-        # Save files with proper UTF-8 encoding
-        prompt_file = os.path.join(debug_dir, f'gemini_prompt_{timestamp}.txt')
-        with open(prompt_file, 'w', encoding='utf-8') as f:
-            f.write(prompt)
+        # Save files with proper UTF-8 encoding using the new helper function
+        prompt_file = save_debug_file(f'gemini_prompt_{timestamp}.txt', prompt)
 
         # Generate response
         response = client.models.generate_content(
@@ -263,9 +339,7 @@ Return ONLY the JSON array, no other text.
         )
 
         # Save raw response for debugging
-        response_file = os.path.join(debug_dir, f'gemini_response_{timestamp}.txt')
-        with open(response_file, 'w', encoding='utf-8') as f:
-            f.write(response.text)
+        response_file = save_debug_file(f'gemini_response_{timestamp}.txt', response.text)
 
         print(f"Debug files saved:\nPrompt: {prompt_file}\nResponse: {response_file}", file=sys.stderr)
 
@@ -277,9 +351,9 @@ Return ONLY the JSON array, no other text.
         cleaned_matches = []
         for match in matched_lyrics:
             cleaned_matches.append({
-                "start": float(match["start_time"]),
-                "end": float(match["end_time"]),
-                "text": str(match["text"]),
+                "start": float(match.get("start") or match.get("start_time", 0)),
+                "end": float(match.get("end") or match.get("end_time", 0)),
+                "text": str(match.get("text", "")).strip(),
                 "confidence": 0.95  # High confidence since Gemini matched it
             })
         
@@ -309,16 +383,31 @@ def match_lyrics(audio_path: str, lyrics: List[str]) -> Dict:
             "status": "success"
         }
         
-        # Output result
-        print(json.dumps(result, ensure_ascii=False))
-        sys.stdout.flush()
+        # Output result with proper encoding
+        json_result = json.dumps(result, ensure_ascii=False)
+        # Ensure stdout is configured for UTF-8
+        if hasattr(sys.stdout, 'buffer'):
+            sys.stdout.buffer.write(json_result.encode('utf-8'))
+            sys.stdout.buffer.write(b'\n')
+            sys.stdout.buffer.flush()
+        else:
+            print(json_result)
+            sys.stdout.flush()
         
     except Exception as e:
         error_result = {
             "error": str(e),
             "status": "error"
         }
-        print(json.dumps(error_result, ensure_ascii=False), file=sys.stderr)
+        error_json = json.dumps(error_result, ensure_ascii=False)
+        
+        # Ensure stderr is configured for UTF-8
+        if hasattr(sys.stderr, 'buffer'):
+            sys.stderr.buffer.write(error_json.encode('utf-8'))
+            sys.stderr.buffer.write(b'\n')
+            sys.stderr.buffer.flush()
+        else:
+            print(error_json, file=sys.stderr)
         sys.exit(1)
 
 def setup_argparse():
@@ -332,6 +421,12 @@ def setup_argparse():
     return parser.parse_args()
 
 def main():
+    # Configure UTF-8 for stdin/stdout on Windows
+    if sys.platform == 'win32':
+        import os, msvcrt
+        msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+        msvcrt.setmode(sys.stderr.fileno(), os.O_BINARY)
+    
     args = setup_argparse()
     
     try:
@@ -349,7 +444,14 @@ def main():
             "error": str(e),
             "status": "error"
         }
-        print(json.dumps(error_result, ensure_ascii=False), file=sys.stderr)
+        
+        # Use UTF-8 encoding for error output
+        error_json = json.dumps(error_result, ensure_ascii=False)
+        if hasattr(sys.stderr, 'buffer'):
+            sys.stderr.buffer.write(error_json.encode('utf-8'))
+            sys.stderr.buffer.write(b'\n')
+        else:
+            print(error_json, file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":
