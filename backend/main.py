@@ -225,7 +225,8 @@ Requirements:
 4. Output must be valid JSON with no extra text.
 5. The 'text' field in your output MUST EXACTLY match the lines from 'Lyrics lines' below.
 6. The provided audio may be in any language. Analyze the audio content to determine timing.
-7. Additional information: This song's duration is {get_audio_duration(audio_path)} seconds.
+7. >>> CRITICAL information: This song's duration is {get_audio_duration(audio_path)} seconds, so think carefully about the last lyrics timing, it CANNOT BE LONGER.
+8. If the provided lyrics have romanized Korean, turn it to actual Korean when responding.
 
 Lyrics lines:
 {json.dumps(filtered_lyrics, indent=2, ensure_ascii=False)}
