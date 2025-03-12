@@ -348,37 +348,43 @@ function App() {
   // Removed togglePlay function
 
   // Add this function to find the current lyric
-  const getCurrentLyricIndex = useCallback((time) => {
-    if (!matchedLyrics || matchedLyrics.length === 0) return -1;
+  const getCurrentLyricIndex = useCallback((currentTime) => {
+    if (!matchedLyrics || matchedLyrics.length === 0) {
+      return -1;
+    }
     
     return matchedLyrics.findIndex(
-      (lyric) => time >= lyric.start && time <= lyric.end
+      (lyric) => currentTime >= lyric.start && currentTime <= lyric.end
     );
   }, [matchedLyrics]);
 
   const updateCurrentLyric = useCallback((time) => {
     if (!matchedLyrics || matchedLyrics.length === 0) return;
     
-    const index = getCurrentLyricIndex(time);
-    
+    const index = matchedLyrics.findIndex(
+      (lyric) => time >= lyric.start && time <= lyric.end
+    );
+
     if (index !== currentLyricIndex) {
       setCurrentLyricIndex(index);
-      console.log('Current lyric updated:', index, matchedLyrics[index]?.text);
+  
     }
   }, [matchedLyrics, currentLyricIndex, getCurrentLyricIndex]);
 
   // Debug current time changes
   useEffect(() => {
-    console.log('Current time updated:', currentTime);
-  }, [currentTime]);
-
-  // Update scroll effect with proper dependencies
-  useEffect(() => {
     const currentIndex = getCurrentLyricIndex(currentTime);
     if (currentIndex !== -1) {
       const element = document.querySelector(`[data-lyric-index="${currentIndex}"]`);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const container = element.closest('.matched-lyrics-container');
+        if (container) {
+          const containerRect = container.getBoundingClientRect();
+          const elementRect = element.getBoundingClientRect();
+          const scrollOffset = elementRect.top - containerRect.top - (containerRect.height / 2);
+          container.scrollBy({ top: scrollOffset, behavior: 'smooth' });
+        }
+        updateCurrentLyric(currentTime);
       }
     }
   }, [currentTime, getCurrentLyricIndex]);
@@ -388,8 +394,8 @@ function App() {
     const audioElement = audioRef.current;
     if (audioElement) {
       const handleTimeUpdate = () => {
+        updateCurrentLyric(audioElement.currentTime);
         setCurrentTime(audioElement.currentTime);
-        console.log('Audio currentTime:', audioElement.currentTime); // Debug log
       };
 
       audioElement.addEventListener('timeupdate', handleTimeUpdate);
@@ -414,12 +420,10 @@ function App() {
     if (!audioElement) return;
 
     const handlePlay = () => {
-      console.log('Audio started playing');
       animationFrameRef.current = requestAnimationFrame(updateTime);
     };
 
     const handlePause = () => {
-      console.log('Audio paused');
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -452,13 +456,16 @@ function App() {
     return (
       <div style={{ marginTop: '20px' }}>
         <h3>Matched Lyrics</h3>
-        <div style={{ 
-          maxHeight: '400px', 
-          overflowY: 'auto',
-          border: '1px solid #ccc',
-          padding: '10px',
-          borderRadius: '4px'
-        }}>
+        <div 
+          className="matched-lyrics-container"
+          style={{ 
+            maxHeight: '400px', 
+            overflowY: 'auto',
+            padding: '10px',
+            border: '1px solid #ddd',
+            borderRadius: '4px'
+          }}
+>
           {matchedLyrics.map((item, index) => {
             const isCurrentLyric = index === currentLyricIndex;
             const confidenceColor = 
@@ -478,8 +485,7 @@ function App() {
                   cursor: 'pointer',
                   borderLeft: `4px solid ${confidenceColor}`,
                   transition: 'all 0.3s ease',
-                  transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
-                  boxShadow: isCurrentLyric ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                  boxShadow: isCurrentLyric ? '0 0 10px rgba(0,0,0,0.1)' : 'none'
                 }}
                 onClick={() => {
                   if (audioRef.current) {
@@ -513,20 +519,6 @@ function App() {
       </div>
     );
   };
-
-  // Auto-scroll effect for current lyric
-  useEffect(() => {
-    const currentIndex = getCurrentLyricIndex(currentTime);
-    if (currentIndex !== -1) {
-      const element = document.querySelector(`[data-lyric-index="${currentIndex}"]`);
-      if (element) {
-        element.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center'
-        });
-      }
-    }
-  }, [currentTime, getCurrentLyricIndex]);
 
   // Add status indicator component
   const StatusIndicator = ({ status }) => (
@@ -682,30 +674,6 @@ function App() {
         </div>
       )}
 
-      {renderMatchedLyrics()}
-
-      <button
-        onClick={handlePreviewLyrics}
-        style={{ padding: '8px 16px', marginLeft: '10px' }}
-      >
-        Preview Lyrics
-      </button>
-
-      {lyrics.length > 0 && (
-        <div style={{ marginTop: '20px' }}>
-          <h3>Lyrics Preview</h3>
-          <div style={{ whiteSpace: 'pre-line' }}>
-            {lyrics.map((line, index) => (
-              <div key={index}>{line}</div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div style={{ color: 'red', marginBottom: '20px' }}>{error}</div>
-      )}
-
       {/* Audio player section */}
       <div>
         {audioUrl && (
@@ -737,6 +705,35 @@ function App() {
             {fileSize > 0 && <div>File Size: {Math.round(fileSize / 1024)} KB</div>}
           </>
         )}
+      </div>
+
+      {renderMatchedLyrics()}
+
+      <button
+        onClick={handlePreviewLyrics}
+        style={{ padding: '8px 16px', marginLeft: '10px' }}
+      >
+        Preview Lyrics
+      </button>
+
+      {lyrics.length > 0 && (
+        <div style={{ marginTop: '20px' }}>
+          <h3>Lyrics Preview</h3>
+          <div style={{ whiteSpace: 'pre-line' }}>
+            {lyrics.map((line, index) => (
+              <div key={index}>{line}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ color: 'red', marginBottom: '20px' }}>{error}</div>
+      )}
+
+      {/* Add progress bar for audio */}
+      <div>
+        
       </div>
     </div>
   );
