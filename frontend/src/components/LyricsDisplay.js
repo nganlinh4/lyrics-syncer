@@ -6,9 +6,9 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick }) => {
       (lyric) => time >= lyric.start && time <= lyric.end
     );
   };
-
+  
   const currentIndex = getCurrentLyricIndex(currentTime);
-
+  
   return (
     <div style={{ marginTop: '20px' }}>
       <h3>Matched Lyrics</h3>
@@ -21,11 +21,7 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick }) => {
       }}>
         {matchedLyrics.map((lyric, index) => {
           const isCurrentLyric = index === currentIndex;
-          const confidenceColor = 
-            lyric.confidence > 0.9 ? '#4CAF50' :
-            lyric.confidence > 0.7 ? '#FFA726' :
-            '#F44336';
-
+          
           return (
             <div
               key={index}
@@ -36,7 +32,7 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick }) => {
                 marginBottom: '5px',
                 borderRadius: '4px',
                 cursor: 'pointer',
-                borderLeft: `4px solid ${confidenceColor}`,
+                borderLeft: `4px solid ${isCurrentLyric ? '#2196F3' : '#ddd'}`,
                 transition: 'all 0.3s ease',
                 transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
                 boxShadow: isCurrentLyric ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
@@ -51,12 +47,9 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick }) => {
               <div style={{
                 fontSize: '0.8em',
                 color: '#666',
-                marginTop: '4px',
-                display: 'flex',
-                justifyContent: 'space-between'
+                marginTop: '4px'
               }}>
                 <span>{lyric.start.toFixed(2)}s - {lyric.end.toFixed(2)}s</span>
-                <span>Confidence: {(lyric.confidence * 100).toFixed(1)}%</span>
               </div>
             </div>
           );

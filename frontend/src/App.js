@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
+import LyricsDisplay from './components/LyricsDisplay';
+import LyricsTimeline from './components/LyricsTimeline';
 
 const ApiKeyInstructions = ({ type }) => {
   const instructions = {
@@ -56,7 +58,6 @@ const ApiKeyInstructions = ({ type }) => {
 };
 
 function App() {
-  // Update the initial state for song and artist using localStorage
   const [artist, setArtist] = useState(() => localStorage.getItem('lastArtist') || '');
   const [song, setSong] = useState(() => localStorage.getItem('lastSong') || '');
   const [lyrics, setLyrics] = useState([]);
@@ -78,7 +79,7 @@ function App() {
   const [matchingProgress, setMatchingProgress] = useState(0);
   const [languageDetected, setLanguageDetected] = useState('');
   const [currentLyricIndex, setCurrentLyricIndex] = useState(-1);
-  // Add new state for audio-only preference
+  const [audioDuration, setAudioDuration] = useState(0);
   const [audioOnly, setAudioOnly] = useState(() => localStorage.getItem('audioOnly') === 'true');
 
   // Refs
@@ -87,7 +88,6 @@ function App() {
   const audioRef = useRef(null);
   const animationFrameRef = useRef(null);
 
-  // Initialize WaveSurfer when the component mounts
   useEffect(() => {
     if (containerRef.current && !wavesurferRef.current) {
       wavesurferRef.current = WaveSurfer.create({
@@ -102,6 +102,7 @@ function App() {
 
       wavesurferRef.current.on('ready', () => {
         console.log('WaveSurfer is ready');
+        setAudioDuration(wavesurferRef.current.getDuration());
       });
 
       wavesurferRef.current.on('error', (err) => {
@@ -144,7 +145,6 @@ function App() {
         throw new Error(errorData.error || 'Failed to save API key');
       }
 
-      // Update localStorage and status based on type
       switch(type) {
         case 'youtube':
           localStorage.setItem('youtubeApiKey', key);
@@ -175,12 +175,10 @@ function App() {
       setLoading(true);
       setError(null);
 
-      // Validate inputs
       if (!song || !artist) {
         throw new Error('Please enter both song and artist');
       }
 
-      // Call the process endpoint
       const response = await fetch('http://localhost:3001/api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -198,13 +196,11 @@ function App() {
 
       const data = await response.json();
       
-      // Update lyrics if they were returned
       if (data.lyrics) {
         const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
         setLyrics(lyricsArray);
       }
 
-      // Update audio URL
       const songName = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
       const audioResponse = await fetch(`http://localhost:3001/api/audio_data/${encodeURIComponent(songName)}`);
       if (!audioResponse.ok) {
@@ -214,7 +210,6 @@ function App() {
       const audioData = await audioResponse.json();
       setAudioUrl(audioData.audio_url);
       
-      // Optional: Update file size if available
       if (audioData.size) {
         setFileSize(audioData.size);
       }
@@ -227,7 +222,6 @@ function App() {
     }
   };
 
-  // Load audio into WaveSurfer when URL changes
   useEffect(() => {
     if (audioUrl && wavesurferRef.current) {
       console.log("Loading audio into WaveSurfer:", audioUrl);
@@ -256,7 +250,6 @@ function App() {
       }
 
       const data = await response.json();
-      // Split lyrics into an array, handling both \n and actual newlines
       const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
       setLyrics(lyricsArray);
     } catch (error) {
@@ -310,7 +303,6 @@ function App() {
         setLoading(true);
         setError(null);
 
-        // Clean up the audio URL to get just the path
         const cleanAudioPath = audioUrl.split('?')[0].replace('http://localhost:3001/', '');
 
         const response = await fetch('http://localhost:3001/api/match_lyrics', {
@@ -338,7 +330,7 @@ function App() {
         } else {
             throw new Error('No matched lyrics in response');
         }
-        
+
     } catch (error) {
         console.error('Error matching lyrics:', error);
         setError(error.message);
@@ -351,14 +343,11 @@ function App() {
     }
   };
 
-  // Removed togglePlay function
-
-  // Add this function to find the current lyric
   const getCurrentLyricIndex = useCallback((currentTime) => {
     if (!matchedLyrics || matchedLyrics.length === 0) {
       return -1;
     }
-    
+
     return matchedLyrics.findIndex(
       (lyric) => currentTime >= lyric.start && currentTime <= lyric.end
     );
@@ -366,18 +355,17 @@ function App() {
 
   const updateCurrentLyric = useCallback((time) => {
     if (!matchedLyrics || matchedLyrics.length === 0) return;
-    
+
     const index = matchedLyrics.findIndex(
       (lyric) => time >= lyric.start && time <= lyric.end
     );
 
     if (index !== currentLyricIndex) {
       setCurrentLyricIndex(index);
-  
+
     }
   }, [matchedLyrics, currentLyricIndex, getCurrentLyricIndex]);
 
-  // Debug current time changes
   useEffect(() => {
     const currentIndex = getCurrentLyricIndex(currentTime);
     if (currentIndex !== -1) {
@@ -395,7 +383,6 @@ function App() {
     }
   }, [currentTime, getCurrentLyricIndex]);
 
-  // Add timeupdate event listener to the audio element
   useEffect(() => {
     const audioElement = audioRef.current;
     if (audioElement) {
@@ -412,7 +399,6 @@ function App() {
     }
   }, []);
 
-  // Update time tracking with better precision
   const updateTime = useCallback(() => {
     if (audioRef.current && !audioRef.current.paused) {
       setCurrentTime(audioRef.current.currentTime);
@@ -420,7 +406,6 @@ function App() {
     }
   }, []);
 
-  // Enhanced time tracking setup
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;
@@ -455,7 +440,6 @@ function App() {
     };
   }, [updateTime]);
 
-  // Optimized render function for matched lyrics
   const renderMatchedLyrics = () => {
     if (!matchingComplete || !matchedLyrics) return null;
 
@@ -526,7 +510,6 @@ function App() {
     );
   };
 
-  // Add status indicator component
   const StatusIndicator = ({ status }) => (
     <span style={{
       marginLeft: '10px',
@@ -536,6 +519,80 @@ function App() {
       {status === 'saved' ? '✓ Saved' : 'Not saved'}
     </span>
   );
+
+  const handleUpdateLyrics = (updatedLyrics) => {
+    setMatchedLyrics(updatedLyrics);
+  };
+
+  const handleDownloadJSON = () => {
+    if (!matchedLyrics || matchedLyrics.length === 0) {
+      setError('No matched lyrics to download');
+      return;
+    }
+
+    try {
+      // Create a new array without the confidence field
+      const cleanedLyrics = matchedLyrics.map(({ confidence, ...rest }) => rest);
+      
+      // Create a Blob with the JSON data
+      const jsonBlob = new Blob([JSON.stringify(cleanedLyrics, null, 2)], { type: 'application/json' });
+      
+      // Create a URL for the Blob
+      const url = URL.createObjectURL(jsonBlob);
+      
+      // Create a link element and trigger the download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}_lyrics.json`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading JSON:', error);
+      setError('Failed to download JSON: ' + error.message);
+    }
+  };
+
+  // Make sure audio duration gets set when audio loads
+  useEffect(() => {
+    const handleAudioLoaded = () => {
+      if (audioRef.current) {
+        const duration = audioRef.current.duration;
+        console.log("Audio duration set from audio element:", duration);
+        setAudioDuration(duration);
+      }
+    };
+
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      audioElement.addEventListener('loadedmetadata', handleAudioLoaded);
+      audioElement.addEventListener('durationchange', handleAudioLoaded);
+      
+      // If duration is already available, set it immediately
+      if (audioElement.duration && audioElement.duration !== Infinity) {
+        console.log("Audio duration available immediately:", audioElement.duration);
+        setAudioDuration(audioElement.duration);
+      }
+      
+      return () => {
+        audioElement.removeEventListener('loadedmetadata', handleAudioLoaded);
+        audioElement.removeEventListener('durationchange', handleAudioLoaded);
+      };
+    }
+  }, [audioRef.current]);
+
+  // Add debug information before render
+  useEffect(() => {
+    console.log("Debug rendering conditions:", { 
+      matchingComplete, 
+      matchedLyricsLength: matchedLyrics.length, 
+      audioDuration,
+      audioUrl
+    });
+  }, [matchingComplete, matchedLyrics, audioDuration, audioUrl]);
 
   return (
     <div className="container">
@@ -638,7 +695,6 @@ function App() {
         {loading ? 'Processing...' : 'Download and Process'}
       </button>
 
-      {/* Modified condition to always show the button when audio and lyrics are available */}
       {audioUrl && lyrics.length > 0 && (
         <button
           onClick={handleAdvancedMatch}
@@ -685,7 +741,6 @@ function App() {
         </div>
       )}
 
-      {/* Add language detection info */}
       {languageDetected && (
         <div style={{
           marginTop: '10px',
@@ -696,7 +751,6 @@ function App() {
         </div>
       )}
 
-      {/* Audio player section */}
       <div>
         {audioUrl && (
           <>
@@ -715,6 +769,10 @@ function App() {
                   console.log("Failed to load audio URL:", audioUrl);
                   setError("Error loading audio. Please try again.");
                 }}
+                onLoadedMetadata={(e) => {
+                  console.log("Audio metadata loaded, duration:", e.target.duration);
+                  setAudioDuration(e.target.duration);
+                }}
               />
 
               <div style={{ marginTop: '10px' }}>
@@ -729,7 +787,62 @@ function App() {
         )}
       </div>
 
-      {renderMatchedLyrics()}
+      {/* Place the timeline editor first, right after the audio player */}
+      {matchingComplete && matchedLyrics.length > 0 && (
+        <div style={{ 
+          marginTop: '30px', 
+          padding: '15px',
+          backgroundColor: '#f8f9fa',
+          border: '1px solid #ddd',
+          borderRadius: '8px'
+        }}>
+          <h3 style={{ marginBottom: '15px', color: '#1976d2' }}>Edit Lyrics Timing</h3>
+          <LyricsTimeline 
+            matchedLyrics={matchedLyrics} 
+            currentTime={currentTime}
+            duration={audioDuration || 180} /* Use a default duration if audioDuration is not set */
+            onUpdateLyrics={handleUpdateLyrics}
+          />
+          
+
+          <button
+            onClick={handleDownloadJSON}
+            style={{ 
+              padding: '10px 20px', 
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              marginTop: '15px',
+              fontSize: '16px',
+              fontWeight: 'bold'
+            }}
+          >
+            Download Lyrics JSON
+          </button>
+          <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+            Downloads the edited lyrics timing as a JSON file (without confidence field)
+          </p>
+        </div>
+      )}
+
+      {/* Then show the standard lyrics display */}
+      {matchingComplete && matchedLyrics.length > 0 && (
+        <LyricsDisplay 
+          matchedLyrics={matchedLyrics} 
+          currentTime={currentTime} 
+          onLyricClick={(startTime) => {
+            if (audioRef.current) {
+              audioRef.current.currentTime = startTime;
+              audioRef.current.play();
+            }
+            if (wavesurferRef.current) {
+              wavesurferRef.current.seekTo(startTime / wavesurferRef.current.getDuration());
+            }
+          }} 
+        />
+      )}
 
       <button
         onClick={handlePreviewLyrics}
@@ -752,11 +865,6 @@ function App() {
       {error && (
         <div style={{ color: 'red', marginBottom: '20px' }}>{error}</div>
       )}
-
-      {/* Add progress bar for audio */}
-      <div>
-        
-      </div>
     </div>
   );
 }
