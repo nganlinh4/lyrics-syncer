@@ -53,7 +53,7 @@ yarn-debug.log*
 yarn-error.log*
 debug.log
 
-# Python cache files (if any python scripts are used)
+# Python cache files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -70,4 +70,3 @@ venv/
 # Temporary files
 *.tmp
 *.temp
-backend/config.json

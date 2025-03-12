@@ -284,7 +284,7 @@ const processSong = async (req, res) => {
 
 const saveApiKey = async (req, res) => {
     try {
-        const { type, key, secret } = req.body;
+        const { type, key } = req.body;
         if (!type || !key) {
             return res.status(400).json({ error: 'API key and key type are required' });
         }
@@ -303,6 +303,9 @@ const saveApiKey = async (req, res) => {
                 break;
             case 'youtube':
                 config.youtubeApiKey = key;
+                break;
+            case 'gemini':
+                config.geminiApiKey = key;
                 break;
             default:
                 return res.status(400).json({ error: 'Invalid key type' });

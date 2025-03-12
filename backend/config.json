@@ -3,5 +3,6 @@
   "geniusApiKey": "dEZ0u3XiEHF3zXpNOt3KotvibTM7IOaJXsf3FHx9Ngcps7x1ThUK2hj24EED7KbY",
   "spotifyClientId": "YOUR_SPOTIFY_CLIENT_ID",
   "spotifyClientSecret": "YOUR_SPOTIFY_CLIENT_SECRET",
-  "spotifySpDc": "YOUR_SPOTIFY_SP_DC_COOKIE"
+  "spotifySpDc": "YOUR_SPOTIFY_SP_DC_COOKIE",
+  "geminiApiKey": "AIzaSyCUO997Ab3ZsMQy-Z0bS0YgLpQ-YTw_gYI"
 }

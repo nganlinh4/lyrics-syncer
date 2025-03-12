@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 
 function App() {
-  const [artist, setArtist] = useState('');
-  const [song, setSong] = useState('');
+  // Update the initial state for song and artist using localStorage
+  const [artist, setArtist] = useState(() => localStorage.getItem('lastArtist') || '');
+  const [song, setSong] = useState(() => localStorage.getItem('lastSong') || '');
   const [lyrics, setLyrics] = useState([]);
   const [audioUrl, setAudioUrl] = useState('');
   const [matchedLyrics, setMatchedLyrics] = useState([]);
@@ -17,6 +18,8 @@ function App() {
   const [youtubeKeyStatus, setYoutubeKeyStatus] = useState(() => localStorage.getItem('youtubeApiKey') ? 'saved' : 'empty');
   const [geniusApiKey, setGeniusApiKey] = useState(() => localStorage.getItem('geniusApiKey') || '');
   const [geniusKeyStatus, setGeniusKeyStatus] = useState(() => localStorage.getItem('geniusApiKey') ? 'saved' : 'empty');
+  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('geminiApiKey') || '');
+  const [geminiKeyStatus, setGeminiKeyStatus] = useState(() => localStorage.getItem('geminiApiKey') ? 'saved' : 'empty');
   const [processingStatus, setProcessingStatus] = useState('');
   const [matchingProgress, setMatchingProgress] = useState(0);
   const [languageDetected, setLanguageDetected] = useState('');
@@ -96,6 +99,11 @@ function App() {
           localStorage.setItem('geniusApiKey', key);
           setGeniusApiKey(key);
           setGeniusKeyStatus('saved');
+          break;
+        case 'gemini':
+          localStorage.setItem('geminiApiKey', key);
+          setGeminiApiKey(key);
+          setGeminiKeyStatus('saved');
           break;
         default:
           throw new Error('Invalid key type');
@@ -476,7 +484,10 @@ function App() {
           type="text"
           id="song"
           value={song}
-          onChange={(e) => setSong(e.target.value)}
+          onChange={(e) => {
+            setSong(e.target.value);
+            localStorage.setItem('lastSong', e.target.value);
+          }}
           style={{ marginRight: '10px' }}
         />
 
@@ -485,7 +496,10 @@ function App() {
           type="text"
           id="artist"
           value={artist}
-          onChange={(e) => setArtist(e.target.value)}
+          onChange={(e) => {
+            setArtist(e.target.value);
+            localStorage.setItem('lastArtist', e.target.value);
+          }}
           style={{ marginRight: '10px' }}
         />
 
@@ -519,6 +533,22 @@ function App() {
           />
           <button onClick={() => handleSaveApiKey('youtube', youtubeApiKey)}>Save YouTube API Key</button>
           <StatusIndicator status={youtubeKeyStatus} />
+        </div>
+
+        <div style={{ marginTop: '15px' }}>
+          <label htmlFor="geminiApiKey">Gemini API Key:</label>
+          <input
+            type="text"
+            id="geminiApiKey"
+            value={geminiApiKey}
+            onChange={(e) => {
+              setGeminiApiKey(e.target.value);
+              setGeminiKeyStatus('empty');
+            }}
+            style={{ marginRight: '10px', width: '300px' }}
+          />
+          <button onClick={() => handleSaveApiKey('gemini', geminiApiKey)}>Save Gemini API Key</button>
+          <StatusIndicator status={geminiKeyStatus} />
         </div>
       </div>
 
