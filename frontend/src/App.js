@@ -299,6 +299,8 @@ function App() {
 
   const handleAdvancedMatch = async () => {
     try {
+        setMatchingInProgress(true);
+        setMatchingComplete(false);
         setLoading(true);
         setError(null);
 
@@ -324,12 +326,21 @@ function App() {
         }
 
         const result = await response.json();
-        // Handle successful response...
+        if (result.matched_lyrics) {
+            setMatchedLyrics(result.matched_lyrics);
+            setMatchingComplete(true);
+        } else {
+            throw new Error('No matched lyrics in response');
+        }
         
     } catch (error) {
         console.error('Error matching lyrics:', error);
         setError(error.message);
+        setMatchingComplete(false);
     } finally {
+        setMatchingInProgress(false);
+        setMatchingProgress(0);
+        setProcessingStatus('');
         setLoading(false);
     }
   };
@@ -616,22 +627,6 @@ function App() {
       >
         {loading ? 'Processing...' : 'Download and Process'}
       </button>
-
-      {audioUrl && lyrics.length > 0 && !matchingInProgress && !matchingComplete && (
-        <button
-          onClick={handleAutoMatch}
-          style={{ 
-            padding: '8px 16px', 
-            marginLeft: '10px',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px'
-          }}
-        >
-          Get Lyrics Matching
-        </button>
-      )}
 
       {audioUrl && lyrics.length > 0 && !matchingInProgress && !matchingComplete && (
         <button
