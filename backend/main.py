@@ -241,10 +241,13 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
             raise RuntimeError(f"Error uploading file to Gemini File API: {upload_error}")
 
 
+        # Use provided model or fallback to default
+        model = config.get('model', 'gemini-2.0-flash-thinking-exp-01-21')
+
         # Generate response using the Client and the uploaded file
         response = client.models.generate_content(
-            model='gemini-2.0-flash-thinking-exp-01-21',  # Use with client.models
-            contents=[prompt, myfile]  # Pass prompt and File object
+            model=model,
+            contents=[prompt, myfile]
         )
 
         response_text = response.text
@@ -327,6 +330,7 @@ def setup_argparse():
     parser.add_argument('--mode', required=True, choices=['match'], help='Operation mode')
     parser.add_argument('--audio', required=True, help='Path to the audio file')
     parser.add_argument('--lyrics', required=True, help='JSON string containing lyrics')
+    parser.add_argument('--model', help='Gemini model to use')
     parser.add_argument('--artist', required=False, help='Artist name')
     parser.add_argument('--song', required=False, help='Song name')
     return parser.parse_args()
@@ -347,6 +351,13 @@ def main():
 
             if not os.path.exists(audio_path):
                 raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
+            # Update config with model if provided
+            if args.model:
+                config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                config['model'] = args.model
 
             match_lyrics(audio_path, lyrics)
 

@@ -411,7 +411,7 @@ app.post('/api/auto_match', async (req, res) => {
 
 const matchLyrics = async (req, res) => {
     try {
-        const { artist, song, audioPath, lyrics } = req.body;
+        const { artist, song, audioPath, lyrics, model } = req.body;
         
         if (!audioPath || !lyrics) {
             return res.status(400).json({ error: 'Missing required parameters' });
@@ -447,6 +447,8 @@ const matchLyrics = async (req, res) => {
             '--lyrics', JSON.stringify(lyrics),
             '--artist', artist,
             '--song', song
+,
+            '--model', model
         ]);
 
         let stdoutData = '';

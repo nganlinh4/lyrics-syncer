@@ -41,7 +41,7 @@ const useLyrics = () => {
     }
   };
 
-  const handleAdvancedMatch = async (artist, song, audioUrl, lyrics) => {
+  const handleAdvancedMatch = async (artist, song, audioUrl, lyrics, model) => {
     try {
       setMatchingInProgress(true);
       setMatchingComplete(false);
@@ -59,6 +59,8 @@ const useLyrics = () => {
           song,
           audioPath: cleanAudioPath,
           lyrics
+,
+          model
         }),
       });
 
@@ -83,6 +85,7 @@ const useLyrics = () => {
       setMatchingInProgress(false);
       setMatchingProgress(0);
       setProcessingStatus('');
+      setError(null);
     }
   };
 

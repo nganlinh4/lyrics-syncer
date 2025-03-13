@@ -3,12 +3,14 @@ import LyricsDisplay from './components/LyricsDisplay';
 import LyricsTimeline from './components/LyricsTimeline';
 import ApiKeyInput from './components/ApiKeyInput';
 import AudioPlayer from './components/AudioPlayer';
+import ModelSelector from './components/ModelSelector';
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
 
 function App() {
   // Local state
+  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash-thinking-exp-01-21');
   const [artist, setArtist] = useState(() => localStorage.getItem('lastArtist') || '');
   const [song, setSong] = useState(() => localStorage.getItem('lastSong') || '');
   const [loading, setLoading] = useState(false);
@@ -167,6 +169,14 @@ function App() {
           onChange={(value) => handleApiKeyChange('gemini', value)}
           onSave={handleSaveApiKey}
         />
+          
+          <ModelSelector
+            selectedModel={selectedModel}
+            onModelChange={(model) => {
+              setSelectedModel(model);
+              localStorage.setItem('selectedModel', model);
+            }}
+          />
       </div>
 
       {/* Action Buttons */}
@@ -180,7 +190,7 @@ function App() {
 
       {audioUrl && lyrics.length > 0 && (
         <button
-          onClick={() => handleAdvancedMatch(artist, song, audioUrl, lyrics)}
+          onClick={() => handleAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel)}
           disabled={matchingInProgress}
           style={{ 
             padding: '8px 16px', 
