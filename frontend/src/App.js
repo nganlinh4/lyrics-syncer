@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import LyricsDisplay from './components/LyricsDisplay';
-import LyricsTimeline from './components/timeline/LyricsTimeline';
 import ApiKeyInput from './components/ApiKeyInput';
 import AudioPlayer from './components/AudioPlayer';
 import ModelSelector from './components/ModelSelector';
@@ -264,31 +263,18 @@ function App() {
         />
       )}
 
-      {/* Lyrics Timeline Editor */}
+      {/* Lyrics Display with Editing */}
       {matchingComplete && matchedLyrics.length > 0 && (
-        <div id="timeline-editor"
-          tabIndex="-1"
-          style={{ 
-            marginTop: '30px', 
-            padding: '15px',
- 
-            backgroundColor: '#f8f9fa',
-            outline: 'none', // Hide focus outline
-          border: '1px solid #ddd',
-          borderRadius: '8px'
-        }}>
-          <h3 style={{ marginBottom: '15px', color: '#1976d2' }}>Edit Lyrics Timing</h3>
-          <LyricsTimeline 
+        <div>
+          <LyricsDisplay 
             matchedLyrics={matchedLyrics} 
-            currentTime={currentTime}
+            currentTime={currentTime} 
+            onLyricClick={seekTo}
             duration={audioDuration || 180}
-            onUpdateLyrics={(updatedLyrics) => {
-              console.log('Timeline update:', updatedLyrics);
-              handleUpdateLyrics(updatedLyrics);
-              document.getElementById('timeline-editor').focus();
-            }}
+            onUpdateLyrics={handleUpdateLyrics}
+            allowEditing={true}
           />
-
+          
           <button
             onClick={handleDownloadJSON}
             style={{ 
@@ -309,15 +295,6 @@ function App() {
             Downloads the edited lyrics timing as a JSON file (without confidence field)
           </p>
         </div>
-      )}
-
-      {/* Lyrics Display */}
-      {matchingComplete && matchedLyrics.length > 0 && (
-        <LyricsDisplay 
-          matchedLyrics={matchedLyrics} 
-          currentTime={currentTime} 
-          onLyricClick={seekTo}
-        />
       )}
 
       {/* Preview Button */}

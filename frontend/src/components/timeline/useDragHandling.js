@@ -17,8 +17,7 @@ const useDragHandling = ({ segments, duration, onUpdateLyrics }) => {
     
     const cursor = edge ? `${edge}-resize` : 'move';
     document.body.style.cursor = cursor;
-    document.body.style.userSelect = 'none';
-    document.body.style.webkitUserSelect = 'none';
+    setDragCursor(cursor);
 
     const segment = segments[index];
     setOriginalStart(segment.start);
@@ -37,90 +36,60 @@ const useDragHandling = ({ segments, duration, onUpdateLyrics }) => {
     
     let currentX = Math.max(0, Math.min(clientX - timelineLeft, timelineRect.width));
     let deltaX = currentX - startX;
-    deltaX = Math.max(-startX, Math.min(deltaX, timelineRect.width));
     
     if (timelineRect.width === 0) return;
     
     const timePerPixel = duration / timelineRect.width;
     const deltaTime = deltaX * timePerPixel;
     
-    const newSegments = segments.map(seg => ({ ...seg }));
-    const currentSegment = newSegments[draggingIndex];
-    const minStart = draggingIndex > 0 ? newSegments[draggingIndex - 1].end : 0;
-    const maxEnd = draggingIndex < newSegments.length - 1 
-      ? newSegments[draggingIndex + 1].start 
-      : duration;
+    const newSegments = [...segments];
+    const currentSegment = { ...newSegments[draggingIndex] };
 
     if (draggingEdge === 'left') {
-      currentSegment.start = Math.max(minStart, Math.min(currentSegment.end - 0.1, originalStart + deltaTime));
+      // Only basic boundary check to prevent negative start time
+      currentSegment.start = Math.max(0, originalStart + deltaTime);
     } else if (draggingEdge === 'right') {
-      currentSegment.end = Math.min(maxEnd, Math.max(currentSegment.start + 0.1, originalEnd + deltaTime));
+      // Only basic boundary check to prevent exceeding duration
+      currentSegment.end = Math.min(duration, originalEnd + deltaTime);
     } else {
-      const segmentDuration = originalEnd - originalStart;
+      // Dragging whole segment - allow free movement with only basic boundaries
       let newStart = originalStart + deltaTime;
       let newEnd = originalEnd + deltaTime;
-
-      if (newStart < minStart) {
-        newStart = minStart;
-        newEnd = minStart + segmentDuration;
+      
+      // Basic boundary checks - only prevent going negative if on left and beyond duration
+      if (newStart < 0) {
+        const offset = -newStart;
+        newStart = 0;
+        newEnd = Math.min(duration, originalEnd - originalStart + offset);
       }
-
-      if (newEnd > maxEnd) {
-        newEnd = maxEnd;
-        newStart = maxEnd - segmentDuration;
+      
+      if (newEnd > duration) {
+        const offset = newEnd - duration;
+        newEnd = duration;
+        newStart = Math.max(0, originalStart + originalEnd - duration - offset);
       }
-
-      currentSegment.start = Math.max(minStart, parseFloat(newStart.toFixed(3)));
-      currentSegment.end = Math.min(maxEnd, parseFloat(newEnd.toFixed(3)));
-
-      if (draggingIndex < newSegments.length - 1 && Math.abs(newEnd - maxEnd) < 0.01) {
-        const pushAmount = deltaTime;
-        
-        if (pushAmount > 0) {
-          for (let i = draggingIndex + 1; i < newSegments.length; i++) {
-            const nextSegment = newSegments[i];
-            const nextSegmentDuration = nextSegment.end - nextSegment.start;
-            let nextStart = nextSegment.start + pushAmount;
-            let nextEnd = nextSegment.end + pushAmount;
-            const hasNextSegment = i < newSegments.length - 1;
-            const nextLimit = hasNextSegment ? newSegments[i + 1].start : duration;
-
-            if (nextEnd > nextLimit) {
-              nextEnd = nextLimit;
-              nextStart = nextLimit - nextSegmentDuration;
-              if (i < newSegments.length - 1) {
-                pushAmount = nextEnd - nextSegment.end;
-              }
-            }
-
-            nextSegment.start = nextStart;
-            nextSegment.end = nextEnd;
-
-            if (pushAmount <= 0) break;
-          }
-        }
-      }
+      
+      currentSegment.start = newStart;
+      currentSegment.end = newEnd;
     }
 
+    // Update the current segment
+    newSegments[draggingIndex] = currentSegment;
+
+    // Update all segments with minimal validation
     const validatedSegments = newSegments.map(seg => ({
       ...seg,
-      start: Math.max(0, parseFloat(seg.start.toFixed(3))),
-      end: Math.min(duration, parseFloat(seg.end.toFixed(3)))
+      start: Math.max(0, seg.start),
+      end: Math.min(duration, seg.end)
     }));
 
     onUpdateLyrics(validatedSegments);
   };
 
   const endDrag = () => {
-    if (draggingIndex !== null) {
-      onUpdateLyrics([...segments]);
-    }
-    
     setDraggingIndex(null);
     setDraggingEdge(null);
-    document.body.style.userSelect = 'auto';
     document.body.style.cursor = 'default';
-    document.body.style.webkitUserSelect = 'auto';
     setDragCursor('move');
   };
 
