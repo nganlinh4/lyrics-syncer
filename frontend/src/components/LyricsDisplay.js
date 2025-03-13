@@ -219,32 +219,30 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
     
     const updatedLyrics = oldLyrics.map((lyric, i) => {
       if (i === index) {
-        // Update the specific field for the current lyric
-        return { ...lyric, [field]: newValue };
-      } else if (i > index) {
         if (field === 'start') {
-          // If we changed a start time, adjust both start and end for all following lyrics
+          // When changing start time, maintain the segment length by moving the end time
+          const length = lyric.end - lyric.start;
           return {
             ...lyric,
-            start: Math.max(0, lyric.start + delta),
-            end: Math.max(lyric.start + 0.1, lyric.end + delta)
+            start: newValue,
+            end: newValue + length
           };
-        } else if (field === 'end' && delta !== 0) {
-          // If we changed an end time, adjust start times for all following lyrics
-          // to maintain the same gaps between segments
-          return {
-            ...lyric,
-            start: Math.max(0, lyric.start + delta),
-            end: Math.max(lyric.start + 0.1, lyric.end + delta)
-          };
+        } else {
+          // For end time changes, just update the end
+          return { ...lyric, [field]: newValue };
         }
+      } else if (i > index) {
+        // For all subsequent segments, shift both start and end by the same delta
+        return {
+          ...lyric,
+          start: Math.max(0, lyric.start + delta),
+          end: Math.max(lyric.start + 0.1, lyric.end + delta)
+        };
       }
       return lyric;
     });
     
     setLyrics(updatedLyrics);
-    
-    // Notify parent component of updates
     if (onUpdateLyrics) {
       onUpdateLyrics(updatedLyrics);
     }
@@ -365,6 +363,9 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
                   backgroundColor: '#f0f7ff',
                   padding: '4px 8px',
                   borderRadius: '4px',
+                  marginLeft: '-40px', // Move the timing block to the left
+                  position: 'relative', // Ensure proper stacking context
+                  zIndex: 5 // Keep it above other elements
                 }}>
                   {/* Start time */}
                   <span 
@@ -442,3 +443,9 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
 };
 
 export default LyricsDisplay;
+
+
+
+
+
+
