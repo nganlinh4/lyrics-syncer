@@ -90,7 +90,14 @@ const useLyrics = () => {
   };
 
   const handleUpdateLyrics = (updatedLyrics) => {
-    setMatchedLyrics(updatedLyrics);
+    // Ensure the updated lyrics are properly formatted
+    const formattedLyrics = updatedLyrics.map(lyric => ({
+      start: Number(lyric.start),
+      end: Number(lyric.end),
+      text: lyric.text,
+      confidence: lyric.confidence || 0.95
+    }));
+    setMatchedLyrics(formattedLyrics);
   };
 
   const handleDownloadJSON = useCallback(() => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import LyricsDisplay from './components/LyricsDisplay';
-import LyricsTimeline from './components/LyricsTimeline';
+import LyricsTimeline from './components/timeline/LyricsTimeline';
 import ApiKeyInput from './components/ApiKeyInput';
 import AudioPlayer from './components/AudioPlayer';
 import ModelSelector from './components/ModelSelector';
@@ -266,10 +266,14 @@ function App() {
 
       {/* Lyrics Timeline Editor */}
       {matchingComplete && matchedLyrics.length > 0 && (
-        <div style={{ 
-          marginTop: '30px', 
-          padding: '15px',
-          backgroundColor: '#f8f9fa',
+        <div id="timeline-editor"
+          tabIndex="-1"
+          style={{ 
+            marginTop: '30px', 
+            padding: '15px',
+ 
+            backgroundColor: '#f8f9fa',
+            outline: 'none', // Hide focus outline
           border: '1px solid #ddd',
           borderRadius: '8px'
         }}>
@@ -278,7 +282,11 @@ function App() {
             matchedLyrics={matchedLyrics} 
             currentTime={currentTime}
             duration={audioDuration || 180}
-            onUpdateLyrics={handleUpdateLyrics}
+            onUpdateLyrics={(updatedLyrics) => {
+              console.log('Timeline update:', updatedLyrics);
+              handleUpdateLyrics(updatedLyrics);
+              document.getElementById('timeline-editor').focus();
+            }}
           />
 
           <button
