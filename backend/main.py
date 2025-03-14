@@ -135,8 +135,7 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
             raise ValueError("Root element must be an array")
 
         # Sort entries by start time to fix out-of-order entries
-        data.sort(key=lambda x: convert_time_to_seconds(str(x.get("start") or x.get("start_time", 0)))
-)
+        data.sort(key=lambda x: convert_time_to_seconds(str(x.get("start") or x.get("start_time", 0))))
 
         # Normalize all entries
         normalized = []

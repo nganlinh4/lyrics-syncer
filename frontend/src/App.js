@@ -16,6 +16,7 @@ function App() {
   const [needsRefetch, setNeedsRefetch] = useState(true);
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [audioOnly, setAudioOnly] = useState(() => localStorage.getItem('audioOnly') === 'true');
+  const [hasMatched, setHasMatched] = useState(false);
 
   // Custom hooks
   const {
@@ -57,6 +58,7 @@ function App() {
     setLyrics
   } = useLyrics();
 
+  // Add this function where other handlers are defined
   // Regular download and process
   const handleDownload = async () => {
     try {
@@ -67,7 +69,9 @@ function App() {
         throw new Error('Please enter both song and artist');
       }
 
-      const response = await fetch('http://localhost:3001/api/process', {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
+      const response = await fetch(`${API_URL}/api/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -92,7 +96,7 @@ function App() {
       setHasDownloaded(true);
 
       const songName = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
-      const audioResponse = await fetch(`http://localhost:3001/api/audio_data/${encodeURIComponent(songName)}`);
+      const audioResponse = await fetch(`${API_URL}/api/audio_data/${encodeURIComponent(songName)}`);
       if (!audioResponse.ok) {
         throw new Error('Failed to get audio data');
       }
@@ -118,7 +122,9 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3001/api/force_process', {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
+      const response = await fetch(`${API_URL}/api/force_process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ song, artist, audioOnly }),
@@ -248,22 +254,40 @@ function App() {
       )}
 
       {showMatchingButton && (
-        <button
-          disabled={matchingInProgress}
-          onClick={() => handleAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel)}
-          style={{ 
-            padding: '8px 16px', 
-            marginLeft: '10px',
-            backgroundColor: '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: canStartMatching ? 'pointer' : 'not-allowed',
-            opacity: canStartMatching ? 1 : 0.7
-          }}
-        >
-          {matchingInProgress ? 'Matching in Progress...' : 'Advanced Lyrics Matching (ML)'}
-        </button>
+        <>
+          <button
+            disabled={matchingInProgress}
+            onClick={() => handleAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel)}
+            style={{ 
+              padding: '8px 16px', 
+              marginLeft: '10px',
+              backgroundColor: '#2196F3',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: matchingInProgress ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {matchingInProgress ? 'Matching...' : 'Match Lyrics with Audio'}
+          </button>
+          
+          
+            <button
+              disabled={matchingInProgress}
+              onClick={() => handleAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel, true)}
+              style={{ 
+                padding: '8px 16px', 
+                marginLeft: '10px',
+                backgroundColor: '#ff9800',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: matchingInProgress ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Force Rematch
+            </button>
+        </>
       )}
 
       {/* Processing Status */}

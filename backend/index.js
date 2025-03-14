@@ -17,6 +17,12 @@ const PYTHON_SCRIPT_PATH = path.join(__dirname, 'main.py');
 const app = express();
 const port = 3001;
 
+// Add new function to get Gemini results path
+const getGeminiResultsPath = (artist, song, model) => {
+    const songName = getSongName(artist, song);
+    return path.join(LYRICS_DIR, `${songName}_${model}_gemini.json`);
+};
+
 // Middleware
 app.use(helmet({
   crossOriginResourcePolicy: false, // Allow cross-origin resource sharing for audio files
@@ -468,6 +474,14 @@ const matchLyrics = async (req, res) => {
             return res.status(400).json({ error: 'Missing required parameters' });
         }
 
+        // Check for existing Gemini results
+        const resultsPath = getGeminiResultsPath(artist, song, model);
+        if (await fileExists(resultsPath)) {
+            console.log(`Using cached Gemini results from ${resultsPath}`);
+            const cachedResults = await fs.readFile(resultsPath, 'utf-8');
+            return res.json(JSON.parse(cachedResults));
+        }
+
         // Clean the audio path by removing query parameters
         const cleanAudioPath = audioPath.split('?')[0];
         
@@ -524,16 +538,20 @@ const matchLyrics = async (req, res) => {
                 });
             }
 
-            try {
+            (async () => {
+              try {
                 const result = JSON.parse(stdoutData);
+                // Save Gemini results to file
+                await fs.writeFile(resultsPath, JSON.stringify(result, null, 2), 'utf-8');
                 res.json(result);
-            } catch (error) {
+              } catch (error) {
                 console.error('Error parsing Python output:', error);
                 res.status(500).json({ 
                     error: 'Failed to parse matching results',
                     status: 'error'
                 });
-            }
+              }
+            })();
         });
 
     } catch (error) {
@@ -546,6 +564,24 @@ const matchLyrics = async (req, res) => {
 };
 
 app.post('/api/match_lyrics', matchLyrics);
+
+app.post('/api/force_match', async (req, res) => {
+    try {
+        const { artist, song, audioPath, lyrics, model } = req.body;
+        
+        // Delete existing Gemini results if they exist
+        const resultsPath = getGeminiResultsPath(artist, song, model);
+        if (await fileExists(resultsPath)) {
+            await fs.unlink(resultsPath);
+        }
+
+        // Use the same matchLyrics function
+        return matchLyrics(req, res);
+    } catch (error) {
+        console.error("Error in /api/force_match:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

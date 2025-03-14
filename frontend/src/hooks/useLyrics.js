@@ -49,15 +49,16 @@ const useLyrics = () => {
     }
   };
 
-  const handleAdvancedMatch = async (artist, song, audioUrl, lyrics, model) => {
+  const handleAdvancedMatch = async (artist, song, audioUrl, lyrics, model, force = false) => {
     try {
       setMatchingInProgress(true);
       setMatchingComplete(false);
       setError(null);
 
       const cleanAudioPath = audioUrl.split('?')[0].replace('http://localhost:3001/', '');
+      const endpoint = force ? 'force_match' : 'match_lyrics';
 
-      const response = await fetch('http://localhost:3001/api/match_lyrics', {
+      const response = await fetch(`http://localhost:3001/api/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
