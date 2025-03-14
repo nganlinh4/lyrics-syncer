@@ -5,6 +5,7 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
   const [editingField, setEditingField] = useState(null); // 'start' or 'end'
   const [editValues, setEditValues] = useState({ start: 0, end: 0 });
   const [lyrics, setLyrics] = useState([]);
+  const [isSticky, setIsSticky] = useState(true); // Add sticky mode state
   const [history, setHistory] = useState([]); // For undo functionality
   const [originalLyrics, setOriginalLyrics] = useState([]); // For reset functionality
   const [hoveredElement, setHoveredElement] = useState(null); // Track which element is being hovered over
@@ -365,8 +366,9 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
           // For end time changes, just update the end
           return { ...lyric, [field]: newValue };
         }
-      } else if (i > index) {
+      } else if (i > index && isSticky) {
         // For all subsequent segments, shift both start and end by the same delta
+        // Only if sticky mode is enabled
         return {
           ...lyric,
           start: Math.max(0, lyric.start + delta),
@@ -411,6 +413,27 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
         <span>Matched Lyrics</span>
         {allowEditing && (
           <div>
+            <label 
+              style={{ 
+                marginRight: '15px',
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isSticky}
+                onChange={(e) => setIsSticky(e.target.checked)}
+                style={{ marginRight: '5px' }}
+              />
+              <span style={{ 
+                fontSize: '14px',
+                color: '#666'
+              }}>
+                Sticky Timings
+              </span>
+            </label>
             <button 
               onClick={handleUndo}
               disabled={history.length === 0}
@@ -611,7 +634,8 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
         <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
           <p>
             Drag timing values horizontally to adjust (left/right). Changes to earlier timings will automatically update later ones.
-            Use the Undo button to revert the last change or Reset to go back to the original Gemini results.
+            Use the Undo button to revert the last change or Reset to go back to the original Gemini results.<br/>
+            Toggle "Sticky Timings" to control whether adjusting a timing affects all subsequent timings.
           </p>
         </div>
       )}
