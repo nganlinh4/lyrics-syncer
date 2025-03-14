@@ -8,6 +8,7 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
   const [isSticky, setIsSticky] = useState(true); // Add sticky mode state
   const [history, setHistory] = useState([]); // For undo functionality
   const [originalLyrics, setOriginalLyrics] = useState([]); // For reset functionality
+   const [isAtOriginalState, setIsAtOriginalState] = useState(true);
   const [hoveredElement, setHoveredElement] = useState(null); // Track which element is being hovered over
   const containerRef = useRef(null);
   const timelineRef = useRef(null);
@@ -26,6 +27,25 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
     }
   }, [matchedLyrics]);
   
+   // Track whether current lyrics match original lyrics
+   useEffect(() => {
+     if (originalLyrics.length > 0) {
+       const areEqual = lyrics.length === originalLyrics.length &&
+         lyrics.every((lyric, index) => {
+           const origLyric = originalLyrics[index];
+           return (
+             lyric.text === origLyric.text &&
+             Math.abs(lyric.start - origLyric.start) < 0.001 &&
+             Math.abs(lyric.end - origLyric.end) < 0.001
+           );
+         });
+
+       if (isAtOriginalState !== areEqual) {
+         setIsAtOriginalState(areEqual);
+       }
+     }
+   }, [lyrics, originalLyrics]);
+   
   // Initialize and resize the canvas for proper pixel density
   useEffect(() => {
     if (timelineRef.current) {
@@ -205,15 +225,20 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
   // Handle the reset operation
   const handleReset = () => {
     if (originalLyrics.length > 0) {
-      // Save current state to history before reset
-      setHistory(prevHistory => [...prevHistory, JSON.parse(JSON.stringify(lyrics))]);
+      const currentState = JSON.parse(JSON.stringify(lyrics));
+      const originalState = JSON.parse(JSON.stringify(originalLyrics));
       
-      // Reset to original state
-      setLyrics(JSON.parse(JSON.stringify(originalLyrics)));
+      // Only proceed if there are actual changes
+      if (JSON.stringify(currentState) !== JSON.stringify(originalState)) {
+        // Save current state to history before reset
+        setHistory(prevHistory => [...prevHistory, currentState]);
+        // Reset to original state
+        setLyrics(originalState);
       
-      // Notify parent component
-      if (onUpdateLyrics) {
-        onUpdateLyrics(originalLyrics);
+        // Notify parent component
+        if (onUpdateLyrics) {
+          onUpdateLyrics(originalState);
+        }
       }
     }
   };
@@ -370,10 +395,11 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
       } else if (i > index && isSticky) {
         // For all subsequent segments, shift both start and end by the same delta
         // Only if sticky mode is enabled
+        const newStart = Math.max(0, lyric.start + delta);
         return {
           ...lyric,
-          start: Math.max(0, lyric.start + delta),
-          end: Math.max(lyric.start + 0.1, lyric.end + delta)
+          start: newStart,
+          end: Math.max(newStart + 0.1, lyric.end + delta)
         };
       }
       return lyric;
@@ -455,14 +481,16 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
             </button>
             <button 
               onClick={handleReset}
-              disabled={originalLyrics.length === 0}
+              disabled={originalLyrics.length === 0 || 
+isAtOriginalState}
               style={{
-                backgroundColor: originalLyrics.length === 0 ? '#ddd' : '#f44336',
+                backgroundColor: (originalLyrics.length === 0 || isAtOriginalState) 
+                  ? '#ddd' : '#f44336',
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
                 padding: '4px 10px',
-                cursor: originalLyrics.length === 0 ? 'not-allowed' : 'pointer',
+                cursor: (originalLyrics.length === 0 || isAtOriginalState) ? 'not-allowed' : 'pointer',
                 fontSize: '12px',
                 fontWeight: 'bold'
               }}
