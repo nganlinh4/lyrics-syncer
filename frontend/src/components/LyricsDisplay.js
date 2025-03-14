@@ -93,28 +93,9 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
       : duration;
     
     // Use the greater of actual duration or max lyric time 
-    // to ensure proper scaling
     const timelineEnd = Math.max(maxLyricTime, duration) * 1.05; // Add 5% padding
     
-    // Draw time markers
-    ctx.fillStyle = '#ddd';
-    
-    // Calculate proper spacing for time markers based on timeline length
-    const timeStep = Math.max(1, Math.ceil(timelineEnd / 15));
-    for (let i = 0; i <= timelineEnd; i += timeStep) {
-      const x = (i / timelineEnd) * displayWidth;
-      ctx.fillRect(x, 0, 1, displayHeight);
-      
-      // Draw time labels - sharper text
-      ctx.fillStyle = '#666';
-      ctx.font = '10px Arial';
-      ctx.textBaseline = 'bottom';
-      ctx.textAlign = 'left';
-      ctx.fillText(`${i}s`, x + 3, displayHeight - 3);
-      ctx.fillStyle = '#ddd';
-    }
-    
-    // Draw lyric segments
+    // Draw lyric segments FIRST (below time markers)
     lyrics.forEach((lyric, index) => {
       const startX = (lyric.start / timelineEnd) * displayWidth;
       const endX = (lyric.end / timelineEnd) * displayWidth;
@@ -123,12 +104,32 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
       // Get a color based on the index
       const hue = (index * 30) % 360;
       ctx.fillStyle = `hsla(${hue}, 70%, 60%, 0.7)`;
-      ctx.fillRect(startX, 5, segmentWidth, displayHeight - 10);
+      // Draw segments in lower 70% of canvas height
+      ctx.fillRect(startX, displayHeight * 0.3, segmentWidth, displayHeight * 0.7);
       
       // Draw border
       ctx.strokeStyle = `hsla(${hue}, 70%, 40%, 0.9)`;
-      ctx.strokeRect(startX, 5, segmentWidth, displayHeight - 10);
+      ctx.strokeRect(startX, displayHeight * 0.3, segmentWidth, displayHeight * 0.7);
     });
+    
+    // Draw time markers ON TOP
+    ctx.fillStyle = '#ddd';
+    
+    // Calculate proper spacing for time markers based on timeline length
+    const timeStep = Math.max(1, Math.ceil(timelineEnd / 15));
+    for (let i = 0; i <= timelineEnd; i += timeStep) {
+      const x = (i / timelineEnd) * displayWidth;
+      // Draw full-height vertical lines
+      ctx.fillRect(x, 0, 1, displayHeight);
+      
+      // Draw time labels at the top
+      ctx.fillStyle = '#666';
+      ctx.font = '10px Arial';
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${i}s`, x + 3, 2);
+      ctx.fillStyle = '#ddd';
+    }
     
     // Draw current time indicator - make it more visible
     const currentX = (currentTime / timelineEnd) * displayWidth;
@@ -141,7 +142,7 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
     ctx.fillStyle = 'red';
     ctx.fillRect(currentX - 1, 0, 3, displayHeight);
     
-    // Draw playhead triangle
+    // Draw playhead triangle at the top
     ctx.beginPath();
     ctx.moveTo(currentX - 6, 0);
     ctx.lineTo(currentX + 6, 0);

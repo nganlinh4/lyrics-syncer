@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 
+const DEFAULT_VOLUME = 0.3; // 30% volume
+
 const useAudioControl = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
@@ -12,6 +14,23 @@ const useAudioControl = () => {
   const audioRef = useRef(null);
   const animationFrameRef = useRef(null);
 
+  // Force set volume whenever audio element is available
+  useEffect(() => {
+    const setInitialVolume = () => {
+      if (audioRef.current) {
+        audioRef.current.volume = DEFAULT_VOLUME;
+      }
+      if (wavesurferRef.current) {
+        wavesurferRef.current.setVolume(DEFAULT_VOLUME);
+      }
+    };
+
+    setInitialVolume();
+    
+    // Also set volume after a short delay to ensure it takes effect
+    setTimeout(setInitialVolume, 100);
+  }, [audioRef.current]);
+
   useEffect(() => {
     if (containerRef.current && !wavesurferRef.current) {
       wavesurferRef.current = WaveSurfer.create({
@@ -21,12 +40,15 @@ const useAudioControl = () => {
         cursorColor: 'navy',
         barWidth: 3,
         height: 100,
-        responsive: true
+        responsive: true,
+        volume: DEFAULT_VOLUME
       });
 
       wavesurferRef.current.on('ready', () => {
-        console.log('WaveSurfer is ready');
-        setAudioDuration(wavesurferRef.current.getDuration());
+        wavesurferRef.current.setVolume(DEFAULT_VOLUME);
+        if (audioRef.current) {
+          audioRef.current.volume = DEFAULT_VOLUME;
+        }
       });
 
       wavesurferRef.current.on('error', (err) => {
@@ -118,6 +140,14 @@ const useAudioControl = () => {
     }
   }, []);
 
+  // Add a function to handle audio element creation
+  const handleAudioRef = (element) => {
+    audioRef.current = element;
+    if (element) {
+      element.volume = DEFAULT_VOLUME;
+    }
+  };
+
   return {
     currentTime,
     audioDuration,
@@ -127,7 +157,8 @@ const useAudioControl = () => {
     audioRef,
     setAudioUrl,
     setFileSize,
-    seekTo
+    seekTo,
+    handleAudioRef
   };
 };
 

@@ -1,13 +1,21 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const AudioPlayer = ({
   audioUrl,
   audioRef,
+  handleAudioRef, // Add this prop
   containerRef,
   fileSize,
   onError,
   onLoadedMetadata
 }) => {
+  // Force set volume when audio loads
+  const handleCanPlay = (e) => {
+    if (e.target) {
+      e.target.volume = 0.3;
+    }
+  };
+
   if (!audioUrl) return null;
 
   return (
@@ -20,10 +28,15 @@ const AudioPlayer = ({
 
       <div style={{ marginTop: '10px', marginBottom: '20px' }}>
         <audio
-          ref={audioRef}
+          ref={(element) => {
+            if (handleAudioRef) handleAudioRef(element);
+            if (audioRef) audioRef.current = element;
+            if (element) element.volume = 0.3;
+          }}
           controls
           src={audioUrl}
           preload="auto"
+          onCanPlay={handleCanPlay}
           style={{ width: '100%', marginTop: '10px' }}
           onError={onError}
           onLoadedMetadata={onLoadedMetadata}
