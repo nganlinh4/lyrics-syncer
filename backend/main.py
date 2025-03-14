@@ -32,6 +32,16 @@ def clean_lyrics_text(text: str) -> str:
         cleaned = re.sub(marker, '', cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
 
+def convert_time_to_seconds(time_str: str) -> float:
+    """Convert time string to seconds."""
+    try:
+        # Check if it's already in decimal format
+        return float(time_str)
+    except ValueError:
+        # Convert MM:SS.mmm format to seconds
+        minutes, seconds = time_str.split(':')
+        return float(minutes) * 60 + float(seconds)
+
 def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
     """Clean Gemini response text to extract valid JSON"""
     cleaned = ''
@@ -98,8 +108,12 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
             if debug_file:
                 print(f"Attempting to repair malformed JSON from: {debug_file}", file=sys.stderr)
 
-            # Extract all objects that look like valid entries
-            pattern = r'\{\s*"start"\s*:\s*(\d+\.\d+|\d+)\s*,\s*"end"\s*:\s*(\d+\.\d+|\d+)\s*,\s*"text"\s*:\s*"([^"]*)"\s*\}'
+            # Updated pattern to handle both decimal and MM:SS.mmm formats
+            time_pattern = r'(?:\d+\.\d+|\d+|\d+:\d+\.\d+)'
+            pattern = (
+                r'\{\s*"start"\s*:\s*(' + time_pattern + r')\s*,\s*'
+                r'"end"\s*:\s*(' + time_pattern + r')\s*,\s*"text"\s*:\s*"([^"]*)"\s*\}'
+            )
             matches = re.findall(pattern, cleaned)
 
             if not matches:
@@ -109,8 +123,8 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
             data = []
             for start, end, text in matches:
                 data.append({
-                    "start": float(start),
-                    "end": float(end),
+                    "start": convert_time_to_seconds(start),
+                    "end": convert_time_to_seconds(end),
                     "text": text
                 })
 
@@ -121,7 +135,8 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
             raise ValueError("Root element must be an array")
 
         # Sort entries by start time to fix out-of-order entries
-        data.sort(key=lambda x: float(x.get("start") or x.get("start_time", 0)))
+        data.sort(key=lambda x: convert_time_to_seconds(str(x.get("start") or x.get("start_time", 0)))
+)
 
         # Normalize all entries
         normalized = []
@@ -131,8 +146,8 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
 
             # Convert fields to expected format
             normalized.append({
-                "start_time": float(item.get("start") or item.get("start_time", 0)),
-                "end_time": float(item.get("end") or item.get("end_time", 0)),
+                "start_time": convert_time_to_seconds(str(item.get("start") or item.get("start_time", 0))),
+                "end_time": convert_time_to_seconds(str(item.get("end") or item.get("end_time", 0))),
                 "text": str(item.get("text", "")).strip()
             })
 
@@ -148,15 +163,20 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
                 with open(debug_file, 'r', encoding='utf-8') as f:
                     content = f.read()
 
-                pattern = r'\{\s*"start"\s*:\s*(\d+\.\d+|\d+)\s*,\s*"end"\s*:\s*(\d+\.\d+|\d+)\s*,\s*"text"\s*:\s*"([^"]*)"\s*\}'
+                # Use same updated pattern for emergency extraction
+                time_pattern = r'(?:\d+\.\d+|\d+|\d+:\d+\.\d+)'
+                pattern = (
+                    r'\{\s*"start"\s*:\s*(' + time_pattern + r')\s*,\s*'
+                    r'"end"\s*:\s*(' + time_pattern + r')\s*,\s*"text"\s*:\s*"([^"]*)"\s*\}'
+                )
                 matches = re.findall(pattern, content)
 
                 if matches:
                     data = []
                     for start, end, text in matches:
                         data.append({
-                            "start_time": float(start),
-                            "end_time": float(end),
+                            "start_time": convert_time_to_seconds(start),
+                            "end_time": convert_time_to_seconds(end),
                             "text": text
                         })
 
@@ -220,13 +240,12 @@ Return: list[LyricLine]
 
 Requirements:
 1. Each lyric line's timing must be derived directly from the audio.
-2. Start and end times must be floating point numbers representing ABSOLUTE seconds especially cases after 60.00 seconds (e.g., 75.20, not 1.15).
-3. Every lyric line must have corresponding start and end times.
-4. Output must be valid JSON with no extra text.
-5. The 'text' field in your output MUST EXACTLY match the lines from 'Lyrics lines' below.
-6. The provided audio may be in any language. Analyze the audio content to determine timing.
-7. >>> CRITICAL information: This song's duration is {get_audio_duration(audio_path)} seconds, so think carefully about the last lyrics timing, it CANNOT BE LONGER.
-8. If the provided lyrics have romanized Korean, turn it to actual Korean when responding.
+2. Every lyric line must have corresponding start and end times.
+3. Output must be valid JSON with no extra text.
+4. The 'text' field in your output MUST EXACTLY match the lines from 'Lyrics lines' below.
+5. The provided audio may be in any language. Analyze the audio content to determine timing.
+6. >>> CRITICAL information: This song's duration is {get_audio_duration(audio_path)} seconds, so think carefully about the last lyrics timing, it CANNOT BE LONGER.
+7. If the provided lyrics have romanized Korean, turn it to actual Korean when responding.
 
 Lyrics lines:
 {json.dumps(filtered_lyrics, indent=2, ensure_ascii=False)}
@@ -269,8 +288,8 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
         cleaned_matches = []
         for match in matched_lyrics:
             cleaned_matches.append({
-                "start": float(match.get("start") or match.get("start_time", 0)),
-                "end": float(match.get("end") or match.get("end_time", 0)),
+                "start": convert_time_to_seconds(str(match.get("start") or match.get("start_time", 0))),
+                "end": convert_time_to_seconds(str(match.get("end") or match.get("end_time", 0))),
                 "text": str(match.get("text", "")).strip(),
                 "language": match.get("language", "unknown"),
                 "confidence": 0.95
