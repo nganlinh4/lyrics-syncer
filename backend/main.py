@@ -111,8 +111,8 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
             # Updated pattern to handle both decimal and MM:SS.mmm formats
             time_pattern = r'(?:\d+\.\d+|\d+|\d+:\d+\.\d+)'
             pattern = (
-                r'\{\s*"start"\s*:\s*(' + time_pattern + r')\s*,\s*'
-                r'"end"\s*:\s*(' + time_pattern + r')\s*,\s*"text"\s*:\s*"([^"]*)"\s*\}'
+                r'\{\s*"start"\s*:\s*(' + time_pattern + r')\s*,\s*"end"\s*:\s*(' + time_pattern + r')\s*,\s*' +
+                r'"text"\s*:\s*"([^"]*)"\s*,\s*"language"\s*:\s*"([^"]*)"\s*\}'
             )
             matches = re.findall(pattern, cleaned)
 
@@ -121,11 +121,12 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
 
             # Reconstruct valid JSON array from extracted objects
             data = []
-            for start, end, text in matches:
+            for start, end, text, language in matches:
                 data.append({
-                    "start": convert_time_to_seconds(start),
-                    "end": convert_time_to_seconds(end),
-                    "text": text
+                    "start": start,
+                    "end": end,
+                    "text": text,
+                    "language": language
                 })
 
             print(f"Extracted {len(data)} valid entries from malformed JSON", file=sys.stderr)
@@ -135,7 +136,7 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
             raise ValueError("Root element must be an array")
 
         # Sort entries by start time to fix out-of-order entries
-        data.sort(key=lambda x: convert_time_to_seconds(str(x.get("start") or x.get("start_time", 0))))
+        data.sort(key=lambda x: float(x["start"]))
 
         # Normalize all entries
         normalized = []
@@ -144,11 +145,8 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
                 continue
 
             # Convert fields to expected format
-            normalized.append({
-                "start_time": convert_time_to_seconds(str(item.get("start") or item.get("start_time", 0))),
-                "end_time": convert_time_to_seconds(str(item.get("end") or item.get("end_time", 0))),
-                "text": str(item.get("text", "")).strip()
-            })
+            # Keep all original fields from Gemini response
+            normalized.append(item)
 
         return json.dumps(normalized, indent=2)
 
@@ -165,22 +163,24 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
                 # Use same updated pattern for emergency extraction
                 time_pattern = r'(?:\d+\.\d+|\d+|\d+:\d+\.\d+)'
                 pattern = (
-                    r'\{\s*"start"\s*:\s*(' + time_pattern + r')\s*,\s*'
-                    r'"end"\s*:\s*(' + time_pattern + r')\s*,\s*"text"\s*:\s*"([^"]*)"\s*\}'
+                    r'\{\s*"start"\s*:\s*(' + time_pattern + r')\s*,\s*"end"\s*:\s*(' + time_pattern + r')\s*,\s*' +
+                    r'"text"\s*:\s*"([^"]*)"\s*,\s*"language"\s*:\s*"([^"]*)"\s*\}'
                 )
                 matches = re.findall(pattern, content)
 
                 if matches:
                     data = []
-                    for start, end, text in matches:
+                    for start, end, text, language in matches:
                         data.append({
-                            "start_time": convert_time_to_seconds(start),
-                            "end_time": convert_time_to_seconds(end),
+                            "start": start,
+                            "end": end,
                             "text": text
+,
+                            "language": language
                         })
 
                     # Sort by start time
-                    data.sort(key=lambda x: x["start_time"])
+                    data.sort(key=lambda x: float(x["start"]))
                     print(f"Emergency extraction successful: {len(data)} entries recovered", file=sys.stderr)
                     return json.dumps(data, indent=2)
             except Exception as rescue_error:
@@ -235,6 +235,7 @@ Task: Analyze the provided audio and match its content with the given lyrics lin
 
 Use this JSON schema for output:
 LyricLine = {{'start': float, 'end': float, 'text': str, 'language': str}}
+For language field, use the correct language code (e.g., 'ko' for Korean, 'en' for English, 'ja' for Japanese).
 Return: list[LyricLine]
 
 Requirements:
@@ -243,7 +244,8 @@ Requirements:
 3. Output must be valid JSON with no extra text.
 4. The 'text' field in your output MUST EXACTLY match the lines from 'Lyrics lines' below.
 5. The provided audio may be in any language. Analyze the audio content to determine timing.
-6. >>> CRITICAL information: This song's duration is {get_audio_duration(audio_path)} seconds, so think carefully about the last lyrics timing, it CANNOT BE LONGER.
+6. >>> CRITICAL: Detect and set the correct language code for each lyric line based on its content (e.g., 'ko' for Korean text).
+7. >>> CRITICAL information: This song's duration is {get_audio_duration(audio_path)} seconds, so think carefully about the last lyrics timing, it CANNOT BE LONGER.
 7. If the provided lyrics have romanized Korean, turn it to actual Korean when responding.
 
 Lyrics lines:
@@ -286,15 +288,10 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
         # Clean and return matches
         cleaned_matches = []
         for match in matched_lyrics:
-            cleaned_matches.append({
-                "start": convert_time_to_seconds(str(match.get("start") or match.get("start_time", 0))),
-                "end": convert_time_to_seconds(str(match.get("end") or match.get("end_time", 0))),
-                "text": str(match.get("text", "")).strip(),
-                "language": match.get("language", "unknown"),
-                "confidence": 0.95
-            })
+            cleaned_matches.append(dict(match))
 
         return cleaned_matches
+
 
     except Exception as e:
         print(f"Error matching lyrics with Gemini: {str(e)}", file=sys.stderr)
