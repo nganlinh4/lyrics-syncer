@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LyricsDisplay from './components/LyricsDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
 import AudioPlayer from './components/AudioPlayer';
@@ -13,6 +13,8 @@ function App() {
   const [artist, setArtist] = useState(() => localStorage.getItem('lastArtist') || '');
   const [song, setSong] = useState(() => localStorage.getItem('lastSong') || '');
   const [loading, setLoading] = useState(false);
+  const [needsRefetch, setNeedsRefetch] = useState(true);
+  const [hasDownloaded, setHasDownloaded] = useState(false);
   const [audioOnly, setAudioOnly] = useState(() => localStorage.getItem('audioOnly') === 'true');
 
   // Custom hooks
@@ -38,10 +40,12 @@ function App() {
   const {
     lyrics,
     matchedLyrics,
+    setMatchedLyrics,
     matchingInProgress,
     matchingComplete,
     error: lyricsError,
     processingStatus,
+    setMatchingComplete,
     matchingProgress,
     languageDetected,
     handlePreviewLyrics,
@@ -53,6 +57,7 @@ function App() {
     setLyrics
   } = useLyrics();
 
+  // Regular download and process
   const handleDownload = async () => {
     try {
       setLoading(true);
@@ -83,6 +88,8 @@ function App() {
         const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
         setLyrics(lyricsArray);
       }
+      setNeedsRefetch(false);
+      setHasDownloaded(true);
 
       const songName = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
       const audioResponse = await fetch(`http://localhost:3001/api/audio_data/${encodeURIComponent(songName)}`);
@@ -105,6 +112,43 @@ function App() {
     }
   };
 
+  // Force re-download and process
+  const handleForceDownload = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('http://localhost:3001/api/force_process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ song, artist, audioOnly }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to process: ${response.status}`);
+      }
+
+      // Re-use same code as regular download
+      await handleDownload();
+    } catch (error) {
+      setError(error.message);
+      console.error('Force download error:', error);
+    }
+  };
+
+  // Effect to handle song/artist changes
+  useEffect(() => {
+    setNeedsRefetch(true);
+    setHasDownloaded(false);
+    setMatchingComplete(false);
+    setMatchedLyrics([]);
+  }, [song, artist]);
+
+  const canStartMatching = hasDownloaded && !needsRefetch && audioUrl && lyrics.length > 0;
+  const showForceButtons = !loading && hasDownloaded;
+  const showMatchingButton = canStartMatching && !matchingInProgress;
+
   return (
     <div className="container">
       <h1>Lyrics Timing App</h1>
@@ -118,6 +162,7 @@ function App() {
             value={song}
             onChange={(e) => {
               setSong(e.target.value);
+              setNeedsRefetch(true);
               localStorage.setItem('lastSong', e.target.value);
             }}
           />
@@ -141,6 +186,7 @@ function App() {
           value={artist}
           onChange={(e) => {
             setArtist(e.target.value);
+            setNeedsRefetch(true);
             localStorage.setItem('lastArtist', e.target.value);
           }}
           style={{ marginRight: '10px' }}
@@ -187,10 +233,32 @@ function App() {
         {loading ? 'Processing...' : 'Download and Process'}
       </button>
 
-      {audioUrl && lyrics.length > 0 && (
+      
+      {/* Force re-download buttons */}
+      {showForceButtons && (
+        <>
+          <button
+            onClick={handleForceDownload}
+            disabled={loading}
+            style={{ padding: '8px 16px', marginLeft: '10px' }}
+          >
+            Force Re-download & Process
+          </button
+>
+          <button
+            onClick={() => handlePreviewLyrics(artist, song, true)}
+            disabled={loading}
+            style={{ padding: '8px 16px', marginLeft: '10px' }}
+          >
+            Force Re-fetch Lyrics
+          </button>
+        </>
+      )}
+
+      {showMatchingButton && (
         <button
-          onClick={() => handleAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel)}
           disabled={matchingInProgress}
+          onClick={() => handleAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel)}
           style={{ 
             padding: '8px 16px', 
             marginLeft: '10px',
@@ -198,8 +266,8 @@ function App() {
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: matchingInProgress ? 'not-allowed' : 'pointer',
-            opacity: matchingInProgress ? 0.7 : 1
+            cursor: canStartMatching ? 'pointer' : 'not-allowed',
+            opacity: canStartMatching ? 1 : 0.7
           }}
         >
           {matchingInProgress ? 'Matching in Progress...' : 'Advanced Lyrics Matching (ML)'}

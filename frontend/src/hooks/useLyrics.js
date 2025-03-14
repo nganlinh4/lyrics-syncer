@@ -11,7 +11,7 @@ const useLyrics = () => {
   const [languageDetected, setLanguageDetected] = useState('');
   const [currentLyricIndex, setCurrentLyricIndex] = useState(-1);
 
-  const handlePreviewLyrics = async (artist, song) => {
+  const handlePreviewLyrics = async (artist, song, forceRefetch = false) => {
     if (!song || !artist) {
       setError("Please enter both song and artist.");
       setLyrics([]);
@@ -20,10 +20,18 @@ const useLyrics = () => {
 
     try {
       setError(null);
-      const response = await fetch('http://localhost:3001/api/lyrics', {
+      const endpoint = forceRefetch ? 'force_lyrics' : 'lyrics';
+      
+      const response = await fetch(`http://localhost:3001/api/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artist, song }),
+        body: JSON.stringify({ 
+          artist, 
+          song,
+          // We use the force parameter to tell backend to ignore cached files
+          // even for the regular lyrics endpoint
+          force: forceRefetch 
+        }),
       });
 
       if (!response.ok) {
@@ -140,6 +148,8 @@ const useLyrics = () => {
   return {
     lyrics,
     matchedLyrics,
+        setMatchedLyrics,
+        setMatchingComplete,
     matchingInProgress,
     matchingComplete,
     error,

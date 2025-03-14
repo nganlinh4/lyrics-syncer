@@ -330,33 +330,68 @@ const saveApiKey = async (req, res) => {
 // Routes
 app.get('/api/audio_data/:song_name', getAudioData);
 app.get('/api/lyrics_timing/:song_name', getLyricsTiming);
+
+app.post('/api/force_process', async (req, res) => {
+    try {
+        const { artist, song } = req.body;
+        const songName = getSongName(artist, song);
+        const audioFilePath = path.join(AUDIO_DIR, `${songName}.mp3`);
+        
+        // Delete existing audio file if it exists
+        if (await fileExists(audioFilePath)) {
+            await fs.unlink(audioFilePath);
+        }
+        
+        // Process the song as normal
+        return processSong(req, res);
+    } catch (error) {
+        console.error("Error in /api/force_process:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/save_timing', saveTiming);
 app.post('/api/process', processSong);
+
 const getLyrics = async (req, res) => {
     try {
         // Read the API key from config.json
         let config = {};
         const configPath = path.join(__dirname, 'config.json');
+        const { artist, song, force } = req.body;
+
         if (await fileExists(configPath)) {
             const configData = await fs.readFile(configPath, 'utf-8');
             config = JSON.parse(configData);
         }
         
+        if (!artist || !song) {
+            return res.status(400).json({ error: 'Missing artist or song' });
+        }
+
+        // Check cached lyrics first unless force is true
+        const songName = getSongName(artist, song);
+        const lyricsFilePath = path.join(LYRICS_DIR, `${songName}.txt`);
+
+        if (!force && await fileExists(lyricsFilePath)) {
+            console.log(`Using cached lyrics for ${songName}`);
+            const lyrics = await fs.readFile(lyricsFilePath, 'utf-8');
+            return res.json({ lyrics });
+        }
+
         if (!config.geniusApiKey) {
             return res.status(400).json({ error: 'Genius API key not set. Please provide it through the frontend.' });
         }
 
         const { default: Genius } = await import('genius-lyrics');
         const geniusClient = new Genius.Client(config.geniusApiKey);
-        const { artist, song } = req.body;
-
-        if (!artist || !song) {
-            return res.status(400).json({ error: 'Missing artist or song' });
-        }
 
         const geniusSong = await geniusClient.songs.search(`${artist} ${song}`);
+        
         if (geniusSong.length > 0) {
             const lyrics = await geniusSong[0].lyrics();
+            // Cache the lyrics
+            await fs.writeFile(lyricsFilePath, lyrics, 'utf-8');
             res.json({ lyrics });
         } else {
             res.status(404).json({ error: "Lyrics not found" });
@@ -367,8 +402,7 @@ const getLyrics = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-app.post('/api/save_api_key', saveApiKey);
-
+ 
 // Replace the complex static file handler with a simpler one
 app.use('/audio', express.static(AUDIO_DIR, {
   setHeaders: (res, filepath) => {
@@ -383,6 +417,23 @@ app.use('/audio', express.static(AUDIO_DIR, {
 }));
 
 app.post('/api/lyrics', getLyrics);
+app.post('/api/force_lyrics', async (req, res) => {
+    try {
+        const { artist, song } = req.body;
+        const songName = getSongName(artist, song);
+        const lyricsFilePath = path.join(LYRICS_DIR, `${songName}.txt`);
+
+        // Delete existing lyrics file if it exists
+        if (await fileExists(lyricsFilePath)) {
+            await fs.unlink(lyricsFilePath);
+        }
+        req.body.force = true;
+        return getLyrics(req, res);
+    } catch (error) {
+        console.error("Error in /api/force_lyrics:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.post('/api/auto_match', async (req, res) => {
     const { lyrics, artist, song } = req.body;
