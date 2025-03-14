@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onUpdateLyrics, allowEditing = false }) => {
   const [editingIndex, setEditingIndex] = useState(null);
@@ -18,85 +18,12 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
   const justFinishedDraggingRef = useRef(false); // Track if we just finished dragging
   const lastTimeRef = useRef(0); // To track changes in currentTime
 
-  // Initialize local lyrics state from props
-  useEffect(() => {
-    setLyrics(matchedLyrics);
-    // Save original lyrics for reset functionality (only on initial load)
-    if (matchedLyrics.length > 0 && originalLyrics.length === 0) {
-      setOriginalLyrics(JSON.parse(JSON.stringify(matchedLyrics)));
-    }
-  }, [matchedLyrics]);
-  
-   // Track whether current lyrics match original lyrics
-   useEffect(() => {
-     if (originalLyrics.length > 0) {
-       const areEqual = lyrics.length === originalLyrics.length &&
-         lyrics.every((lyric, index) => {
-           const origLyric = originalLyrics[index];
-           return (
-             lyric.text === origLyric.text &&
-             Math.abs(lyric.start - origLyric.start) < 0.001 &&
-             Math.abs(lyric.end - origLyric.end) < 0.001
-           );
-         });
-
-       if (isAtOriginalState !== areEqual) {
-         setIsAtOriginalState(areEqual);
-       }
-     }
-   }, [lyrics, originalLyrics]);
-   
-  // Initialize and resize the canvas for proper pixel density
-  useEffect(() => {
-    if (timelineRef.current) {
-      const canvas = timelineRef.current;
-      const container = canvas.parentElement;
-      
-      // Set canvas dimensions to match its display size to avoid blurry text
-      const resizeCanvas = () => {
-        const rect = container.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        
-        // Set display size (css pixels)
-        canvas.style.width = `${rect.width}px`;
-        canvas.style.height = '50px';
-        
-        // Set actual size in memory (scaled for pixel density)
-        canvas.width = Math.floor(rect.width * dpr);
-        canvas.height = 50 * dpr;
-        
-        // Scale context to ensure correct drawing
-        const ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
-        
-        drawTimeline();
-      };
-      
-      window.addEventListener('resize', resizeCanvas);
-      resizeCanvas();
-      
-      return () => {
-        window.removeEventListener('resize', resizeCanvas);
-      };
-    }
-  }, []);
-  
-  // Draw timeline visualization when lyrics or currentTime change
-  useEffect(() => {
-    if (timelineRef.current && lyrics.length > 0) {
-      // Store current time for comparison
-      lastTimeRef.current = currentTime;
-      drawTimeline();
-    }
-  }, [lyrics, currentTime, duration]);
-  
   // Draw the timeline visualization
-  const drawTimeline = () => {
+  const drawTimeline = useCallback(() => {
     const canvas = timelineRef.current;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
     const displayWidth = canvas.clientWidth;
     const displayHeight = canvas.clientHeight;
     
@@ -170,8 +97,80 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
     ctx.closePath();
     ctx.fillStyle = 'red';
     ctx.fill();
-  };
+  }, [lyrics, currentTime, duration]);
 
+  // Initialize local lyrics state from props
+  useEffect(() => {
+    setLyrics(matchedLyrics);
+    // Save original lyrics for reset functionality (only on initial load)
+    if (matchedLyrics.length > 0 && originalLyrics.length === 0) {
+      setOriginalLyrics(JSON.parse(JSON.stringify(matchedLyrics)));
+    }
+  }, [matchedLyrics, originalLyrics.length]);
+  
+   // Track whether current lyrics match original lyrics
+   useEffect(() => {
+     if (originalLyrics.length > 0) {
+       const areEqual = lyrics.length === originalLyrics.length &&
+         lyrics.every((lyric, index) => {
+           const origLyric = originalLyrics[index];
+           return (
+             lyric.text === origLyric.text &&
+             Math.abs(lyric.start - origLyric.start) < 0.001 &&
+             Math.abs(lyric.end - origLyric.end) < 0.001
+           );
+         });
+
+       if (isAtOriginalState !== areEqual) {
+         setIsAtOriginalState(areEqual);
+       }
+     }
+   }, [lyrics, originalLyrics, isAtOriginalState]);
+   
+  // Initialize and resize the canvas for proper pixel density
+  useEffect(() => {
+    if (timelineRef.current) {
+      const canvas = timelineRef.current;
+      const container = canvas.parentElement;
+      
+      // Set canvas dimensions to match its display size to avoid blurry text
+      const resizeCanvas = () => {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set display size (css pixels)
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = '50px';
+        
+        // Set actual size in memory (scaled for pixel density)
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = 50 * dpr;
+        
+        // Scale context to ensure correct drawing
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        
+        drawTimeline();
+      };
+      
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      
+      return () => {
+        window.removeEventListener('resize', resizeCanvas);
+      };
+    }
+  }, [drawTimeline]);
+  
+  // Draw timeline visualization when lyrics or currentTime change
+  useEffect(() => {
+    if (timelineRef.current && lyrics.length > 0) {
+      // Store current time for comparison
+      lastTimeRef.current = currentTime;
+      drawTimeline();
+    }
+  }, [lyrics, currentTime, duration, drawTimeline]);
+  
   // Force redraw timeline when currentTime changes
   useEffect(() => {
     // Only redraw if time actually changed
@@ -181,7 +180,7 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
         drawTimeline();
       }
     }
-  }, [currentTime]);
+  }, [currentTime, drawTimeline]);
 
   const getCurrentLyricIndex = (time) => {
     return lyrics.findIndex(
@@ -600,8 +599,7 @@ isAtOriginalState}
                       userSelect: 'none',
                       position: 'relative',
                       zIndex: 10,
-                      transition: 'all 0.15s ease',
-                      cursor: isDraggingRef.current ? 'grabbing' : 'grab'
+                      transition: 'all 0.15s ease'
                     }}
                     onMouseDown={allowEditing ? (e) => handleDragStart(e, index, 'start') : undefined}
                     onTouchStart={allowEditing ? (e) => handleDragStart(e, index, 'start') : undefined}
@@ -630,8 +628,7 @@ isAtOriginalState}
                       userSelect: 'none',
                       position: 'relative',
                       zIndex: 10,
-                      transition: 'all 0.15s ease',
-                      cursor: isDraggingRef.current ? 'grabbing' : 'grab'
+                      transition: 'all 0.15s ease'
                     }}
                     onMouseDown={allowEditing ? (e) => handleDragStart(e, index, 'end') : undefined}
                     onTouchStart={allowEditing ? (e) => handleDragStart(e, index, 'end') : undefined}

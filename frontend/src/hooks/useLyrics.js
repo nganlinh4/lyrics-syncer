@@ -8,7 +8,7 @@ const useLyrics = () => {
   const [error, setError] = useState(null);
   const [processingStatus, setProcessingStatus] = useState('');
   const [matchingProgress, setMatchingProgress] = useState(0);
-  const [languageDetected, setLanguageDetected] = useState('');
+  const [languageDetected] = useState('');
   const [currentLyricIndex, setCurrentLyricIndex] = useState(-1);
 
   const handlePreviewLyrics = async (artist, song, forceRefetch = false) => {

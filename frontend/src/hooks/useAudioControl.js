@@ -29,7 +29,7 @@ const useAudioControl = () => {
     
     // Also set volume after a short delay to ensure it takes effect
     setTimeout(setInitialVolume, 100);
-  }, [audioRef.current]);
+  }, []);
 
   useEffect(() => {
     if (containerRef.current && !wavesurferRef.current) {

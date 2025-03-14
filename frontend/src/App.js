@@ -20,7 +20,6 @@ function App() {
   const [needsRefetch, setNeedsRefetch] = useState(true);
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [audioOnly, setAudioOnly] = useState(() => localStorage.getItem('audioOnly') === 'true');
-  const [hasMatched, setHasMatched] = useState(false);
 
   // Custom hooks
   const {
@@ -57,7 +56,6 @@ function App() {
     handleAdvancedMatch,
     handleUpdateLyrics,
     handleDownloadJSON,
-    updateCurrentLyric,
     setError,
     setLyrics
   } = useLyrics();
@@ -153,7 +151,7 @@ function App() {
     setHasDownloaded(false);
     setMatchingComplete(false);
     setMatchedLyrics([]);
-  }, [song, artist]);
+  }, [song, artist, setMatchedLyrics, setMatchingComplete]);
 
   const canStartMatching = hasDownloaded && !needsRefetch && audioUrl && lyrics.length > 0;
   const showForceButtons = !loading && hasDownloaded;

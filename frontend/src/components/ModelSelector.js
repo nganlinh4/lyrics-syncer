@@ -10,16 +10,6 @@ const AVAILABLE_MODELS = [
     id: 'gemini-2.0-flash-thinking-exp-01-21',
     name: 'Gemini 2.0 Flash Thinking Experimental',
     description: 'Slower but more accurate model for lyrics timing.'
-  },
-  {
-    id: 'gemini-2.0-flash-exp',
-    name: 'Gemini 2.0 Flash Experimental',
-    description: 'Newer model with faster response time. Sometimes better for lyrics timing.'
-  },
-  {
-    id: 'gemini-2.0-flash-lite',
-    name: 'Gemini 2.0 Flash Lite',
-    description: 'Lightweight model for faster response time. Sometimes better for lyrics timing.'
   }
 ];
 
