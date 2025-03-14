@@ -1,13 +1,14 @@
-# YouTube Video Maker
+# Lyrics Syncer
 
-A web application for creating YouTube videos with synchronized lyrics/subtitles, built with React and Node.js.
+A web application for synchronizing lyrics with audio files, built with React and Node.js.
 
 ## Features
 
-- Web interface for video creation and management
+- Web interface for lyrics synchronization
 - YouTube video audio extraction
 - Automatic lyrics fetching from Genius
 - Waveform visualization
+- Real-time lyrics timing adjustment
 
 ## Prerequisites
 
