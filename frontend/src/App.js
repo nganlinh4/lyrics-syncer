@@ -243,14 +243,6 @@ function App() {
             style={{ padding: '8px 16px', marginLeft: '10px' }}
           >
             Force Re-download & Process
-          </button
->
-          <button
-            onClick={() => handlePreviewLyrics(artist, song, true)}
-            disabled={loading}
-            style={{ padding: '8px 16px', marginLeft: '10px' }}
-          >
-            Force Re-fetch Lyrics
           </button>
         </>
       )}
@@ -366,12 +358,22 @@ function App() {
       )}
 
       {/* Preview Button */}
-      <button
-        onClick={() => handlePreviewLyrics(artist, song)}
-        style={{ padding: '8px 16px', marginLeft: '10px' }}
-      >
-        Preview Lyrics
-      </button>
+      <div style={{ marginTop: '20px' }}>
+        <button
+          onClick={() => handlePreviewLyrics(artist, song)}
+          style={{ padding: '8px 16px' }}
+        >
+          Preview Lyrics
+        </button>
+        {!loading && lyrics.length > 0 && (
+          <button
+            onClick={() => handlePreviewLyrics(artist, song, true)}
+            style={{ padding: '8px 16px', marginLeft: '10px' }}
+          >
+            Force Re-fetch Lyrics
+          </button>
+        )}
+      </div>
 
       {/* Lyrics Preview */}
       {lyrics.length > 0 && (
