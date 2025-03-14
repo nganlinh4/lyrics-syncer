@@ -9,7 +9,7 @@ const AVAILABLE_MODELS = [
   {
     id: 'gemini-2.0-flash-thinking-exp-01-21',
     name: 'Gemini 2.0 Flash Thinking Experimental',
-    description: 'Slower but more accurate model for lyrics timing.'
+    description: 'Slower but sometimes more accurate model for lyrics timing.'
   }
 ];
 
