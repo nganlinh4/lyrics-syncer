@@ -577,7 +577,7 @@ isAtOriginalState}
                     padding: '4px 8px',
                     borderRadius: '4px',
                     position: 'absolute',
-                    right: '70px', // Moved further left, leaving more space on right
+                    right: '200px', // Moved further left, leaving more space on right
                     zIndex: 5
                   }}
                 >

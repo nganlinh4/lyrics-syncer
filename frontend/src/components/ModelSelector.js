@@ -48,7 +48,7 @@ const ModelSelector = ({ selectedModel, onModelChange }) => {
         marginTop: '5px',
         fontSize: '0.8em',
         color: '#666',
-        marginLeft: '70px'
+        marginLeft: '200px'
       }}>
         {AVAILABLE_MODELS.find(m => m.id === selectedModel)?.description}
       </div>
