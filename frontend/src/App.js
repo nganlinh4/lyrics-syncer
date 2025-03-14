@@ -9,7 +9,11 @@ import useLyrics from './hooks/useLyrics';
 
 function App() {
   // Local state
-  const [selectedModel, setSelectedModel] = useState('');
+  const [selectedModel, setSelectedModel] = useState(() => {
+    const savedModel = localStorage.getItem('selectedModel');
+    const defaultModel = 'gemini-2.0-pro-exp-02-05';
+    return savedModel || defaultModel;
+  });
   const [artist, setArtist] = useState(() => localStorage.getItem('lastArtist') || '');
   const [song, setSong] = useState(() => localStorage.getItem('lastSong') || '');
   const [loading, setLoading] = useState(false);

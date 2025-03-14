@@ -505,7 +505,7 @@ const matchLyrics = async (req, res) => {
         });
 
         // Prepare the command with cleaned audio path
-        const pythonProcess = spawn('python', [
+        const pythonArgs = [
             scriptPath,
             '--mode', 'match',
             '--audio', absoluteAudioPath,
@@ -514,7 +514,8 @@ const matchLyrics = async (req, res) => {
             '--song', song
 ,
             '--model', model
-        ]);
+        ];
+        const pythonProcess = spawn('python', pythonArgs);
 
         let stdoutData = '';
         let stderrData = '';

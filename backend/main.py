@@ -212,7 +212,7 @@ def get_audio_duration(audio_path: str) -> float:
     )
     return float(result.stdout)
 
-def match_lyrics_with_gemini(audio_path: str, lyrics: List[str]) -> List[Dict]:
+def match_lyrics_with_gemini(audio_path: str, lyrics: List[str], model_name: str) -> List[Dict]:
     """Match lyrics to audio using Gemini, uploading the audio via the File API."""
     try:
         # Read config file
@@ -259,12 +259,12 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
             raise RuntimeError(f"Error uploading file to Gemini File API: {upload_error}")
 
 
-        # Use provided model or fallback to default
-        model = config.get('model', '')
+        if not model_name:
+            raise ValueError("Model name is required")
 
         # Generate response using the Client and the uploaded file
         response = client.models.generate_content(
-            model=model,
+            model=model_name,
             contents=[prompt, myfile]
         )
 
@@ -302,11 +302,11 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
 
 
 
-def match_lyrics(audio_path: str, lyrics: List[str]) -> Dict:
+def match_lyrics(audio_path: str, lyrics: List[str], model: str) -> Dict:
     """Main function to process audio and match lyrics"""
     try:
         # Match lyrics using Gemini
-        matched_lyrics = match_lyrics_with_gemini(audio_path, lyrics)
+        matched_lyrics = match_lyrics_with_gemini(audio_path, lyrics, model)
         if not matched_lyrics:
             raise ValueError("Failed to match lyrics")
 
@@ -366,18 +366,18 @@ def main():
         if args.mode == "match":
             lyrics = json.loads(args.lyrics)
             audio_path = os.path.abspath(args.audio)
+            model = args.model
 
             if not os.path.exists(audio_path):
                 raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-            # Update config with model if provided
-            if args.model:
-                config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                config['model'] = args.model
+            if not model:
+                raise ValueError("Model parameter is required")
 
-            match_lyrics(audio_path, lyrics)
+            print(f"Using model: {model}", file=sys.stderr)
+            
+            # Pass the model directly to match_lyrics
+            match_lyrics(audio_path, lyrics, model)
 
     except Exception as e:
         error_result = {
