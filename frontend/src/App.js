@@ -9,7 +9,7 @@ import useLyrics from './hooks/useLyrics';
 
 function App() {
   // Local state
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash-thinking-exp-01-21');
+  const [selectedModel, setSelectedModel] = useState('');
   const [artist, setArtist] = useState(() => localStorage.getItem('lastArtist') || '');
   const [song, setSong] = useState(() => localStorage.getItem('lastSong') || '');
   const [loading, setLoading] = useState(false);

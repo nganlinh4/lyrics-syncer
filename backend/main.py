@@ -260,7 +260,7 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
 
 
         # Use provided model or fallback to default
-        model = config.get('model', 'gemini-2.0-flash-thinking-exp-01-21')
+        model = config.get('model', '')
 
         # Generate response using the Client and the uploaded file
         response = client.models.generate_content(
