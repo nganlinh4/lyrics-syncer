@@ -14,6 +14,7 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
   const isDraggingRef = useRef(false);
   const lastInteractionRef = useRef(null); // Track last interacted element
   const justFinishedDraggingRef = useRef(false); // Track if we just finished dragging
+  const lastTimeRef = useRef(0); // To track changes in currentTime
 
   // Initialize local lyrics state from props
   useEffect(() => {
@@ -24,60 +25,141 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
     }
   }, [matchedLyrics]);
   
-  // Draw timeline visualization when lyrics change
+  // Initialize and resize the canvas for proper pixel density
+  useEffect(() => {
+    if (timelineRef.current) {
+      const canvas = timelineRef.current;
+      const container = canvas.parentElement;
+      
+      // Set canvas dimensions to match its display size to avoid blurry text
+      const resizeCanvas = () => {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set display size (css pixels)
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = '50px';
+        
+        // Set actual size in memory (scaled for pixel density)
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = 50 * dpr;
+        
+        // Scale context to ensure correct drawing
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        
+        drawTimeline();
+      };
+      
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      
+      return () => {
+        window.removeEventListener('resize', resizeCanvas);
+      };
+    }
+  }, []);
+  
+  // Draw timeline visualization when lyrics or currentTime change
   useEffect(() => {
     if (timelineRef.current && lyrics.length > 0) {
+      // Store current time for comparison
+      lastTimeRef.current = currentTime;
       drawTimeline();
     }
-  }, [lyrics, currentTime]);
+  }, [lyrics, currentTime, duration]);
   
   // Draw the timeline visualization
   const drawTimeline = () => {
     const canvas = timelineRef.current;
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
+    if (!canvas) return;
     
-    ctx.clearRect(0, 0, width, height);
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = canvas.clientWidth;
+    const displayHeight = canvas.clientHeight;
+    
+    // Clear with proper scaling
+    ctx.clearRect(0, 0, displayWidth, displayHeight);
     
     // Draw background
     ctx.fillStyle = '#f5f5f5';
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, displayWidth, displayHeight);
+    
+    // Find the max time in lyrics to prevent stretching
+    const maxLyricTime = lyrics.length > 0 
+      ? Math.max(...lyrics.map(lyric => lyric.end))
+      : duration;
+    
+    // Use the greater of actual duration or max lyric time 
+    // to ensure proper scaling
+    const timelineEnd = Math.max(maxLyricTime, duration) * 1.05; // Add 5% padding
     
     // Draw time markers
     ctx.fillStyle = '#ddd';
-    for (let i = 0; i <= duration; i += Math.max(1, Math.floor(duration / 20))) {
-      const x = (i / duration) * width;
-      ctx.fillRect(x, 0, 1, height);
+    
+    // Calculate proper spacing for time markers based on timeline length
+    const timeStep = Math.max(1, Math.ceil(timelineEnd / 15));
+    for (let i = 0; i <= timelineEnd; i += timeStep) {
+      const x = (i / timelineEnd) * displayWidth;
+      ctx.fillRect(x, 0, 1, displayHeight);
       
-      // Draw time labels
-      ctx.fillStyle = '#888';
+      // Draw time labels - sharper text
+      ctx.fillStyle = '#666';
       ctx.font = '10px Arial';
-      ctx.fillText(`${i}s`, x + 2, height - 2);
+      ctx.textBaseline = 'bottom';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${i}s`, x + 3, displayHeight - 3);
       ctx.fillStyle = '#ddd';
     }
     
     // Draw lyric segments
     lyrics.forEach((lyric, index) => {
-      const startX = (lyric.start / duration) * width;
-      const endX = (lyric.end / duration) * width;
-      const segmentWidth = endX - startX;
+      const startX = (lyric.start / timelineEnd) * displayWidth;
+      const endX = (lyric.end / timelineEnd) * displayWidth;
+      const segmentWidth = Math.max(1, endX - startX); // Ensure minimum width
       
       // Get a color based on the index
       const hue = (index * 30) % 360;
       ctx.fillStyle = `hsla(${hue}, 70%, 60%, 0.7)`;
-      ctx.fillRect(startX, 5, segmentWidth, height - 10);
+      ctx.fillRect(startX, 5, segmentWidth, displayHeight - 10);
       
       // Draw border
       ctx.strokeStyle = `hsla(${hue}, 70%, 40%, 0.9)`;
-      ctx.strokeRect(startX, 5, segmentWidth, height - 10);
+      ctx.strokeRect(startX, 5, segmentWidth, displayHeight - 10);
     });
     
-    // Draw current time indicator
-    const currentX = (currentTime / duration) * width;
+    // Draw current time indicator - make it more visible
+    const currentX = (currentTime / timelineEnd) * displayWidth;
+    
+    // Draw indicator shadow for better visibility
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(currentX - 2, 0, 4, displayHeight);
+    
+    // Draw indicator
     ctx.fillStyle = 'red';
-    ctx.fillRect(currentX - 1, 0, 2, height);
+    ctx.fillRect(currentX - 1, 0, 3, displayHeight);
+    
+    // Draw playhead triangle
+    ctx.beginPath();
+    ctx.moveTo(currentX - 6, 0);
+    ctx.lineTo(currentX + 6, 0);
+    ctx.lineTo(currentX, 6);
+    ctx.closePath();
+    ctx.fillStyle = 'red';
+    ctx.fill();
   };
+
+  // Force redraw timeline when currentTime changes
+  useEffect(() => {
+    // Only redraw if time actually changed
+    if (Math.abs(lastTimeRef.current - currentTime) > 0.01) {
+      lastTimeRef.current = currentTime;
+      if (timelineRef.current) {
+        drawTimeline();
+      }
+    }
+  }, [currentTime]);
 
   const getCurrentLyricIndex = (time) => {
     return lyrics.findIndex(
@@ -300,6 +382,29 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
     }
   };
 
+  // Handle click on the timeline to seek
+  const handleTimelineClick = (e) => {
+    if (!timelineRef.current || !duration) return;
+    
+    const rect = timelineRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const timelineWidth = rect.width;
+    
+    // Find the max time to use same scale as drawing
+    const maxLyricTime = lyrics.length > 0 
+      ? Math.max(...lyrics.map(lyric => lyric.end))
+      : duration;
+    const timelineEnd = Math.max(maxLyricTime, duration) * 1.05;
+    
+    // Calculate the time based on click position
+    const newTime = (clickX / timelineWidth) * timelineEnd;
+    
+    // Seek to the new time
+    if (newTime >= 0 && newTime <= duration && onLyricClick) {
+      onLyricClick(Math.min(duration, newTime));
+    }
+  };
+
   return (
     <div style={{ marginTop: '20px' }}>
       <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -346,16 +451,16 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
       </h3>
       
       {/* Timeline Visualization */}
-      <div style={{ marginBottom: '10px' }}>
+      <div style={{ marginBottom: '10px', position: 'relative' }}>
         <canvas 
           ref={timelineRef}
-          width={800}
-          height={50}
+          onClick={handleTimelineClick}
           style={{
             width: '100%',
             height: '50px',
             borderRadius: '4px',
-            border: '1px solid #ccc'
+            border: '1px solid #ccc',
+            cursor: 'pointer'
           }}
         />
       </div>
@@ -400,11 +505,13 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                position: 'relative'
               }}>
                 <div style={{
                   fontWeight: isCurrentLyric ? '600' : 'normal',
-                  flex: 1
+                  flex: 1,
+                  paddingRight: '120px' // Ensure text doesn't overlap with timing values
                 }}>
                   {lyric.text}
                 </div>
@@ -418,8 +525,8 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
                     backgroundColor: '#f0f7ff',
                     padding: '4px 8px',
                     borderRadius: '4px',
-                    marginLeft: '-40px',
-                    position: 'relative',
+                    position: 'absolute',
+                    right: '70px', // Moved further left, leaving more space on right
                     zIndex: 5
                   }}
                 >
