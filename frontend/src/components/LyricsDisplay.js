@@ -562,9 +562,12 @@ isAtOriginalState}
                 <div style={{
                   fontWeight: isCurrentLyric ? '600' : 'normal',
                   flex: 1,
-                  paddingRight: '120px' // Ensure text doesn't overlap with timing values
+                  textAlign: 'right', // Align lyrics to the right
+                  paddingRight: '700px', // Reduced padding to bring timing values closer
+                  position: 'relative',
+                  display: 'inline-block'
                 }}>
-                  {lyric.text}
+                  <span>{lyric.text}</span>
                 </div>
                 
                 <div 
@@ -577,7 +580,7 @@ isAtOriginalState}
                     padding: '4px 8px',
                     borderRadius: '4px',
                     position: 'absolute',
-                    right: '200px', // Moved further left, leaving more space on right
+                    right: '500px', // Adjusted position
                     zIndex: 5
                   }}
                 >
