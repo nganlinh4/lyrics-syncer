@@ -239,14 +239,14 @@ For language field, use the correct language code (e.g., 'ko' for Korean, 'en' f
 Return: list[LyricLine]
 
 Requirements:
-1. Each lyric line's timing must be derived directly from the audio.
-2. Every lyric line must have corresponding start and end times.
+1. Each lyric line's timing must be derived directly from the audio. Each segment's duration cannot be too short, consider extending the end timing in many cases when there is still vocal playing.
+2. Every lyric line must have corresponding start and end times. Also best practice is the end timing of the previous matches or being close to the start of the next segment's start timing, when feasible.
 3. Output must be valid JSON with no extra text.
 4. The 'text' field in your output MUST EXACTLY match the lines from 'Lyrics lines' below.
 5. The provided audio may be in any language. Analyze the audio content to determine timing.
 6. >>> CRITICAL: Detect and set the correct language code for each lyric line based on its content (e.g., 'ko' for Korean text).
 7. >>> CRITICAL information: This song's duration is {get_audio_duration(audio_path)} seconds, so think carefully about the last lyrics timing, it CANNOT BE LONGER.
-7. If the provided lyrics have romanized Korean, turn it to actual Korean when responding.
+8. If the provided lyrics have romanized Korean, turn it to actual Korean when responding.
 
 Lyrics lines:
 {json.dumps(filtered_lyrics, indent=2, ensure_ascii=False)}
