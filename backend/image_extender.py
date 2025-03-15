@@ -30,21 +30,29 @@ class AdvancedImageExtender:
             # Convert from BGR to RGB
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             
-            # Target size (width, height)
-            target_size = (1920, 1080)
+            # Calculate target size for 16:9 ratio first
+            h, w = img.shape[:2]
+            target_ratio = 16 / 9
+            current_ratio = w / h
             
-            # Apply selected expansion method
-            if self.method == "content_aware":
-                extended = self.content_aware_extend(img, target_size)
-            elif self.method == "blur_extend":
-                extended = self.blur_extend(img, target_size)
-            elif self.method == "mirror":
-                extended = self.mirror_extend(img, target_size)
-            else:  # Default to improved gradient
-                extended = self.improved_gradient_extend(img, target_size)
+            if current_ratio < target_ratio:
+                # Image is too tall, expand width
+                target_w = int(h * target_ratio)
+                target_h = h
+            else:
+                # Image is too wide, expand height
+                target_w = w
+                target_h = int(w / target_ratio)
             
-            # Convert back to PIL Image and then to bytes
-            pil_image = Image.fromarray(extended)
+            # First extend to 16:9
+            extended = self._extend_to_ratio(img, (target_w, target_h))
+            
+            # Finally resize to 1920x1080
+            final = cv2.resize(extended, (1920, 1080)
+)
+            
+            # Convert to PIL Image and then to bytes
+            pil_image = Image.fromarray(final)
             output_bytes = io.BytesIO()
             pil_image.save(output_bytes, format='PNG')
             
@@ -53,6 +61,28 @@ class AdvancedImageExtender:
         except Exception as e:
             print(f"Error in image extension: {str(e)}")
             raise
+    
+    def _extend_to_ratio(self, img, target_size):
+        """Extend image to target size using selected method."""
+        if self.method == "content_aware":
+            return self.content_aware_extend(img, target_size)
+        elif self.method == "blur_extend":
+            return self.blur_extend(img, target_size)
+        elif self.method == "mirror":
+            return self.mirror_extend(img, target_size)
+        else:  # Default to improved gradient
+            return self.improved_gradient_extend(img, target_size)
+    
+    def _resize_with_aspect_ratio(self, img, target_size):
+        """Resize image to target size while maintaining aspect ratio."""
+        h, w = img.shape[:2]
+        tw, th = target_size
+        
+        scale_factor = min(tw / w, th / h)
+        new_w = int(w * scale_factor)
+        new_h = int(h * scale_factor)
+        
+        return cv2.resize(img, (new_w, new_h))
     
     def content_aware_extend(self, img, target_size):
         """

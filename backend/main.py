@@ -411,7 +411,7 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
         client = genai.Client(api_key=config['geminiApiKey'])
 
         # Prepare input for Gemini with pre-text
-        final_prompt = f"Decorate my image with these: {prompt}"
+        final_prompt = f"Blend and decorate my image with these: {prompt}"
 
         # Download the image from URL
         response = requests.get(album_art_url)
