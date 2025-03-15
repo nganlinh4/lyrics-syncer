@@ -613,6 +613,133 @@ app.post('/api/force_match', async (req, res) => {
     }
 });
 
+const generateImagePrompt = async (req, res) => {
+    try {
+        const { lyrics, model } = req.body;
+        
+        if (!lyrics) {
+            return res.status(400).json({ error: 'Missing lyrics' });
+        }
+
+        const configPath = path.join(__dirname, 'config.json');
+        if (!await fileExists(configPath)) {
+            return res.status(400).json({ error: 'Config file not found' });
+        }
+
+        const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
+        if (!config.geminiApiKey) {
+            return res.status(400).json({ error: 'Gemini API key not set' });
+        }
+
+        const pythonArgs = [
+            PYTHON_SCRIPT_PATH,
+            '--mode', 'generate_prompt',
+            '--lyrics', JSON.stringify(lyrics),
+            '--model', model
+        ];
+
+        const pythonProcess = spawn('python', pythonArgs);
+        
+        let stdoutData = '';
+        let stderrData = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+            stdoutData += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            stderrData += data.toString();
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                return res.status(500).json({ 
+                    error: stderrData || 'Failed to generate prompt',
+                    status: 'error'
+                });
+            }
+
+            try {
+                const result = JSON.parse(stdoutData);
+                res.json(result);
+            } catch (error) {
+                res.status(500).json({ 
+                    error: 'Failed to parse prompt generation results',
+                    status: 'error'
+                });
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+app.post('/api/generate_image', async (req, res) => {
+    try {
+        const { prompt, albumArt, model } = req.body;
+        
+        if (!prompt || !albumArt) {
+            return res.status(400).json({ error: 'Missing prompt or album art' });
+        }
+
+        const configPath = path.join(__dirname, 'config.json');
+        if (!await fileExists(configPath)) {
+            return res.status(400).json({ error: 'Config file not found' });
+        }
+
+        const config = JSON.parse(await fs.readFile(configPath, 'utf-8'));
+        if (!config.geminiApiKey) {
+            return res.status(400).json({ error: 'Gemini API key not set' });
+        }
+
+        const pythonArgs = [
+            PYTHON_SCRIPT_PATH,
+            '--mode', 'generate_image',
+            '--prompt', prompt,
+            '--album_art', albumArt,
+            '--model', model
+        ];
+
+        const pythonProcess = spawn('python', pythonArgs);
+        
+        let stdoutData = '';
+        let stderrData = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+            stdoutData += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            stderrData += data.toString();
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                return res.status(500).json({ 
+                    error: stderrData || 'Failed to generate image',
+                    status: 'error'
+                });
+            }
+
+            try {
+                const result = JSON.parse(stdoutData);
+                res.json(result);
+            } catch (error) {
+                res.status(500).json({ 
+                    error: 'Failed to parse image generation results',
+                    status: 'error'
+                });
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
+
+app.post('/api/generate_prompt', generateImagePrompt);

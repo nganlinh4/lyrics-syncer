@@ -12,6 +12,9 @@ const useLyrics = () => {
   const [languageDetected] = useState('');
   const [isCustomLyrics, setIsCustomLyrics] = useState(false);
   const [currentLyricIndex, setCurrentLyricIndex] = useState(-1);
+  const [selectedImageModel, setSelectedImageModel] = useState('gemini-2.0-flash-exp');
+  const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [generatedImage, setGeneratedImage] = useState('');
 
   const handlePreviewLyrics = async (artist, song, forceRefetch = false) => {
     if (!song || !artist) {
@@ -167,6 +170,65 @@ const useLyrics = () => {
     }
   }, [matchedLyrics, currentLyricIndex]);
 
+  const generateImagePrompt = async () => {
+    if (!lyrics || lyrics.length === 0) {
+      setError('No lyrics available');
+      return;
+    }
+
+    try {
+      setError(null);
+      const response = await fetch('http://localhost:3001/api/generate_prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lyrics: lyrics.join('\n'),
+          model: selectedImageModel
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate prompt');
+      }
+
+      const data = await response.json();
+      setGeneratedPrompt(data.prompt);
+      return data.prompt;
+    } catch (error) {
+      console.error('Error generating prompt:', error);
+      setError(error.message);
+    }
+  };
+
+  const generateImage = async (prompt) => {
+    if (!prompt || !albumArtUrl) {
+      setError('Missing prompt or album art');
+      return;
+    }
+
+    try {
+      setError(null);
+      const response = await fetch('http://localhost:3001/api/generate_image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, albumArt: albumArtUrl, model: selectedImageModel })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate image');
+      }
+
+      const data = await response.json();
+      setGeneratedImage(data.image_url);
+      return data.image_url;
+    } catch (error) {
+      console.error('Error generating image:', error);
+      setError(error.message);
+    }
+  };
+
   return {
     lyrics,
     albumArtUrl,
@@ -190,6 +252,13 @@ const useLyrics = () => {
     setLyrics
 ,
     handleCustomLyrics
+,
+    selectedImageModel,
+    setSelectedImageModel,
+    generatedPrompt,
+    generatedImage,
+    generateImagePrompt,
+    generateImage
   };
 };
 

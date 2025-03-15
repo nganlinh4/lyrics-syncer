@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import List, Dict
 import re
 from google import genai
+from google.genai import types
 import subprocess
 
 
@@ -342,13 +343,102 @@ def match_lyrics(audio_path: str, lyrics: List[str], model: str) -> Dict:
 def setup_argparse():
     """Set up command line argument parsing."""
     parser = argparse.ArgumentParser(description='Process audio files and match lyrics.')
-    parser.add_argument('--mode', required=True, choices=['match'], help='Operation mode')
-    parser.add_argument('--audio', required=True, help='Path to the audio file')
-    parser.add_argument('--lyrics', required=True, help='JSON string containing lyrics')
-    parser.add_argument('--model', help='Gemini model to use')
+    parser.add_argument('--mode', required=True, choices=['match', 'generate_prompt', 'generate_image'], help='Operation mode')
+    parser.add_argument('--audio', required=False, help='Path to the audio file')
+    parser.add_argument('--lyrics', required=False, help='JSON string containing lyrics')
+    parser.add_argument('--prompt', required=False, help='Generated prompt for image')
+    parser.add_argument('--album_art', required=False, help='Album art URL')
+    parser.add_argument('--model', required=False, help='Gemini model to use')
     parser.add_argument('--artist', required=False, help='Artist name')
     parser.add_argument('--song', required=False, help='Song name')
     return parser.parse_args()
+
+def generate_prompt_with_gemini(lyrics, model_name):
+    """Generate image prompt from lyrics using Gemini."""
+    try:
+        # Read config file
+        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+
+        if not config.get('geminiApiKey'):
+            raise ValueError("Gemini API key not found in config")
+
+        # Configure Gemini
+        client = genai.Client(api_key=config['geminiApiKey'])
+
+        # Prepare input for Gemini
+        prompt = f"""
+{lyrics}
+
+generate one prompt to put in a image generator to describe the atmosphere/object of this song, should be simple but abstract because I will use this image as youtube video background for a lyrics video, return the prompt only, no extra texts
+"""
+
+        # Generate response using the client
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
+
+        return {
+            "prompt": response.text,
+            "status": "success"
+        }
+
+    except Exception as e:
+        print(f"Error generating prompt with Gemini: {str(e)}", file=sys.stderr)
+        raise
+
+def generate_image_with_gemini(prompt, album_art_url, model_name):
+    """Generate image using prompt and album art with Gemini."""
+    try:
+        # Read config file
+        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+
+        if not config.get('geminiApiKey'):
+            raise ValueError("Gemini API key not found in config")
+
+        # Configure Gemini
+        client = genai.Client(api_key=config['geminiApiKey'])
+
+        # Prepare input for Gemini with pre-text
+        final_prompt = f"(1920x1080, add to my image these:) {prompt}"
+
+        # Generate response using the Client
+        response = client.models.generate_content(
+            model=model_name,
+            contents=[final_prompt, album_art_url],
+            config=types.GenerateContentConfig(response_modalities=["Text", "Image"]
+    ),
+        )
+
+        # Debug print the response attributes
+        print("Response attributes:", dir(response), file=sys.stderr)
+        print("Response text:", response.text, file=sys.stderr)
+        
+        # Access the parts instead of direct image attribute
+        image_part = None
+        if hasattr(response, 'candidates'):
+            for candidate in response.candidates:
+                if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                    for part in candidate.content.parts:
+                        if hasattr(part, 'inline_data') and part.inline_data.mime_type.startswith('image/'):
+                            image_part = part
+                            break
+                if image_part:
+                    break
+        
+        return {
+            "image_url": image_part.inline_data.data if image_part else None,
+            "mime_type": image_part.inline_data.mime_type if image_part else None,
+            "status": "success"
+        }
+
+    except Exception as e:
+        print(f"Error generating image with Gemini: {str(e)}", file=sys.stderr)
+        raise
 
 def main():
     # Configure UTF-8 for stdin/stdout on Windows
@@ -361,6 +451,9 @@ def main():
 
     try:
         if args.mode == "match":
+            if not args.audio or not args.lyrics:
+                raise ValueError("Both audio and lyrics parameters are required for matching mode")
+                
             lyrics = json.loads(args.lyrics)
             audio_path = os.path.abspath(args.audio)
             model = args.model
@@ -375,6 +468,29 @@ def main():
             
             # Pass the model directly to match_lyrics
             match_lyrics(audio_path, lyrics, model)
+
+        elif args.mode == "generate_prompt":
+            if not args.lyrics:
+                raise ValueError("Lyrics parameter is required for prompt generation")
+
+            lyrics = json.loads(args.lyrics)
+            model = args.model
+
+            print(f"Using model: {model}", file=sys.stderr)
+            result = generate_prompt_with_gemini(lyrics, model)
+            print(json.dumps(result))
+
+        elif args.mode == "generate_image":
+            if not args.prompt or not args.album_art:
+                raise ValueError("Both prompt and album_art parameters are required for image generation")
+
+            prompt = args.prompt
+            album_art = args.album_art
+            model = args.model
+
+            print(f"Using model: {model}", file=sys.stderr)
+            result = generate_image_with_gemini(prompt, album_art, model)
+            print(json.dumps(result))
 
     except Exception as e:
         error_result = {

@@ -3,6 +3,7 @@ import LyricsDisplay from './components/LyricsDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
 import AudioPlayer from './components/AudioPlayer';
 import ModelSelector from './components/ModelSelector';
+import ImageModelSelector from './components/ImageModelSelector';
 import CustomLyricsInput from './components/CustomLyricsInput';
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
@@ -20,6 +21,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [needsRefetch, setNeedsRefetch] = useState(true);
   const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
   const [audioOnly, setAudioOnly] = useState(() => localStorage.getItem('audioOnly') === 'true');
 
   // Custom hooks
@@ -51,6 +53,8 @@ function App() {
     matchingComplete,
     error: lyricsError,
     processingStatus,
+    selectedImageModel,
+    setSelectedImageModel,
     setMatchingComplete,
     isCustomLyrics,
     matchingProgress,
@@ -63,7 +67,71 @@ function App() {
     setLyrics
 ,
     handleCustomLyrics
+,
+    generatedPrompt,
+    generatedImage,
+    generateImagePrompt,
+    generateImage
   } = useLyrics();
+
+  // Handle image generation
+  const handleGenerateImage = async () => {
+    try {
+      setGeneratingImage(true);
+      setError(null);
+
+      // First generate prompt
+      const prompt = await generateImagePrompt();
+      if (!prompt) {
+        throw new Error('Failed to generate prompt');
+      }
+
+      // Then generate image
+      await generateImage(prompt);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
+  const renderImageGeneration = () => {
+    if (!lyrics.length) return null;
+
+    return (
+      <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+        <h3>Background Image Generation</h3>
+        
+        <ImageModelSelector 
+          selectedModel={selectedImageModel}
+          onModelChange={setSelectedImageModel}
+        />
+
+        <button
+          onClick={handleGenerateImage}
+          disabled={generatingImage || !albumArtUrl}
+          style={{
+            marginTop: '10px',
+            padding: '8px 16px',
+            backgroundColor: generatingImage ? '#ccc' : '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: generatingImage ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {generatingImage ? 'Generating...' : 'Generate Background Image'}
+        </button>
+
+        {generatedPrompt && (
+          <div style={{ marginTop: '10px', fontSize: '0.9em', color: '#666' }}>
+            Generated Prompt: {generatedPrompt}
+          </div>
+        )}
+      </div>
+    );
+  };
+
 
   // Add this function where other handlers are defined
   // Regular download and process
@@ -414,6 +482,33 @@ function App() {
           <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
             Downloads the edited lyrics timing as a JSON file (without confidence field)
           </p>
+            
+            {renderImageGeneration()}
+            
+            {generatedImage && (
+              <div style={{ 
+                marginTop: '20px',
+                padding: '15px', 
+                backgroundColor: '#f5f5f5', 
+                borderRadius: '4px' 
+              }}>
+                <h3>Generated Background Image</h3>
+                <img 
+                  src={`data:${generatedImage.mime_type};base64,${generatedImage.image_url}`}
+                  alt="Generated background"
+                  style={{
+                    width: '100%',
+                    maxWidth: '1920px',
+                    height: 'auto',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}
+                />
+                <p style={{ fontSize: '12px', color: '#666', marginTop: '5px', marginBottom: '0' }}>
+                  This image was generated using the song's lyrics and album art as inspiration.
+                </p>
+              </div>
+            )}
         </div>
       )}
 
