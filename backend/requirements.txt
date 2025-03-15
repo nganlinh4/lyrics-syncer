@@ -1,6 +1,4 @@
-faster-whisper>=0.9.0
-torch
-rapidfuzz>=3.0.0
 numpy
 google-genai
-rapidfuzz==3.3.1
+Pillow
+opencv-python

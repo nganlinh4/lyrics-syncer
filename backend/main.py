@@ -7,6 +7,7 @@ import io
 from PIL import Image
 import base64
 import sys
+from image_extender import AdvancedImageExtender
 from datetime import datetime
 from typing import List, Dict
 import re
@@ -357,7 +358,7 @@ def setup_argparse():
     parser.add_argument('--song', required=False, help='Song name')
     return parser.parse_args()
 
-def generate_prompt_with_gemini(lyrics, model_name):
+def generate_prompt_with_gemini(lyrics, model_name, song_name):
     """Generate image prompt from lyrics using Gemini."""
     try:
         # Read config file
@@ -373,6 +374,8 @@ def generate_prompt_with_gemini(lyrics, model_name):
 
         # Prepare input for Gemini
         prompt = f"""
+song title: {song_name}
+
 {lyrics}
 
 generate one prompt to put in a image generator to describe the atmosphere/object of this song, should be simple but abstract because I will use this image as youtube video background for a lyrics video, return the prompt only, no extra texts
@@ -408,15 +411,22 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
         client = genai.Client(api_key=config['geminiApiKey'])
 
         # Prepare input for Gemini with pre-text
-        final_prompt = f"Add to my image these: {prompt} 16:9 ratio"
+        final_prompt = f"Decorate my image with these: {prompt}"
 
         # Download the image from URL
         response = requests.get(album_art_url)
         if response.status_code != 200:
             raise ValueError("Failed to download album art")
 
-        # Convert to PIL Image
-        image = Image.open(io.BytesIO(response.content))
+        # Initialize image extender
+        extender = AdvancedImageExtender()
+
+        # Extend the image to 1920x1080 using local LaMa model
+        extended_image_bytes = extender.extend_image(response.content)
+
+        # Open the extended image for Gemini
+        image = Image.open(io.BytesIO(extended_image_bytes))
+
 
         # Generate response using the Client
         response = client.models.generate_content(
@@ -490,9 +500,10 @@ def main():
 
             lyrics = json.loads(args.lyrics)
             model = args.model
+            song_name = args.song or "Unknown Song"  # Default song name if not provided
 
             print(f"Using model: {model}", file=sys.stderr)
-            result = generate_prompt_with_gemini(lyrics, model)
+            result = generate_prompt_with_gemini(lyrics, model, song_name)
             print(json.dumps(result))
 
         elif args.mode == "generate_image":

@@ -11,8 +11,6 @@ const AudioPlayer = ({
 ,
   albumArtUrl
 }) => {
-  console.log('AudioPlayer - albumArtUrl:', albumArtUrl); // Debug log
-
   // Force set volume when audio loads
   const handleCanPlay = (e) => {
     if (e.target) {
