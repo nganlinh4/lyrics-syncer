@@ -2,6 +2,9 @@ import argparse
 import json
 import os
 import shutil
+import requests
+import io
+from PIL import Image
 import base64
 import sys
 from datetime import datetime
@@ -405,12 +408,20 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
         client = genai.Client(api_key=config['geminiApiKey'])
 
         # Prepare input for Gemini with pre-text
-        final_prompt = f"(1920x1080, add to my image these:) {prompt}"
+        final_prompt = f"Add to my image these: {prompt} 16:9 ratio"
+
+        # Download the image from URL
+        response = requests.get(album_art_url)
+        if response.status_code != 200:
+            raise ValueError("Failed to download album art")
+
+        # Convert to PIL Image
+        image = Image.open(io.BytesIO(response.content))
 
         # Generate response using the Client
         response = client.models.generate_content(
             model=model_name,
-            contents=[final_prompt, album_art_url],
+            contents=[final_prompt, image],
             config=types.GenerateContentConfig(response_modalities=["Text", "Image"]
     ),
         )
