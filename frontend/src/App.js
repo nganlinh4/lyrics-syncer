@@ -3,6 +3,7 @@ import LyricsDisplay from './components/LyricsDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
 import AudioPlayer from './components/AudioPlayer';
 import ModelSelector from './components/ModelSelector';
+import CustomLyricsInput from './components/CustomLyricsInput';
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
@@ -50,6 +51,7 @@ function App() {
     error: lyricsError,
     processingStatus,
     setMatchingComplete,
+    isCustomLyrics,
     matchingProgress,
     languageDetected,
     handlePreviewLyrics,
@@ -58,6 +60,8 @@ function App() {
     handleDownloadJSON,
     setError,
     setLyrics
+,
+    handleCustomLyrics
   } = useLyrics();
 
   // Add this function where other handlers are defined
@@ -148,7 +152,7 @@ function App() {
   // Effect to handle song/artist changes
   useEffect(() => {
     setNeedsRefetch(true);
-    setHasDownloaded(false);
+    if (!isCustomLyrics) setHasDownloaded(false);
     setMatchingComplete(false);
     setMatchedLyrics([]);
   }, [song, artist, setMatchedLyrics, setMatchingComplete]);
@@ -349,6 +353,33 @@ function App() {
         />
       )}
 
+      {/* Custom Lyrics Input */}
+      {!matchingInProgress && (
+        <CustomLyricsInput
+          onCustomLyrics={handleCustomLyrics}
+        />
+      )}
+
+      {/* Preview Button */}
+      {!isCustomLyrics && (
+        <div style={{ marginTop: '20px' }}>
+          <button
+            onClick={() => handlePreviewLyrics(artist, song)}
+            style={{ padding: '8px 16px' }}
+          >
+            Preview Lyrics
+          </button>
+          {!loading && lyrics.length > 0 && (
+            <button
+              onClick={() => handlePreviewLyrics(artist, song, true)}
+              style={{ padding: '8px 16px', marginLeft: '10px' }}
+            >
+              Force Re-fetch Lyrics
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Lyrics Display with Editing */}
       {matchingComplete && matchedLyrics.length > 0 && (
         <div>
@@ -358,7 +389,8 @@ function App() {
             onLyricClick={seekTo}
             duration={audioDuration || 180}
             onUpdateLyrics={handleUpdateLyrics}
-            allowEditing={true}
+            allowEditing={matchingComplete}
+            onCustomLyrics={handleCustomLyrics}
           />
           
           <button
@@ -383,32 +415,17 @@ function App() {
         </div>
       )}
 
-      {/* Preview Button */}
-      <div style={{ marginTop: '20px' }}>
-        <button
-          onClick={() => handlePreviewLyrics(artist, song)}
-          style={{ padding: '8px 16px' }}
-        >
-          Preview Lyrics
-        </button>
-        {!loading && lyrics.length > 0 && (
-          <button
-            onClick={() => handlePreviewLyrics(artist, song, true)}
-            style={{ padding: '8px 16px', marginLeft: '10px' }}
-          >
-            Force Re-fetch Lyrics
-          </button>
-        )}
-      </div>
-
       {/* Lyrics Preview */}
       {lyrics.length > 0 && (
         <div style={{ marginTop: '20px' }}>
           <h3>Lyrics Preview</h3>
           <div style={{ whiteSpace: 'pre-line' }}>
-            {lyrics.map((line, index) => (
-              <div key={index}>{line}</div>
-            ))}
+            {lyrics.length > 0 ? (
+              lyrics.map((line, index) => <div key={index}>{line}</div>
+)
+            ) : (
+              <p>No lyrics to display. You can fetch lyrics or add custom lyrics.</p>
+            )}
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@ const useLyrics = () => {
   const [processingStatus, setProcessingStatus] = useState('');
   const [matchingProgress, setMatchingProgress] = useState(0);
   const [languageDetected] = useState('');
+  const [isCustomLyrics, setIsCustomLyrics] = useState(false);
   const [currentLyricIndex, setCurrentLyricIndex] = useState(-1);
 
   const handlePreviewLyrics = async (artist, song, forceRefetch = false) => {
@@ -47,6 +48,14 @@ const useLyrics = () => {
       setError(error.message);
       setLyrics([]);
     }
+  };
+  
+  const handleCustomLyrics = (customText) => {
+    setError(null);
+    const lyricsArray = customText.split(/\\n|\n/).filter(line => line.trim());
+    setLyrics(lyricsArray);
+    setIsCustomLyrics(true);
+    setMatchedLyrics([]);
   };
 
   const handleAdvancedMatch = async (artist, song, audioUrl, lyrics, model, force = false) => {
@@ -164,6 +173,7 @@ const useLyrics = () => {
     processingStatus,
     matchingProgress,
     languageDetected,
+    isCustomLyrics,
     currentLyricIndex,
     handlePreviewLyrics,
     handleAdvancedMatch,
@@ -172,6 +182,8 @@ const useLyrics = () => {
     updateCurrentLyric,
     setError,
     setLyrics
+,
+    handleCustomLyrics
   };
 };
 
