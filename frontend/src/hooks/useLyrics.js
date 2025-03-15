@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 
 const useLyrics = () => {
   const [lyrics, setLyrics] = useState([]);
+  const [albumArtUrl, setAlbumArtUrl] = useState('');
   const [matchedLyrics, setMatchedLyrics] = useState([]);
   const [matchingInProgress, setMatchingInProgress] = useState(false);
   const [matchingComplete, setMatchingComplete] = useState(false);
@@ -16,6 +17,7 @@ const useLyrics = () => {
     if (!song || !artist) {
       setError("Please enter both song and artist.");
       setLyrics([]);
+      setAlbumArtUrl('');
       return;
     }
 
@@ -41,8 +43,11 @@ const useLyrics = () => {
       }
 
       const data = await response.json();
+      console.log('Raw API response:', data);  // Debug raw response
       const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
+      console.log('Album Art URL from response:', data.albumArtUrl);  // Debug album art URL
       setLyrics(lyricsArray);
+      setAlbumArtUrl(data.albumArtUrl || '');
     } catch (error) {
       console.error("Error fetching lyrics:", error);
       setError(error.message);
@@ -164,6 +169,7 @@ const useLyrics = () => {
 
   return {
     lyrics,
+    albumArtUrl,
     matchedLyrics,
         setMatchedLyrics,
         setMatchingComplete,

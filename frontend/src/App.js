@@ -44,6 +44,7 @@ function App() {
 
   const {
     lyrics,
+    albumArtUrl,
     matchedLyrics,
     setMatchedLyrics,
     matchingInProgress,
@@ -342,6 +343,7 @@ function App() {
           audioRef={audioRef}
           containerRef={containerRef}
           fileSize={fileSize}
+          albumArtUrl={albumArtUrl}
           onError={(e) => {
             console.error("Audio player error:", e);
             console.log("Failed to load audio URL:", audioUrl);

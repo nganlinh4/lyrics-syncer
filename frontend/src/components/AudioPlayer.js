@@ -8,7 +8,11 @@ const AudioPlayer = ({
   fileSize,
   onError,
   onLoadedMetadata
+,
+  albumArtUrl
 }) => {
+  console.log('AudioPlayer - albumArtUrl:', albumArtUrl); // Debug log
+
   // Force set volume when audio loads
   const handleCanPlay = (e) => {
     if (e.target) {
@@ -21,6 +25,19 @@ const AudioPlayer = ({
   return (
     <div>
       <h3>Audio Preview</h3>
+      {albumArtUrl && (
+        <div style={{ 
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'center'
+        }}>
+          <img 
+            src={albumArtUrl} 
+            alt="Album Art"
+            style={{ maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }}
+          />
+        </div>
+      )}
       <div 
         ref={containerRef} 
         style={{ marginTop: '20px', marginBottom: '20px', width: '100%' }}

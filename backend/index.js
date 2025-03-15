@@ -378,12 +378,8 @@ const getLyrics = async (req, res) => {
         // Check cached lyrics first unless force is true
         const songName = getSongName(artist, song);
         const lyricsFilePath = path.join(LYRICS_DIR, `${songName}.txt`);
+        const metadataFilePath = path.join(LYRICS_DIR, `${songName}_metadata.json`);
 
-        if (!force && await fileExists(lyricsFilePath)) {
-            console.log(`Using cached lyrics for ${songName}`);
-            const lyrics = await fs.readFile(lyricsFilePath, 'utf-8');
-            return res.json({ lyrics });
-        }
 
         if (!config.geniusApiKey) {
             return res.status(400).json({ error: 'Genius API key not set. Please provide it through the frontend.' });
@@ -392,13 +388,40 @@ const getLyrics = async (req, res) => {
         const { default: Genius } = await import('genius-lyrics');
         const geniusClient = new Genius.Client(config.geniusApiKey);
 
+        // Always search for the song to get metadata
         const geniusSong = await geniusClient.songs.search(`${artist} ${song}`);
+
         
         if (geniusSong.length > 0) {
-            const lyrics = await geniusSong[0].lyrics();
-            // Cache the lyrics
-            await fs.writeFile(lyricsFilePath, lyrics, 'utf-8');
-            res.json({ lyrics });
+            const geniusResult = geniusSong[0];
+            
+            // Get lyrics from cache or fetch new ones
+            let lyrics, albumArtUrl;
+            if (!force && await fileExists(lyricsFilePath)) {
+                console.log(`Using cached lyrics for ${songName}`);
+                lyrics = await fs.readFile(lyricsFilePath, 'utf-8');
+                const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
+                albumArtUrl = metadata.albumArtUrl;
+            } else {
+                console.log('Fetching fresh lyrics from Genius...');
+                lyrics = await geniusResult.lyrics();
+                await fs.writeFile(lyricsFilePath, lyrics, 'utf-8');
+            
+    
+                // Get fresh album art URL
+                albumArtUrl = geniusResult.image || geniusResult.header_image_url || geniusResult.song_art_image_url;
+                
+                // Cache the metadata
+                const metadata = {
+                    albumArtUrl,
+                    cached: new Date().toISOString()
+                };
+                await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
+            }
+            
+            console.log('Album Art URL:', albumArtUrl);
+            
+            return res.json({ lyrics, albumArtUrl });
         } else {
             res.status(404).json({ error: "Lyrics not found" });
         }
@@ -428,11 +451,17 @@ app.post('/api/force_lyrics', async (req, res) => {
         const { artist, song } = req.body;
         const songName = getSongName(artist, song);
         const lyricsFilePath = path.join(LYRICS_DIR, `${songName}.txt`);
+        const metadataFilePath = path.join(LYRICS_DIR, `${songName}_metadata.json`);
 
         // Delete existing lyrics file if it exists
         if (await fileExists(lyricsFilePath)) {
             await fs.unlink(lyricsFilePath);
         }
+        // Delete existing metadata file if it exists
+        if (await fileExists(metadataFilePath)) {
+            await fs.unlink(metadataFilePath);
+        }
+
         req.body.force = true;
         return getLyrics(req, res);
     } catch (error) {
