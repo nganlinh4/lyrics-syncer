@@ -116,7 +116,14 @@ const useLyrics = () => {
     }
 
     try {
-      const cleanedLyrics = matchedLyrics.map(({ confidence, ...rest }) => rest);
+      // Keep all fields except confidence, preserving language
+      const cleanedLyrics = matchedLyrics.map(({ confidence, ...rest }) => ({
+        start: rest.start,
+        end: rest.end,
+        text: rest.text,
+        language: rest.language || 'unknown' // Fallback if language is missing
+      }));
+      
       const jsonBlob = new Blob([JSON.stringify(cleanedLyrics, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(jsonBlob);
       
