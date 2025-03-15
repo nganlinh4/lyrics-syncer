@@ -494,7 +494,7 @@ function App() {
               }}>
                 <h3>Generated Background Image</h3>
                 <img 
-                  src={`data:${generatedImage.mime_type};base64,${generatedImage.image_url}`}
+                  src={`data:${generatedImage.mime_type};base64,${generatedImage.data}`}
                   alt="Generated background"
                   style={{
                     width: '100%',

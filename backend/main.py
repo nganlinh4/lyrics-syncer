@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import shutil
+import base64
 import sys
 from datetime import datetime
 from typing import List, Dict
@@ -415,8 +416,6 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
         )
 
         # Debug print the response attributes
-        print("Response attributes:", dir(response), file=sys.stderr)
-        print("Response text:", response.text, file=sys.stderr)
         
         # Access the parts instead of direct image attribute
         image_part = None
@@ -430,10 +429,15 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
                 if image_part:
                     break
         
+        if not image_part:
+            raise ValueError("No image was generated in the response")
+            
+        # Encode image data as base64 string
+        image_bytes = image_part.inline_data.data
+        print("Successfully extracted and encoded image data", file=sys.stderr)
         return {
-            "image_url": image_part.inline_data.data if image_part else None,
-            "mime_type": image_part.inline_data.mime_type if image_part else None,
-            "status": "success"
+            "data": base64.b64encode(image_bytes).decode('utf-8'),
+            "mime_type": image_part.inline_data.mime_type
         }
 
     except Exception as e:
@@ -489,8 +493,8 @@ def main():
             model = args.model
 
             print(f"Using model: {model}", file=sys.stderr)
-            result = generate_image_with_gemini(prompt, album_art, model)
-            print(json.dumps(result))
+            image_result = generate_image_with_gemini(prompt, album_art, model)
+            print(json.dumps({"status": "success", **image_result}))
 
     except Exception as e:
         error_result = {

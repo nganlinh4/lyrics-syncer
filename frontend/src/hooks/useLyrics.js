@@ -221,8 +221,7 @@ const useLyrics = () => {
       }
 
       const data = await response.json();
-      setGeneratedImage(data.image_url);
-      return data.image_url;
+      setGeneratedImage(data);
     } catch (error) {
       console.error('Error generating image:', error);
       setError(error.message);
