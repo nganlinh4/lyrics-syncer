@@ -7,7 +7,7 @@ import io
 from PIL import Image
 import base64
 import sys
-from image_extender import AdvancedImageExtender
+from image_extender import StableDiffusionImageExtender
 from datetime import datetime
 from typing import List, Dict
 import re
@@ -419,7 +419,7 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
             raise ValueError("Failed to download album art")
 
         # Initialize image extender
-        extender = AdvancedImageExtender()
+        extender = StableDiffusionImageExtender()
 
         # Extend the image to 1920x1080 using local LaMa model
         extended_image_bytes = extender.extend_image(response.content)

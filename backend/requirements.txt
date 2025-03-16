@@ -1,4 +1,6 @@
 numpy
-google-genai
 Pillow
-opencv-python
+diffusers
+transformers
+accelerate
+safetensors
