@@ -7,13 +7,12 @@ import io
 from PIL import Image
 import base64
 import sys
-from image_extender import StableDiffusionImageExtender
+from datetime import datetime
 from typing import List, Dict
 import re
 from google import genai
 from google.genai import types
 import subprocess
-import datetime
 
 
 # Suppress symlink warning
@@ -281,7 +280,7 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
         # Save prompt and response for debugging
         debug_dir = os.path.join(os.path.dirname(__file__), 'debug')
         os.makedirs(debug_dir, exist_ok=True)
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         prompt_file = save_debug_file(f'gemini_prompt_{timestamp}.txt', prompt)
         debug_file = save_debug_file(f'gemini_response_{timestamp}.txt', response_text)
         print(f"Debug files saved: {prompt_file}, {debug_file}", file=sys.stderr)
@@ -411,21 +410,14 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
         client = genai.Client(api_key=config['geminiApiKey'])
 
         # Prepare input for Gemini with pre-text
-        final_prompt = f"Blend and decorate my image with these: {prompt}"
+        final_prompt = f"Expand the image into 16:9 ratio (landscape ratio). Then decorate my given image with {prompt}"
 
         # Download the image from URL
         response = requests.get(album_art_url)
         if response.status_code != 200:
             raise ValueError("Failed to download album art")
 
-        # Initialize image extender
-        extender = StableDiffusionImageExtender()
-
-        # Extend the image to 1920x1080 using local LaMa model
-        extended_image_bytes = extender.extend_image(response.content)
-
-        # Open the extended image for Gemini
-        image = Image.open(io.BytesIO(extended_image_bytes))
+        image = Image.open(io.BytesIO(response.content))
 
 
         # Generate response using the Client

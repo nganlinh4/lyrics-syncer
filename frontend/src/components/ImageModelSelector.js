@@ -2,7 +2,7 @@ import React from 'react';
 
 const AVAILABLE_MODELS = [
   {
-    id: 'gemini-2.0-flash-exp',
+    id: 'gemini-2.0-flash-exp-image-generation',
     name: 'Gemini 2.0 Flash Experimental',
     description: 'Image generation optimized for abstract visualizations'
   }

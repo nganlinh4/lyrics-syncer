@@ -12,7 +12,7 @@ const useLyrics = () => {
   const [languageDetected] = useState('');
   const [isCustomLyrics, setIsCustomLyrics] = useState(false);
   const [currentLyricIndex, setCurrentLyricIndex] = useState(-1);
-  const [selectedImageModel, setSelectedImageModel] = useState('gemini-2.0-flash-exp');
+  const [selectedImageModel, setSelectedImageModel] = useState('gemini-2.0-flash-exp-image-generation');
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [generatedImage, setGeneratedImage] = useState('');
 
