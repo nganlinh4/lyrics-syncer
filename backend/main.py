@@ -8,12 +8,12 @@ from PIL import Image
 import base64
 import sys
 from image_extender import StableDiffusionImageExtender
-from datetime import datetime
 from typing import List, Dict
 import re
 from google import genai
 from google.genai import types
 import subprocess
+import datetime
 
 
 # Suppress symlink warning
@@ -281,7 +281,7 @@ IMPORTANT: Your output must contain EXACTLY the same lines as provided in 'Lyric
         # Save prompt and response for debugging
         debug_dir = os.path.join(os.path.dirname(__file__), 'debug')
         os.makedirs(debug_dir, exist_ok=True)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         prompt_file = save_debug_file(f'gemini_prompt_{timestamp}.txt', prompt)
         debug_file = save_debug_file(f'gemini_response_{timestamp}.txt', response_text)
         print(f"Debug files saved: {prompt_file}, {debug_file}", file=sys.stderr)

@@ -1,12 +1,10 @@
+import datetime
+import os
 import torch
 from diffusers import (
     StableDiffusionInpaintPipeline,
     DDIMScheduler,
-    AutoencoderKL, 
-    UNet2DConditionModel,
 )
-from transformers import CLIPTextModel, CLIPTokenizer
-import numpy as np
 from PIL import Image
 import io
 
@@ -14,165 +12,124 @@ class StableDiffusionImageExtender:
     def __init__(self, model_path="runwayml/stable-diffusion-inpainting", device=None):
         """
         Initialize the image extender with a Stable Diffusion model.
-        
+
         Args:
             model_path (str): Path to the model or model identifier from huggingface.co/models
-            device (str): Device to run the model on ("cuda" or "cpu")
+            device (str): Device to run the model on ("cuda" or "cpu"). Defaults to "cuda" if available, else "cpu"
         """
+        # Set device automatically if not specified
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
-            
+
         self.device = device
+        
+        # Load the Stable Diffusion inpainting pipeline
         self.pipe = StableDiffusionInpaintPipeline.from_pretrained(
             model_path,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32
         )
+        
+        # Configure scheduler
         self.pipe.scheduler = DDIMScheduler.from_config(self.pipe.scheduler.config)
+        
+        # Move pipeline to the specified device
         self.pipe = self.pipe.to(device)
         
+        # Optimize for CUDA if applicable
         if device == "cuda":
             self.pipe.enable_attention_slicing()
-    
+
     def extend_image(self, image_bytes, target_ratio=16/9):
         """
-        Extend an image to a target aspect ratio using Stable Diffusion outpainting.
+        Resize image to 1080x1080 and extend to 1920x1080 (16:9) using Stable Diffusion outpainting.
         
         Args:
-            image_bytes (bytes): Input image as bytes
-            target_ratio (float): Target aspect ratio (width/height), defaults to 16:9
+            image_bytes (bytes): Input image as bytes.
+            target_ratio (float): Target aspect ratio (width/height), defaults to 16/9.
             
         Returns:
-            bytes: Extended image in PNG format
+            bytes: Extended image in PNG format.
         """
         # Convert bytes to PIL Image
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        init_width, init_height = image.size
         
-        # Calculate target dimensions
-        if init_width / init_height < target_ratio:
-            # Need to extend width
-            target_width = int(init_height * target_ratio)
-            target_height = init_height
-            
-            # Calculate padding needed
-            pad_left = (target_width - init_width) // 2
-            pad_right = target_width - init_width - pad_left
-            
-            # Create extended image and mask
-            extended = Image.new('RGB', (target_width, target_height))
-            mask = Image.new('RGB', (target_width, target_height), 'white')
-            
-            # Paste original image in center
-            extended.paste(image, (pad_left, 0))
-            
-            # Create mask where white is area to inpaint
-            black_box = Image.new('RGB', (init_width, target_height), 'black')
-            mask.paste(black_box, (pad_left, 0))
-            
-            # Create prompt for natural extension
-            prompt = "Extend this image seamlessly, maintaining the same style and scene"
-            
-            # Run outpainting in pieces if needed
-            if pad_left > 0:
-                # Process left side
-                left_part = self._outpaint_region(
-                    extended, 
-                    mask,
-                    prompt,
-                    0,
-                    0,
-                    pad_left,
-                    target_height
-                )
-                extended.paste(left_part, (0, 0))
-                
-            if pad_right > 0:
-                # Process right side
-                right_part = self._outpaint_region(
-                    extended,
-                    mask,
-                    prompt,
-                    target_width - pad_right,
-                    0,
-                    pad_right,
-                    target_height
-                )
-                extended.paste(right_part, (target_width - pad_right, 0))
-                
-        else:
-            # Need to extend height
-            target_width = init_width
-            target_height = int(init_width / target_ratio)
-            
-            # Calculate padding needed
-            pad_top = (target_height - init_height) // 2
-            pad_bottom = target_height - init_height - pad_top
-            
-            # Create extended image and mask
-            extended = Image.new('RGB', (target_width, target_height))
-            mask = Image.new('RGB', (target_width, target_height), 'white')
-            
-            # Paste original image in center
-            extended.paste(image, (0, pad_top))
-            
-            # Create mask where white is area to inpaint
-            black_box = Image.new('RGB', (target_width, init_height), 'black')
-            mask.paste(black_box, (0, pad_top))
-            
-            # Create prompt for natural extension
-            prompt = "Extend this image seamlessly, maintaining the same style and scene"
-            
-            # Run outpainting in pieces if needed
-            if pad_top > 0:
-                # Process top side
-                top_part = self._outpaint_region(
-                    extended,
-                    mask,
-                    prompt,
-                    0,
-                    0,
-                    target_width,
-                    pad_top
-                )
-                extended.paste(top_part, (0, 0))
-                
-            if pad_bottom > 0:
-                # Process bottom side
-                bottom_part = self._outpaint_region(
-                    extended,
-                    mask,
-                    prompt,
-                    0,
-                    target_height - pad_bottom,
-                    target_width,
-                    pad_bottom
-                )
-                extended.paste(bottom_part, (0, target_height - pad_bottom))
+        # Define target dimensions
+        target_width = 1920
+        target_height = 1080
+        square_size = 1080
         
-        # Convert to PNG bytes
-        output_bytes = io.BytesIO()
-        extended.save(output_bytes, format='PNG')
-        return output_bytes.getvalue()
-    
-    def _outpaint_region(self, image, mask, prompt, x, y, width, height):
-        """Helper method to outpaint a specific region of the image"""
-        # Crop the relevant region
-        region = image.crop((x, y, x + width, y + height))
-        region_mask = mask.crop((x, y, x + width, y + height))
+        # Step 1: Resize to 1080x1080 square with padding if needed
+        square_image = Image.new('RGB', (square_size, square_size), (0, 0, 0))
         
-        # Generate outpainting
-        output = self.pipe(
+        # Calculate resize dimensions while maintaining aspect ratio
+        orig_width, orig_height = image.size
+        ratio = min(square_size / orig_width, square_size / orig_height)
+        new_width = int(orig_width * ratio)
+        new_height = int(orig_height * ratio)
+        
+        # Resize image
+        resized_image = image.resize((new_width, new_height), Image.LANCZOS)
+        
+        # Center the resized image on the square canvas
+        offset_x = (square_size - new_width) // 2
+        offset_y = (square_size - new_height) // 2
+        square_image.paste(resized_image, (offset_x, offset_y))
+        
+        # Step 2: Create 1920x1080 canvas
+        extended = Image.new('RGB', (target_width, target_height), (2, 2, 2))
+        
+        # Calculate padding needed
+        pad_left = (target_width - square_size) // 2
+        
+        # Paste square image in center
+        extended.paste(square_image, (pad_left, 0))
+        
+        # Create mask by identifying all black/near-black pixels
+        import numpy as np
+        img_array = np.array(extended)
+        
+        # Improved mask detection - find pixels where RGB values are very dark
+        black_threshold = 5
+        mask_array = np.all(img_array <= black_threshold, axis=2).astype(np.uint8) * 255
+        mask = Image.fromarray(mask_array)
+        
+        # Create prompt for natural extension
+        prompt = "Extend this image seamlessly, maintaining the same style and scene"
+        
+        # Run inpainting on the entire image
+        result = self.pipe(
             prompt=prompt,
-            image=region,
-            mask_image=region_mask,
+            image=extended,
+            mask_image=mask,
             num_inference_steps=50,
             guidance_scale=7.5
         ).images[0]
         
-        return output
-    
+        # IMPORTANT: Ensure the output is 1920x1080
+        if result.size != (target_width, target_height):
+            print(f"Warning: Model returned {result.size} instead of {target_width}x{target_height}, resizing...")
+            result = result.resize((target_width, target_height), Image.LANCZOS)
+        
+        # Save the extended image to stored_images/
+        if not os.path.exists('stored_images'):
+            os.makedirs('stored_images')
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"stored_images/extended_{timestamp}.png"
+        result.save(filename, format='PNG')
+        
+        # Convert to PNG bytes and return
+        output_bytes = io.BytesIO()
+        result.save(output_bytes, format='PNG')
+        return output_bytes.getvalue()
+
     def __call__(self, image_bytes):
         """
         Convenience method to call extend_image with default 16:9 ratio.
+
+        Args:
+            image_bytes (bytes): Input image as bytes
+
+        Returns:
+            bytes: Extended image in PNG format
         """
         return self.extend_image(image_bytes)

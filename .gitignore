@@ -76,3 +76,5 @@ venv/
 /backend/models/
 *.pt
 *.pth
+
+/backend/stored_images/
