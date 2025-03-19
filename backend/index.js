@@ -738,8 +738,50 @@ app.post('/api/generate_image', async (req, res) => {
     }
 });
 
+const deleteCache = async (req, res) => {
+  try {
+    const foldersToClean = [
+      { path: AUDIO_DIR, name: 'audio' },
+      { path: LYRICS_DIR, name: 'lyrics' },
+      { path: path.join(__dirname, 'debug'), name: 'debug' }
+    ];
+    
+    const results = [];
+    
+    for (const folder of foldersToClean) {
+      try {
+        if (await fileExists(folder.path)) {
+          const files = await fs.readdir(folder.path);
+          
+          // Delete each file in the folder
+          for (const file of files) {
+            const filePath = path.join(folder.path, file);
+            // Check if it's a file and not a directory
+            const stats = await fs.stat(filePath);
+            if (stats.isFile()) {
+              await fs.unlink(filePath);
+            }
+          }
+          
+          results.push({ folder: folder.name, status: 'success', message: `Deleted ${files.length} files` });
+        } else {
+          results.push({ folder: folder.name, status: 'warning', message: 'Folder does not exist' });
+        }
+      } catch (error) {
+        results.push({ folder: folder.name, status: 'error', message: error.message });
+      }
+    }
+    
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error("Error in /api/delete_cache:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
 
 app.post('/api/generate_prompt', generateImagePrompt);
+app.post('/api/delete_cache', deleteCache);

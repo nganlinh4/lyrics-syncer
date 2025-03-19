@@ -5,6 +5,7 @@ import AudioPlayer from './components/AudioPlayer';
 import ModelSelector from './components/ModelSelector';
 import ImageModelSelector from './components/ImageModelSelector';
 import CustomLyricsInput from './components/CustomLyricsInput';
+import DeleteCacheButton from './components/DeleteCacheButton';
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
@@ -364,6 +365,9 @@ function App() {
             </button>
         </>
       )}
+      
+      {/* Delete Cache Button */}
+      <DeleteCacheButton />
 
       {/* Processing Status */}
       {matchingInProgress && (
