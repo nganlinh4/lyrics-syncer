@@ -336,6 +336,7 @@ const saveApiKey = async (req, res) => {
 // Routes
 app.get('/api/audio_data/:song_name', getAudioData);
 app.get('/api/lyrics_timing/:song_name', getLyricsTiming);
+app.post('/api/save_api_key', saveApiKey);
 
 app.post('/api/force_process', async (req, res) => {
     try {
@@ -540,8 +541,7 @@ const matchLyrics = async (req, res) => {
             '--audio', absoluteAudioPath,
             '--lyrics', JSON.stringify(lyrics),
             '--artist', artist,
-            '--song', song
-,
+            '--song', song,
             '--model', model
         ];
         const pythonProcess = spawn('python', pythonArgs);

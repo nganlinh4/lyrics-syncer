@@ -1,1 +1,0 @@
-2. Start and end times must be floating point numbers representing ABSOLUTE seconds especially cases after 60.00 seconds (e.g., 75.20, not 1.15).
