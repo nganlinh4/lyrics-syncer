@@ -238,8 +238,8 @@ function App() {
         ModelSelector={ModelSelector}
       />
 
-      {/* Audio Preview Section */}
-      {audioUrl && (
+      {/* Audio Preview Section - only show when not matching lyrics */}
+      {audioUrl && !matchingComplete && !matchingInProgress && (
         <AudioPreviewSection
           audioUrl={audioUrl}
           audioRef={audioRef}
@@ -284,6 +284,16 @@ function App() {
         audioUrl={audioUrl}
         lyrics={lyrics}
         selectedModel={selectedModel}
+        audioRef={audioRef}
+        onError={(e) => {
+          console.error("Audio player error:", e);
+          console.log("Failed to load audio URL:", audioUrl);
+          setError("Error loading audio. Please try again.");
+        }}
+        onLoadedMetadata={(e) => {
+          console.log("Audio metadata loaded, duration:", e.target.duration);
+        }}
+        albumArtUrl={albumArtUrl}
       />
 
       {/* Image Generation Section */}

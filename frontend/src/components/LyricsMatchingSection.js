@@ -2,6 +2,7 @@ import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LyricsDisplay from './LyricsDisplay';
+import AudioPlayer from './AudioPlayer';
 import theme from '../theme/theme';
 
 const LyricsMatchingSection = ({
@@ -23,7 +24,12 @@ const LyricsMatchingSection = ({
   song,
   audioUrl,
   lyrics,
-  selectedModel
+  selectedModel,
+  audioRef,
+  handleAudioRef,
+  onError,
+  onLoadedMetadata,
+  albumArtUrl
 }) => {
   return (
     <Card title="Lyrics Matching">
@@ -83,6 +89,38 @@ const LyricsMatchingSection = ({
         {/* Lyrics Display and Editing */}
         {matchingComplete && matchedLyrics.length > 0 && (
           <div style={{ display: 'grid', gap: theme.spacing.lg }}>
+            {/* Album Art and Audio Player */}
+            <div style={{ display: 'grid', gap: theme.spacing.md }}>
+              {albumArtUrl && (
+                <div style={{ 
+                  display: 'flex',
+                  justifyContent: 'center'
+                }}>
+                  <img 
+                    src={albumArtUrl} 
+                    alt="Album Art"
+                    style={{ 
+                      maxWidth: '300px',
+                      maxHeight: '300px',
+                      objectFit: 'contain',
+                      borderRadius: theme.borderRadius.md,
+                      boxShadow: theme.shadows.md
+                    }}
+                  />
+                </div>
+              )}
+              
+              {audioUrl && (
+                <AudioPlayer
+                  audioUrl={audioUrl}
+                  audioRef={audioRef}
+                  handleAudioRef={handleAudioRef}
+                  onError={onError}
+                  onLoadedMetadata={onLoadedMetadata}
+                />
+              )}
+            </div>
+
             <LyricsDisplay
               matchedLyrics={matchedLyrics}
               currentTime={currentTime}
