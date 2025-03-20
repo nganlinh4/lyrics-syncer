@@ -15,6 +15,7 @@ import Card from './ui/Card';
 import Button from './ui/Button';
 import ErrorDisplay from './ui/ErrorDisplay';
 import theme from './theme/theme';
+import ThemeProvider from './theme/ThemeProvider';
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
@@ -404,13 +405,15 @@ const MainApp = () => {
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<MainApp />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/terms" element={<TermsOfService />} />
-      </Routes>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<MainApp />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 
