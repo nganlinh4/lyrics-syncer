@@ -31,6 +31,11 @@ const LyricsMatchingSection = ({
   onLoadedMetadata,
   albumArtUrl
 }) => {
+  // Only render the section if there's something to show
+  if (!showMatchingButton && !matchingInProgress && !matchingComplete) {
+    return null;
+  }
+
   return (
     <Card title="Lyrics Matching">
       <div style={{ display: 'grid', gap: theme.spacing.lg }}>
