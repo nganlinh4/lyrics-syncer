@@ -56,18 +56,20 @@ export const saveApiKey = async (req, res) => {
  */
 export const matchLyrics = async (req, res) => {
   try {
-    const { artist, song, audioPath, lyrics, model } = req.body;
+    const { artist, song, audioPath, lyrics, model, forceRematch } = req.body;
     
     if (!audioPath || !lyrics) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
-    // Check for existing Gemini results
-    const resultsPath = getGeminiResultsPath(artist, song, model, config.lyricsDir);
-    if (await fileExists(resultsPath)) {
-      console.log(`Using cached Gemini results from ${resultsPath}`);
-      const cachedResults = await fs.readFile(resultsPath, 'utf-8');
-      return res.json(JSON.parse(cachedResults));
+    // Check for existing Gemini results, unless forceRematch is true
+    if (!forceRematch) {
+      const resultsPath = getGeminiResultsPath(artist, song, model, config.lyricsDir);
+      if (await fileExists(resultsPath)) {
+        console.log(`Using cached Gemini results from ${resultsPath}`);
+        const cachedResults = await fs.readFile(resultsPath, 'utf-8');
+        return res.json(JSON.parse(cachedResults));
+      }
     }
 
     // Clean the audio path by removing query parameters
@@ -136,8 +138,10 @@ export const matchLyrics = async (req, res) => {
             status: result.status || 'success'
           };
           
-          // Save original Gemini results to file
-          await fs.writeFile(resultsPath, JSON.stringify(result, null, 2), 'utf-8');
+          // Save original Gemini results to file only if not forceRematch
+          if (!forceRematch) {
+            await fs.writeFile(resultsPath, JSON.stringify(result, null, 2), 'utf-8');
+          }
           
           // Return the reformatted result for the frontend
           res.json(streamedResult);

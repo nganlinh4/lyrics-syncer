@@ -68,6 +68,13 @@ const useAudioControl = () => {
         const newTime = Math.max(0, Math.min(time, audioRef.current.duration));
         audioRef.current.currentTime = newTime;
         setCurrentTime(newTime);
+        
+        // Auto-play if paused
+        if (audioRef.current.paused) {
+          audioRef.current.play()
+            .then(() => setIsPlaying(true))
+            .catch(err => setError(`Playback failed: ${err.message}`));
+        }
       } catch (err) {
         setError(`Failed to seek: ${err.message}`);
       }
