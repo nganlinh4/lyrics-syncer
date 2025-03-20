@@ -81,7 +81,7 @@ const MainLayout = ({ children, onSettingsClick }) => {
               Settings
             </button>
             <a
-              href="https://github.com/yourusername/lyrics-syncer"
+              href="https://github.com/nganlinh4/lyrics-syncer"
               target="_blank"
               rel="noopener noreferrer"
               style={{

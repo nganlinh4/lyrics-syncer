@@ -12,32 +12,72 @@ const AudioPreviewSection = ({
   albumArtUrl,
   onError,
   onLoadedMetadata,
-  handleAudioRef
+  handleAudioRef,
+  lyrics = [] // Add lyrics prop with default empty array
 }) => {
   if (!audioUrl) return null;
 
   return (
     <Card title="Audio Preview">
       <div style={{ display: 'grid', gap: theme.spacing.md }}>
-        {albumArtUrl && (
-          <div style={{ 
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: theme.spacing.md
-          }}>
-            <img 
-              src={albumArtUrl} 
-              alt="Album Art"
-              style={{ 
-                maxWidth: '300px',
-                maxHeight: '300px',
-                objectFit: 'contain',
-                borderRadius: theme.borderRadius.md,
-                boxShadow: theme.shadows.md
-              }}
-            />
-          </div>
-        )}
+        <div style={{
+          display: 'grid', 
+          gridTemplateColumns: lyrics.length > 0 && albumArtUrl ? '1fr 1fr' : '1fr',
+          gap: theme.spacing.lg,
+          alignItems: 'start'
+        }}>
+          {albumArtUrl && (
+            <div style={{ 
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'flex-start'
+            }}>
+              <img 
+                src={albumArtUrl} 
+                alt="Album Art"
+                style={{ 
+                  maxWidth: '300px',
+                  maxHeight: '300px',
+                  width: '100%',
+                  objectFit: 'contain',
+                  borderRadius: theme.borderRadius.md,
+                  boxShadow: theme.shadows.md
+                }}
+              />
+            </div>
+          )}
+
+          {lyrics.length > 0 && (
+            <div style={{
+              maxHeight: '300px',
+              overflowY: 'auto',
+              backgroundColor: theme.colors.background.light,
+              padding: theme.spacing.md,
+              borderRadius: theme.borderRadius.md,
+              boxShadow: theme.shadows.sm
+            }}>
+              <h3 style={{
+                ...theme.typography.h3,
+                marginBottom: theme.spacing.sm
+              }}>
+                Lyrics from Genius
+              </h3>
+              {lyrics.map((line, index) => (
+                <p 
+                  key={index}
+                  style={{
+                    margin: `${theme.spacing.xs} 0`,
+                    fontSize: theme.typography.body.fontSize,
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap'
+                  }}
+                >
+                  {line || '\u00A0'} {/* Use non-breaking space for empty lines */}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div 
           ref={containerRef} 

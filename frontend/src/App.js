@@ -32,7 +32,6 @@ function App() {
   const [needsRefetch, setNeedsRefetch] = useState(true);
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
-  const [audioOnly, setAudioOnly] = useState(() => localStorage.getItem('audioOnly') === 'true');
 
   // Custom hooks
   const {
@@ -116,7 +115,7 @@ function App() {
       const response = await fetch(`${API_URL}/api/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ song, artist, audioOnly }),
+        body: JSON.stringify({ song, artist }),
       });
 
       if (!response.ok) {
@@ -162,7 +161,7 @@ function App() {
       const response = await fetch(`${API_URL}/api/force_process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ song, artist, audioOnly }),
+        body: JSON.stringify({ song, artist }),
       });
 
       if (!response.ok) {
@@ -178,11 +177,11 @@ function App() {
   };
 
   // Handle fetching lyrics from Genius
-  const handleFetchFromGenius = async () => {
+  const handleFetchFromGenius = async (artistName, songName) => {
     try {
       setLoading(true);
       setError(null);
-      await fetchFromGenius(artist, song);
+      await fetchFromGenius(artistName, songName);
       setNeedsRefetch(false);
     } catch (error) {
       setError(error.message);
@@ -237,7 +236,6 @@ function App() {
       <SongInput
         artist={artist}
         song={song}
-        audioOnly={audioOnly}
         loading={loading}
         onArtistChange={(e) => {
           setArtist(e.target.value);
@@ -248,10 +246,6 @@ function App() {
           setSong(e.target.value);
           setNeedsRefetch(true);
           localStorage.setItem('lastSong', e.target.value);
-        }}
-        onAudioOnlyChange={(e) => {
-          setAudioOnly(e.target.checked);
-          localStorage.setItem('audioOnly', e.target.checked);
         }}
         onDownload={handleDownload}
         onForceDownload={handleForceDownload}
@@ -267,6 +261,7 @@ function App() {
           containerRef={containerRef}
           fileSize={fileSize}
           albumArtUrl={albumArtUrl}
+          lyrics={lyrics}
           onError={(e) => {
             console.error("Audio player error:", e);
             console.log("Failed to load audio URL:", audioUrl);
