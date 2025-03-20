@@ -21,7 +21,14 @@ const LyricsDisplay = ({
   const timelineRef = useRef(null);
   const containerRef = useRef(null);
   const lastTimeRef = useRef(0);
-  const dragInfo = useRef({ dragging: false, index: null, field: null, startX: 0, startValue: 0 });
+  const dragInfo = useRef({ 
+    dragging: false, 
+    index: null, 
+    field: null, 
+    startX: 0, 
+    startValue: 0,
+    lastDragEnd: 0  // Add this to track when the last drag ended
+  });
 
   // Sync with incoming matchedLyrics prop
   useEffect(() => {
@@ -161,12 +168,28 @@ const LyricsDisplay = ({
   
   // End the drag operation - simplified
   const handleMouseUp = (e) => {
-    // Cleanup
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    e.preventDefault();
+    e.stopPropagation();
     
-    // Reset drag info
-    dragInfo.current = { dragging: false, index: null, field: null, startX: 0, startValue: 0 };
+    // Record the drag end time
+    dragInfo.current.lastDragEnd = Date.now();
+    
+    // Add a small delay to prevent click events from firing
+    setTimeout(() => {
+      // Cleanup
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      // Reset drag info but keep lastDragEnd
+      dragInfo.current = { 
+        dragging: false, 
+        index: null, 
+        field: null, 
+        startX: 0, 
+        startValue: 0,
+        lastDragEnd: dragInfo.current.lastDragEnd 
+      };
+    }, 10);
   };
   
   // Update the specified lyric and adjust all subsequent timings - simplified
@@ -473,7 +496,13 @@ const LyricsDisplay = ({
                 transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
                 boxShadow: isCurrentLyric ? theme.shadows.sm : 'none'
               }}
-              onClick={() => onLyricClick(lyric.start)}
+              onClick={(e) => {
+                // Don't trigger click if we're in the middle of or just finished dragging
+                if (dragInfo.current.dragging || Date.now() - dragInfo.current.lastDragEnd < 100) {
+                  return;
+                }
+                onLyricClick(lyric.start);
+              }}
             >
               <div style={{
                 display: 'flex',
