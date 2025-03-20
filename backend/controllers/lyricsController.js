@@ -46,14 +46,7 @@ export const saveTiming = async (req, res) => {
  */
 export const getLyrics = async (req, res) => {
   try {
-    // Read the API key from config.json
-    let appConfig = {};
     const { artist, song, force } = req.body;
-
-    if (await fileExists(config.configFilePath)) {
-      const configData = await fs.readFile(config.configFilePath, 'utf-8');
-      appConfig = JSON.parse(configData);
-    }
     
     if (!artist || !song) {
       return res.status(400).json({ error: 'Missing artist or song' });
@@ -68,6 +61,22 @@ export const getLyrics = async (req, res) => {
     // Ensure album art directory exists
     await fs.mkdir(config.albumArtDir, { recursive: true });
 
+    // First check if we have cached files and force is not true
+    if (!force && await fileExists(lyricsFilePath) && await fileExists(albumArtFilePath) && await fileExists(metadataFilePath)) {
+      console.log(`Using cached lyrics and album art for ${songName}`);
+      const lyrics = await fs.readFile(lyricsFilePath, 'utf-8');
+      const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
+      return res.json({ lyrics, albumArtUrl: metadata.albumArtUrl });
+    }
+
+    // If we get here, we either have force=true or missing cached files
+    // Now we need the API key
+    let appConfig = {};
+    if (await fileExists(config.configFilePath)) {
+      const configData = await fs.readFile(config.configFilePath, 'utf-8');
+      appConfig = JSON.parse(configData);
+    }
+
     if (!appConfig.geniusApiKey) {
       return res.status(400).json({ error: 'Genius API key not set. Please provide it through the frontend.' });
     }
@@ -75,55 +84,45 @@ export const getLyrics = async (req, res) => {
     const { default: Genius } = await import('genius-lyrics');
     const geniusClient = new Genius.Client(appConfig.geniusApiKey);
 
-    // Always search for the song to get metadata
+    // Search for the song
     const geniusSong = await geniusClient.songs.search(`${artist} ${song}`);
     
     if (geniusSong.length > 0) {
       const geniusResult = geniusSong[0];
       
-      // Get lyrics from cache or fetch new ones
-      let lyrics, albumArtUrl;
-      if (!force && await fileExists(lyricsFilePath) && await fileExists(albumArtFilePath)) {
-        console.log(`Using cached lyrics and album art for ${songName}`);
-        lyrics = await fs.readFile(lyricsFilePath, 'utf-8');
-        const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
-        albumArtUrl = metadata.albumArtUrl;
-      } else {
-        console.log('Fetching fresh lyrics and album art from Genius...');
-        lyrics = await geniusResult.lyrics();
-        await fs.writeFile(lyricsFilePath, lyrics, 'utf-8');
+      // Fetch fresh lyrics and album art
+      console.log('Fetching fresh lyrics and album art from Genius...');
+      const lyrics = await geniusResult.lyrics();
+      await fs.writeFile(lyricsFilePath, lyrics, 'utf-8');
+    
+      // Get album art URL
+      const albumArtUrl = geniusResult.image || geniusResult.header_image_url || geniusResult.song_art_image_url;
       
-        // Get fresh album art URL
-        albumArtUrl = geniusResult.image || geniusResult.header_image_url || geniusResult.song_art_image_url;
-        
-        // Download and save the album art
-        if (albumArtUrl) {
-          console.log(`Downloading album art from: ${albumArtUrl}`);
-          try {
-            const response = await axios.get(albumArtUrl, { responseType: 'arraybuffer' });
-            await fs.writeFile(albumArtFilePath, Buffer.from(response.data), 'binary');
-            console.log(`Album art saved to: ${albumArtFilePath}`);
-          } catch (downloadError) {
-            console.error(`Error downloading album art: ${downloadError.message}`);
-          }
+      // Download and save the album art
+      if (albumArtUrl) {
+        console.log(`Downloading album art from: ${albumArtUrl}`);
+        try {
+          const response = await axios.get(albumArtUrl, { responseType: 'arraybuffer' });
+          await fs.writeFile(albumArtFilePath, Buffer.from(response.data), 'binary');
+          console.log(`Album art saved to: ${albumArtFilePath}`);
+        } catch (downloadError) {
+          console.error(`Error downloading album art: ${downloadError.message}`);
         }
-        
-        // Cache the metadata - this time using the local server URL for albumArtUrl
-        const serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${songName}.png`;
-        const metadata = {
-          albumArtUrl: serverAlbumArtUrl,
-          originalAlbumArtUrl: albumArtUrl, // Keep the original URL for reference
-          cached: new Date().toISOString()
-        };
-        await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
-        
-        // Use the server URL for the response
-        albumArtUrl = serverAlbumArtUrl;
       }
       
-      console.log('Album Art URL:', albumArtUrl);
+      // Create server URL for album art
+      const serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${songName}.png`;
       
-      return res.json({ lyrics, albumArtUrl });
+      // Cache the metadata
+      const metadata = {
+        albumArtUrl: serverAlbumArtUrl,
+        originalAlbumArtUrl: albumArtUrl,
+        cached: new Date().toISOString()
+      };
+      await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
+      
+      console.log('Album Art URL:', serverAlbumArtUrl);
+      return res.json({ lyrics, albumArtUrl: serverAlbumArtUrl });
     } else {
       res.status(404).json({ error: "Lyrics not found" });
     }

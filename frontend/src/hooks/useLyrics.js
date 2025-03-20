@@ -6,6 +6,7 @@ const useLyrics = () => {
   const [matchedLyrics, setMatchedLyrics] = useState([]);
   const [matchingInProgress, setMatchingInProgress] = useState(false);
   const [matchingComplete, setMatchingComplete] = useState(false);
+  const [loading, setLoading] = useState(false); // Add loading state
   const [error, setError] = useState(null);
   const [processingStatus, setProcessingStatus] = useState('');
   const [selectedImageModel, setSelectedImageModel] = useState(() => {
@@ -265,13 +266,15 @@ const useLyrics = () => {
     }
   }, [API_URL, albumArtUrl, selectedImageModel]);
 
-  const fetchFromGenius = useCallback(async (artist, song) => {
+  const fetchFromGenius = useCallback(async (artist, song, force = false) => {
     try {
       setError(null);
+      setLoading(true); // Add loading state
+
       const response = await fetch(`${API_URL}/api/lyrics`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artist, song })
+        body: JSON.stringify({ artist, song, force })
       });
 
       if (!response.ok) {
@@ -289,6 +292,8 @@ const useLyrics = () => {
     } catch (err) {
       setError(`Genius fetch failed: ${err.message}`);
       throw err;
+    } finally {
+      setLoading(false); // Make sure to clear loading state even if there's an error
     }
   }, []);
 
@@ -298,6 +303,7 @@ const useLyrics = () => {
     matchedLyrics,
     matchingInProgress,
     matchingComplete,
+    loading, // Export loading state
     error,
     processingStatus,
     selectedImageModel,

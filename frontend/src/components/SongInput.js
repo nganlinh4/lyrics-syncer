@@ -13,7 +13,8 @@ const SongInput = ({
   onDownload,
   onForceDownload,
   onFetchFromGenius,
-  showForceButton
+  showForceButton,
+  geniusLoading // Add this prop
 }) => {
   const [sameAsYoutube, setSameAsYoutube] = useState(() => 
     localStorage.getItem('sameAsYoutube') !== 'false'
@@ -33,154 +34,152 @@ const SongInput = ({
     }
   }, [sameAsYoutube, artist, song]);
 
-  const handleSameAsYoutubeChange = (e) => {
-    const isChecked = e.target.checked;
-    setSameAsYoutube(isChecked);
-    localStorage.setItem('sameAsYoutube', isChecked);
-    
-    if (isChecked) {
-      setGeniusArtist(artist);
-      setGeniusSong(song);
-    }
-  };
-
   const handleGeniusArtistChange = (e) => {
-    const value = e.target.value;
-    setGeniusArtist(value);
-    localStorage.setItem('geniusArtist', value);
+    setGeniusArtist(e.target.value);
+    localStorage.setItem('geniusArtist', e.target.value);
   };
 
   const handleGeniusSongChange = (e) => {
-    const value = e.target.value;
-    setGeniusSong(value);
-    localStorage.setItem('geniusSong', value);
+    setGeniusSong(e.target.value);
+    localStorage.setItem('geniusSong', e.target.value);
   };
 
   return (
     <Card title="Song Details">
-      <div style={{ display: 'grid', gap: theme.spacing.md }}>
-        {/* YouTube Search Fields */}
-        <div style={{ 
-          borderBottom: `1px solid ${theme.colors.border}`, 
-          paddingBottom: theme.spacing.md,
-          marginBottom: theme.spacing.sm 
-        }}>
-          <h3 style={{ ...theme.typography.h3, marginBottom: theme.spacing.sm }}>YouTube Search</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
-            <label htmlFor="artist" style={theme.typography.body}>Artist:</label>
-            <input
-              type="text"
-              id="artist"
-              value={artist}
-              onChange={onArtistChange}
-              style={{
-                padding: theme.spacing.sm,
-                borderRadius: theme.borderRadius.sm,
-                border: `1px solid ${theme.colors.border}`,
-                fontSize: theme.typography.body.fontSize
-              }}
-            />
-          </div>
+      <div style={{ display: 'grid', gap: theme.spacing.lg }}>
+        {/* YouTube Section */}
+        <section>
+          <h3 style={theme.typography.h3}>YouTube Audio Source</h3>
+          <div style={{ display: 'grid', gap: theme.spacing.md }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
+              <label htmlFor="artist" style={theme.typography.body}>Artist:</label>
+              <input
+                type="text"
+                id="artist"
+                value={artist}
+                onChange={onArtistChange}
+                style={{
+                  padding: theme.spacing.sm,
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.border}`,
+                  fontSize: theme.typography.body.fontSize
+                }}
+              />
+            </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md, marginTop: theme.spacing.sm }}>
-            <label htmlFor="song" style={theme.typography.body}>Song:</label>
-            <input
-              type="text"
-              id="song"
-              value={song}
-              onChange={onSongChange}
-              style={{
-                padding: theme.spacing.sm,
-                borderRadius: theme.borderRadius.sm,
-                border: `1px solid ${theme.colors.border}`,
-                fontSize: theme.typography.body.fontSize
-              }}
-            />
-          </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
+              <label htmlFor="song" style={theme.typography.body}>Song:</label>
+              <input
+                type="text"
+                id="song"
+                value={song}
+                onChange={onSongChange}
+                style={{
+                  padding: theme.spacing.sm,
+                  borderRadius: theme.borderRadius.sm,
+                  border: `1px solid ${theme.colors.border}`,
+                  fontSize: theme.typography.body.fontSize
+                }}
+              />
+            </div>
 
-          <div style={{ display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.md }}>
-            <Button
-              onClick={onDownload}
-              disabled={loading}
-              variant="primary"
-            >
-              {loading ? 'Processing...' : 'Download and Process'}
-            </Button>
-
-            {showForceButton && (
+            <div style={{ display: 'flex', gap: theme.spacing.md }}>
               <Button
-                onClick={onForceDownload}
-                disabled={loading}
+                onClick={onDownload}
+                disabled={loading || !artist || !song}
+                variant="primary"
+              >
+                {loading ? 'Downloading...' : 'Download Audio'}
+              </Button>
+              
+              {showForceButton && (
+                <Button
+                  onClick={onForceDownload}
+                  disabled={loading}
+                  variant="warning"
+                >
+                  Force Redownload
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Genius Section */}
+        <section>
+          <h3 style={theme.typography.h3}>Genius Lyrics Source</h3>
+          <div style={{ display: 'grid', gap: theme.spacing.md }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              <input
+                type="checkbox"
+                checked={sameAsYoutube}
+                onChange={(e) => {
+                  setSameAsYoutube(e.target.checked);
+                  localStorage.setItem('sameAsYoutube', e.target.checked);
+                  if (e.target.checked) {
+                    setGeniusArtist(artist);
+                    setGeniusSong(song);
+                  }
+                }}
+              />
+              <span style={theme.typography.body}>Use same as YouTube</span>
+            </label>
+
+            {!sameAsYoutube && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
+                  <label htmlFor="geniusArtist" style={theme.typography.body}>Artist:</label>
+                  <input
+                    type="text"
+                    id="geniusArtist"
+                    value={geniusArtist}
+                    onChange={handleGeniusArtistChange}
+                    style={{
+                      padding: theme.spacing.sm,
+                      borderRadius: theme.borderRadius.sm,
+                      border: `1px solid ${theme.colors.border}`,
+                      fontSize: theme.typography.body.fontSize
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
+                  <label htmlFor="geniusSong" style={theme.typography.body}>Song:</label>
+                  <input
+                    type="text"
+                    id="geniusSong"
+                    value={geniusSong}
+                    onChange={handleGeniusSongChange}
+                    style={{
+                      padding: theme.spacing.sm,
+                      borderRadius: theme.borderRadius.sm,
+                      border: `1px solid ${theme.colors.border}`,
+                      fontSize: theme.typography.body.fontSize
+                    }}
+                  />
+                </div>
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: theme.spacing.md }}>
+              <Button
+                onClick={() => onFetchFromGenius(sameAsYoutube ? artist : geniusArtist, sameAsYoutube ? song : geniusSong)}
+                disabled={geniusLoading || (sameAsYoutube ? (!artist || !song) : (!geniusArtist || !geniusSong))}
+                variant="secondary"
+              >
+                {geniusLoading ? 'Loading...' : 'Get Lyrics from Genius'}
+              </Button>
+
+              <Button
+                onClick={() => onFetchFromGenius(sameAsYoutube ? artist : geniusArtist, sameAsYoutube ? song : geniusSong, true)}
+                disabled={geniusLoading || (sameAsYoutube ? (!artist || !song) : (!geniusArtist || !geniusSong))}
                 variant="warning"
               >
-                Force Re-download & Process
+                Force Refetch Lyrics
               </Button>
-            )}
+            </div>
           </div>
-        </div>
-
-        {/* Genius Search Fields */}
-        <div>
-          <h3 style={{ ...theme.typography.h3, marginBottom: theme.spacing.sm }}>Genius Lyrics Search</h3>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-            <input
-              type="checkbox"
-              id="sameAsYoutube"
-              checked={sameAsYoutube}
-              onChange={handleSameAsYoutubeChange}
-            />
-            <label htmlFor="sameAsYoutube" style={theme.typography.body}>
-              Same as YouTube search
-            </label>
-          </div>
-
-          {!sameAsYoutube && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
-                <label htmlFor="geniusArtist" style={theme.typography.body}>Artist:</label>
-                <input
-                  type="text"
-                  id="geniusArtist"
-                  value={geniusArtist}
-                  onChange={handleGeniusArtistChange}
-                  style={{
-                    padding: theme.spacing.sm,
-                    borderRadius: theme.borderRadius.sm,
-                    border: `1px solid ${theme.colors.border}`,
-                    fontSize: theme.typography.body.fontSize
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md, marginTop: theme.spacing.sm }}>
-                <label htmlFor="geniusSong" style={theme.typography.body}>Song:</label>
-                <input
-                  type="text"
-                  id="geniusSong"
-                  value={geniusSong}
-                  onChange={handleGeniusSongChange}
-                  style={{
-                    padding: theme.spacing.sm,
-                    borderRadius: theme.borderRadius.sm,
-                    border: `1px solid ${theme.colors.border}`,
-                    fontSize: theme.typography.body.fontSize
-                  }}
-                />
-              </div>
-            </>
-          )}
-
-          <div style={{ marginTop: theme.spacing.md }}>
-            <Button
-              onClick={() => onFetchFromGenius(sameAsYoutube ? artist : geniusArtist, sameAsYoutube ? song : geniusSong)}
-              disabled={loading || (sameAsYoutube ? (!artist || !song) : (!geniusArtist || !geniusSong))}
-              variant="secondary"
-            >
-              Get Lyrics from Genius
-            </Button>
-          </div>
-        </div>
+        </section>
       </div>
     </Card>
   );

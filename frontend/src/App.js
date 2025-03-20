@@ -65,6 +65,7 @@ const MainApp = () => {
     setMatchedLyrics,
     matchingInProgress,
     matchingComplete,
+    loading: geniusLoading,
     error: lyricsError,
     processingStatus,
     selectedImageModel,
@@ -211,6 +212,7 @@ const MainApp = () => {
         artist={artist}
         song={song}
         loading={loading}
+        geniusLoading={geniusLoading}
         onArtistChange={(e) => {
           setArtist(e.target.value);
           setNeedsRefetch(true);
