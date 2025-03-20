@@ -20,6 +20,56 @@ const Settings = ({
   ImageModelSelector,
   PromptModelSelector
 }) => {
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
+
+  const handleDeleteCache = async () => {
+    try {
+      setLoading(true);
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_URL}/api/delete_cache`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete cache');
+      }
+
+      const data = await response.json();
+      setResults(data.results);
+    } catch (error) {
+      console.error('Error deleting cache:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'success':
+        return '✓';
+      case 'warning':
+        return '⚠';
+      case 'error':
+        return '✕';
+      default:
+        return '•';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'success':
+        return theme.colors.success;
+      case 'warning':
+        return theme.colors.warning;
+      case 'error':
+        return theme.colors.error;
+      default:
+        return theme.colors.text.secondary;
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -42,29 +92,40 @@ const Settings = ({
         width: '90%',
         maxWidth: '600px',
         maxHeight: '90vh',
-        overflow: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
         position: 'relative'
       }}>
-        <div style={{ 
-          padding: theme.spacing.lg,
-          display: 'grid',
-          gap: theme.spacing.lg
+        {/* Sticky Header */}
+        <div style={{
+          padding: theme.spacing.md,
+          borderBottom: `1px solid ${theme.colors.border}`,
+          backgroundColor: theme.colors.background.main,
+          borderTopLeftRadius: theme.borderRadius.md,
+          borderTopRightRadius: theme.borderRadius.md,
+          position: 'sticky',
+          top: 0,
+          zIndex: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <h2 style={theme.typography.h2}>Settings</h2>
-            <Button
-              onClick={onClose}
-              variant="secondary"
-              size="small"
-            >
-              Close
-            </Button>
-          </div>
+          <h2 style={{...theme.typography.h2, margin: 0}}>Settings</h2>
+          <Button
+            onClick={onClose}
+            variant="secondary"
+            size="small"
+          >
+            Close
+          </Button>
+        </div>
 
+        {/* Scrollable Content */}
+        <div style={{
+          padding: theme.spacing.lg,
+          overflow: 'auto',
+          flexGrow: 1
+        }}>
           <div style={{ display: 'grid', gap: theme.spacing.lg }}>
             {/* API Keys Section */}
             <section>
@@ -121,6 +182,76 @@ const Settings = ({
                     selectedModel={selectedImageModel}
                     onModelChange={onImageModelChange}
                   />
+                </div>
+              </div>
+            </section>
+
+            {/* Cache Management Section */}
+            <section>
+              <h3 style={theme.typography.h3}>Cache Management</h3>
+              <div style={{ 
+                padding: theme.spacing.md,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <div style={{ display: 'grid', gap: theme.spacing.md }}>
+                  <div>
+                    <Button
+                      onClick={handleDeleteCache}
+                      disabled={loading}
+                      variant="error"
+                      style={{ marginBottom: theme.spacing.md }}
+                    >
+                      {loading ? 'Cleaning...' : 'Clear All Cache'}
+                    </Button>
+                    
+                    <p style={{
+                      ...theme.typography.small,
+                      color: theme.colors.text.secondary
+                    }}>
+                      This will delete all cached audio files, lyrics, and debug information.
+                    </p>
+                  </div>
+
+                  {results && (
+                    <div style={{
+                      backgroundColor: theme.colors.background.main,
+                      borderRadius: theme.borderRadius.sm,
+                      padding: theme.spacing.md
+                    }}>
+                      {results.map((result, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: theme.spacing.sm,
+                            marginBottom: index < results.length - 1 ? theme.spacing.sm : 0
+                          }}
+                        >
+                          <span style={{
+                            color: getStatusColor(result.status),
+                            fontSize: theme.typography.body.fontSize,
+                            fontWeight: 'bold'
+                          }}>
+                            {getStatusIcon(result.status)}
+                          </span>
+                          <span style={{
+                            ...theme.typography.body,
+                            color: theme.colors.text.primary
+                          }}>
+                            {result.folder}:
+                          </span>
+                          <span style={{
+                            ...theme.typography.small,
+                            color: theme.colors.text.secondary
+                          }}>
+                            {result.message}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </section>

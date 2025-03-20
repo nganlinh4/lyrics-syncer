@@ -13,7 +13,11 @@ const useLyrics = () => {
     const defaultModel = 'gemini-2.0-flash-exp-image-generation';
     return savedModel || defaultModel;
   });
-  const [selectedPromptModel, setSelectedPromptModel] = useState('');
+  const [selectedPromptModel, setSelectedPromptModel] = useState(() => {
+    const savedModel = localStorage.getItem('selectedPromptModel');
+    const defaultModel = 'gemini-2.0-flash-lite';
+    return savedModel || defaultModel;
+  });
   const [isCustomLyrics, setIsCustomLyrics] = useState(false);
   const [matchingProgress, setMatchingProgress] = useState(0);
   const [languageDetected, setLanguageDetected] = useState('');

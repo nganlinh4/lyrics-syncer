@@ -4,7 +4,6 @@ import SongInput from './components/SongInput';
 import Settings from './components/Settings';
 import AudioPreviewSection from './components/AudioPreviewSection';
 import LyricsMatchingSection from './components/LyricsMatchingSection';
-import DeleteCacheButton from './components/DeleteCacheButton';
 import CustomLyricsInput from './components/CustomLyricsInput';
 import ModelSelector from './components/ModelSelector';
 import ImageModelSelector from './components/ImageModelSelector';
@@ -225,7 +224,10 @@ function App() {
           localStorage.setItem('selectedImageModel', model);
         }}
         selectedPromptModel={selectedPromptModel}
-        onPromptModelChange={setSelectedPromptModel}
+        onPromptModelChange={(model) => {
+          setSelectedPromptModel(model);
+          localStorage.setItem('selectedPromptModel', model);
+        }}
         ModelSelector={ModelSelector}
         ImageModelSelector={ImageModelSelector}
         PromptModelSelector={PromptModelSelector}
@@ -356,9 +358,6 @@ function App() {
           </div>
         </Card>
       )}
-
-      {/* Cache Management */}
-      <DeleteCacheButton />
 
       {/* Error Display */}
       {(apiError || lyricsError) && (
