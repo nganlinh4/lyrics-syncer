@@ -1,83 +1,157 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+const STORAGE_PREFIX = 'lyrics_syncer_';
+const API_TYPES = ['genius', 'youtube', 'gemini'];
+const API_URL = 'http://localhost:3001'; // Hardcoded API URL to avoid process.env
 
 const useApiKeys = () => {
-  const [youtubeApiKey, setYoutubeApiKey] = useState(() => localStorage.getItem('youtubeApiKey') || '');
-  const [youtubeKeyStatus, setYoutubeKeyStatus] = useState(() => localStorage.getItem('youtubeApiKey') ? 'saved' : 'empty');
-  const [geniusApiKey, setGeniusApiKey] = useState(() => localStorage.getItem('geniusApiKey') || '');
-  const [geniusKeyStatus, setGeniusKeyStatus] = useState(() => localStorage.getItem('geniusApiKey') ? 'saved' : 'empty');
-  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('geminiApiKey') || '');
-  const [geminiKeyStatus, setGeminiKeyStatus] = useState(() => localStorage.getItem('geminiApiKey') ? 'saved' : 'empty');
+  const [apiKeys, setApiKeys] = useState(() => {
+    // Initialize state from localStorage with status
+    return API_TYPES.reduce((acc, type) => {
+      const storedKey = localStorage.getItem(`${STORAGE_PREFIX}${type}_api_key`);
+      acc[type] = {
+        key: storedKey || '',
+        status: storedKey ? 'saved' : 'unsaved'
+      };
+      return acc;
+    }, {});
+  });
+  
   const [error, setError] = useState(null);
 
-  const handleSaveApiKey = useCallback(async (type, key) => {
-    try {
-      if (!type || !key) {
-        throw new Error('API key and type are required');
-      }
+  // Validate API key format based on type
+  const validateApiKey = useCallback((type, key) => {
+    if (!key.trim()) {
+      throw new Error(`${type.charAt(0).toUpperCase() + type.slice(1)} API key cannot be empty`);
+    }
 
-      const response = await fetch('http://localhost:3001/api/save_api_key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, key }),
-      });
+    // Only perform basic validation to ensure the key isn't empty
+    // More permissive validation that accepts most API key formats
+    switch (type) {
+      case 'genius':
+        // Simple check for reasonable length
+        if (key.length < 10) {
+          throw new Error('Genius API key is too short');
+        }
+        break;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save API key');
-      }
+      case 'youtube':
+        // Simple check for reasonable length
+        if (key.length < 10) {
+          throw new Error('YouTube API key is too short');
+        }
+        break;
 
-      localStorage.setItem(`${type}ApiKey`, key);
-      switch(type) {
-        case 'youtube':
-          setYoutubeApiKey(key);
-          setYoutubeKeyStatus('saved');
-          break;
-        case 'genius':
-          setGeniusApiKey(key);
-          setGeniusKeyStatus('saved');
-          break;
-        case 'gemini':
-          setGeminiApiKey(key);
-          setGeminiKeyStatus('saved');
-          break;
-        default:
-          throw new Error('Invalid key type');
-      }
-      setError(null);
-    } catch (error) {
-      setError(error.message);
-      throw error;
+      case 'gemini':
+        // Very permissive - just check that it's not too short
+        if (key.length < 10) {
+          throw new Error('Gemini API key is too short');
+        }
+        break;
+
+      default:
+        throw new Error(`Unknown API key type: ${type}`);
     }
   }, []);
 
+  // Handle API key changes
   const handleApiKeyChange = useCallback((type, value) => {
-    switch(type) {
-      case 'youtube':
-        setYoutubeApiKey(value);
-        setYoutubeKeyStatus('empty');
-        break;
-      case 'genius':
-        setGeniusApiKey(value);
-        setGeniusKeyStatus('empty');
-        break;
-      case 'gemini':
-        setGeminiApiKey(value);
-        setGeminiKeyStatus('empty');
-        break;
-      default:
-        console.error('Invalid API key type');
+    setError(null);
+    setApiKeys(prev => ({
+      ...prev,
+      [type]: {
+        key: value,
+        status: 'unsaved'
+      }
+    }));
+  }, []);
+
+  // Save API key to localStorage and update status
+  const handleSaveApiKey = useCallback(async (type, value) => {
+    try {
+      setError(null);
+      
+      // Validate the API key format
+      validateApiKey(type, value);
+
+      // Save to localStorage
+      localStorage.setItem(`${STORAGE_PREFIX}${type}_api_key`, value);
+
+      // Update state with saved status
+      setApiKeys(prev => ({
+        ...prev,
+        [type]: {
+          key: value,
+          status: 'saved'
+        }
+      }));
+
+      // Verify the API key with backend
+      try {
+        const response = await fetch(`${API_URL}/api/save_api_key`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type,
+            key: value
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.warn('API key validation response:', errorData);
+          // Don't throw here - we still consider the key saved locally
+        }
+      } catch (verifyError) {
+        console.warn(`API key verification skipped: ${verifyError.message}`);
+        // Don't throw here - we still want to save the key even if verification is unavailable
+      }
+
+    } catch (error) {
+      setError(error.message);
+      
+      // Update state to show error
+      setApiKeys(prev => ({
+        ...prev,
+        [type]: {
+          ...prev[type],
+          status: 'error'
+        }
+      }));
+
+      // Re-throw for component handling
+      throw error;
     }
+  }, [validateApiKey]);
+
+  // Load saved keys on mount and when localStorage changes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key && e.key.startsWith(STORAGE_PREFIX)) {
+        const type = e.key.replace(STORAGE_PREFIX, '').replace('_api_key', '');
+        if (API_TYPES.includes(type)) {
+          setApiKeys(prev => ({
+            ...prev,
+            [type]: {
+              key: e.newValue || '',
+              status: e.newValue ? 'saved' : 'unsaved'
+            }
+          }));
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   return {
-    apiKeys: {
-      youtube: { key: youtubeApiKey, status: youtubeKeyStatus },
-      genius: { key: geniusApiKey, status: geniusKeyStatus },
-      gemini: { key: geminiApiKey, status: geminiKeyStatus }
-    },
-    handleSaveApiKey,
+    apiKeys,
+    error,
     handleApiKeyChange,
-    error
+    handleSaveApiKey
   };
 };
 

@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+import theme from '../theme/theme';
 
 const AVAILABLE_MODELS = [
   {
@@ -14,43 +15,54 @@ const AVAILABLE_MODELS = [
 ];
 
 const ModelSelector = ({ selectedModel, onModelChange }) => {
-  useEffect(() => {
-    const savedModel = localStorage.getItem('selectedModel');
-    if (savedModel && AVAILABLE_MODELS.some(m => m.id === savedModel)) {
-      onModelChange(savedModel);
-    } else {
-      onModelChange(AVAILABLE_MODELS[0].id);
-    }
-  }, [onModelChange]);
-
   return (
-    <div style={{ marginTop: '15px' }}>
-      <label htmlFor="modelSelect">AI Model:</label>
-      <select
-        id="modelSelect"
-        value={selectedModel}
-        onChange={(e) => onModelChange(e.target.value)}
-        style={{ 
-          marginLeft: '10px',
-          padding: '5px',
-          borderRadius: '4px',
-          border: '1px solid #ccc',
-          width: '300px'
+    <div style={{
+      display: 'grid',
+      gap: theme.spacing.sm
+    }}>
+      <label
+        htmlFor="modelSelect"
+        style={{
+          ...theme.typography.body,
+          fontWeight: '500'
         }}
       >
-        {AVAILABLE_MODELS.map(model => (
-          <option key={model.id} value={model.id}>
-            {model.name}
-          </option>
-        ))}
-      </select>
-      <div style={{ 
-        marginTop: '5px',
-        fontSize: '0.8em',
-        color: '#666',
-        marginLeft: '200px'
+        Lyrics Matching Model:
+      </label>
+      
+      <div style={{
+        display: 'grid',
+        gap: theme.spacing.sm
       }}>
-        {AVAILABLE_MODELS.find(m => m.id === selectedModel)?.description}
+        <select
+          id="modelSelect"
+          value={selectedModel}
+          onChange={(e) => onModelChange(e.target.value)}
+          style={{
+            padding: theme.spacing.sm,
+            borderRadius: theme.borderRadius.sm,
+            border: `1px solid ${theme.colors.border}`,
+            fontSize: theme.typography.body.fontSize,
+            width: '100%',
+            backgroundColor: theme.colors.background.main,
+            cursor: 'pointer',
+            transition: theme.transitions.fast
+          }}
+        >
+          {AVAILABLE_MODELS.map(model => (
+            <option key={model.id} value={model.id}>
+              {model.name}
+            </option>
+          ))}
+        </select>
+
+        <p style={{
+          ...theme.typography.small,
+          color: theme.colors.text.secondary,
+          marginTop: theme.spacing.xs
+        }}>
+          {AVAILABLE_MODELS.find(m => m.id === selectedModel)?.description}
+        </p>
       </div>
     </div>
   );

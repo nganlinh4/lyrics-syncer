@@ -1,191 +1,72 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import Button from '../ui/Button';
+import theme from '../theme/theme';
 
-const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onUpdateLyrics, allowEditing = false }) => {
+const LyricsDisplay = ({ 
+  matchedLyrics, 
+  currentTime, 
+  onLyricClick, 
+  duration, 
+  onUpdateLyrics, 
+  allowEditing = false 
+}) => {
   const [editingIndex, setEditingIndex] = useState(null);
-  const [editingField, setEditingField] = useState(null); // 'start' or 'end'
+  const [editingField, setEditingField] = useState(null);
   const [editValues, setEditValues] = useState({ start: 0, end: 0 });
   const [lyrics, setLyrics] = useState([]);
-  const [isSticky, setIsSticky] = useState(true); // Add sticky mode state
-  const [history, setHistory] = useState([]); // For undo functionality
-  const [originalLyrics, setOriginalLyrics] = useState([]); // For reset functionality
-   const [isAtOriginalState, setIsAtOriginalState] = useState(true);
-  const [hoveredElement, setHoveredElement] = useState(null); // Track which element is being hovered over
-  const containerRef = useRef(null);
+  const [isSticky, setIsSticky] = useState(true);
+  const [history, setHistory] = useState([]);
+  const [originalLyrics, setOriginalLyrics] = useState([]);
+  const [isAtOriginalState, setIsAtOriginalState] = useState(true);
+  const [hoveredElement, setHoveredElement] = useState(null);
+  
   const timelineRef = useRef(null);
+  const containerRef = useRef(null);
   const dragStartRef = useRef({ x: 0, value: 0 });
   const isDraggingRef = useRef(false);
-  const lastInteractionRef = useRef(null); // Track last interacted element
-  const justFinishedDraggingRef = useRef(false); // Track if we just finished dragging
-  const lastTimeRef = useRef(0); // To track changes in currentTime
+  const lastInteractionRef = useRef(null);
+  const justFinishedDraggingRef = useRef(false);
+  const lastTimeRef = useRef(0);
 
-  // Draw the timeline visualization
-  const drawTimeline = useCallback(() => {
-    const canvas = timelineRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    const displayWidth = canvas.clientWidth;
-    const displayHeight = canvas.clientHeight;
-    
-    // Clear with proper scaling
-    ctx.clearRect(0, 0, displayWidth, displayHeight);
-    
-    // Draw background
-    ctx.fillStyle = '#f5f5f5';
-    ctx.fillRect(0, 0, displayWidth, displayHeight);
-    
-    // Find the max time in lyrics to prevent stretching
-    const maxLyricTime = lyrics.length > 0 
-      ? Math.max(...lyrics.map(lyric => lyric.end))
-      : duration;
-    
-    // Use the greater of actual duration or max lyric time 
-    const timelineEnd = Math.max(maxLyricTime, duration) * 1.05; // Add 5% padding
-    
-    // Draw lyric segments FIRST (below time markers)
-    lyrics.forEach((lyric, index) => {
-      const startX = (lyric.start / timelineEnd) * displayWidth;
-      const endX = (lyric.end / timelineEnd) * displayWidth;
-      const segmentWidth = Math.max(1, endX - startX); // Ensure minimum width
-      
-      // Get a color based on the index
-      const hue = (index * 30) % 360;
-      ctx.fillStyle = `hsla(${hue}, 70%, 60%, 0.7)`;
-      // Draw segments in lower 70% of canvas height
-      ctx.fillRect(startX, displayHeight * 0.3, segmentWidth, displayHeight * 0.7);
-      
-      // Draw border
-      ctx.strokeStyle = `hsla(${hue}, 70%, 40%, 0.9)`;
-      ctx.strokeRect(startX, displayHeight * 0.3, segmentWidth, displayHeight * 0.7);
-    });
-    
-    // Draw time markers ON TOP
-    ctx.fillStyle = '#ddd';
-    
-    // Calculate proper spacing for time markers based on timeline length
-    const timeStep = Math.max(1, Math.ceil(timelineEnd / 15));
-    for (let i = 0; i <= timelineEnd; i += timeStep) {
-      const x = (i / timelineEnd) * displayWidth;
-      // Draw full-height vertical lines
-      ctx.fillRect(x, 0, 1, displayHeight);
-      
-      // Draw time labels at the top
-      ctx.fillStyle = '#666';
-      ctx.font = '10px Arial';
-      ctx.textBaseline = 'top';
-      ctx.textAlign = 'left';
-      ctx.fillText(`${i}s`, x + 3, 2);
-      ctx.fillStyle = '#ddd';
+  // Sync with incoming matchedLyrics prop
+  useEffect(() => {
+    if (matchedLyrics && matchedLyrics.length > 0) {
+      setLyrics(matchedLyrics);
+      // Store original lyrics for reset functionality
+      if (originalLyrics.length === 0) {
+        setOriginalLyrics(JSON.parse(JSON.stringify(matchedLyrics)));
+      }
+      // Check if current state matches original state
+      setIsAtOriginalState(JSON.stringify(matchedLyrics) === JSON.stringify(originalLyrics));
     }
-    
-    // Draw current time indicator - make it more visible
-    const currentX = (currentTime / timelineEnd) * displayWidth;
-    
-    // Draw indicator shadow for better visibility
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(currentX - 2, 0, 4, displayHeight);
-    
-    // Draw indicator
-    ctx.fillStyle = 'red';
-    ctx.fillRect(currentX - 1, 0, 3, displayHeight);
-    
-    // Draw playhead triangle at the top
-    ctx.beginPath();
-    ctx.moveTo(currentX - 6, 0);
-    ctx.lineTo(currentX + 6, 0);
-    ctx.lineTo(currentX, 6);
-    ctx.closePath();
-    ctx.fillStyle = 'red';
-    ctx.fill();
-  }, [lyrics, currentTime, duration]);
+  }, [matchedLyrics]);
 
-  // Initialize local lyrics state from props
+  // Track whether current lyrics match original lyrics
   useEffect(() => {
-    setLyrics(matchedLyrics);
-    // Save original lyrics for reset functionality (only on initial load)
-    if (matchedLyrics.length > 0 && originalLyrics.length === 0) {
-      setOriginalLyrics(JSON.parse(JSON.stringify(matchedLyrics)));
-    }
-  }, [matchedLyrics, originalLyrics.length]);
-  
-   // Track whether current lyrics match original lyrics
-   useEffect(() => {
-     if (originalLyrics.length > 0) {
-       const areEqual = lyrics.length === originalLyrics.length &&
-         lyrics.every((lyric, index) => {
-           const origLyric = originalLyrics[index];
-           return (
-             lyric.text === origLyric.text &&
-             Math.abs(lyric.start - origLyric.start) < 0.001 &&
-             Math.abs(lyric.end - origLyric.end) < 0.001
-           );
-         });
+    if (originalLyrics.length > 0) {
+      const areEqual = lyrics.length === originalLyrics.length &&
+        lyrics.every((lyric, index) => {
+          const origLyric = originalLyrics[index];
+          return (
+            lyric.text === origLyric.text &&
+            Math.abs(lyric.start - origLyric.start) < 0.001 &&
+            Math.abs(lyric.end - origLyric.end) < 0.001
+          );
+        });
 
-       if (isAtOriginalState !== areEqual) {
-         setIsAtOriginalState(areEqual);
-       }
-     }
-   }, [lyrics, originalLyrics, isAtOriginalState]);
-   
-  // Initialize and resize the canvas for proper pixel density
-  useEffect(() => {
-    if (timelineRef.current) {
-      const canvas = timelineRef.current;
-      const container = canvas.parentElement;
-      
-      // Set canvas dimensions to match its display size to avoid blurry text
-      const resizeCanvas = () => {
-        const rect = container.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        
-        // Set display size (css pixels)
-        canvas.style.width = `${rect.width}px`;
-        canvas.style.height = '50px';
-        
-        // Set actual size in memory (scaled for pixel density)
-        canvas.width = Math.floor(rect.width * dpr);
-        canvas.height = 50 * dpr;
-        
-        // Scale context to ensure correct drawing
-        const ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
-        
-        drawTimeline();
-      };
-      
-      window.addEventListener('resize', resizeCanvas);
-      resizeCanvas();
-      
-      return () => {
-        window.removeEventListener('resize', resizeCanvas);
-      };
-    }
-  }, [drawTimeline]);
-  
-  // Draw timeline visualization when lyrics or currentTime change
-  useEffect(() => {
-    if (timelineRef.current && lyrics.length > 0) {
-      // Store current time for comparison
-      lastTimeRef.current = currentTime;
-      drawTimeline();
-    }
-  }, [lyrics, currentTime, duration, drawTimeline]);
-  
-  // Force redraw timeline when currentTime changes
-  useEffect(() => {
-    // Only redraw if time actually changed
-    if (Math.abs(lastTimeRef.current - currentTime) > 0.01) {
-      lastTimeRef.current = currentTime;
-      if (timelineRef.current) {
-        drawTimeline();
+      if (isAtOriginalState !== areEqual) {
+        setIsAtOriginalState(areEqual);
       }
     }
-  }, [currentTime, drawTimeline]);
+  }, [lyrics, originalLyrics, isAtOriginalState]);
 
+  // Find current lyric index based on time
   const getCurrentLyricIndex = (time) => {
-    return lyrics.findIndex(
-      (lyric) => time >= lyric.start && time <= lyric.end
-    );
+    return lyrics.findIndex((lyric, index) => {
+      const nextLyric = lyrics[index + 1];
+      return time >= lyric.start && 
+        (nextLyric ? time < nextLyric.start : time <= lyric.end);
+    });
   };
   
   const currentIndex = getCurrentLyricIndex(currentTime);
@@ -433,12 +314,160 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
     }
   };
 
+  // Draw the timeline visualization
+  const drawTimeline = useCallback(() => {
+    const canvas = timelineRef.current;
+    if (!canvas || !duration) return;
+    
+    const ctx = canvas.getContext('2d');
+    const displayWidth = canvas.clientWidth;
+    const displayHeight = canvas.clientHeight;
+    
+    // Set canvas dimensions for proper resolution
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    ctx.scale(dpr, dpr);
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, displayWidth, displayHeight);
+    
+    // Draw background
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(0, 0, displayWidth, displayHeight);
+    
+    // Find the max time to use same scale as drawing
+    const maxLyricTime = lyrics.length > 0 
+      ? Math.max(...lyrics.map(lyric => lyric.end))
+      : duration;
+    
+    // Use the greater of actual duration or max lyric time 
+    const timelineEnd = Math.max(maxLyricTime, duration) * 1.05; // Add 5% padding
+    
+    // Draw lyric segments FIRST (below time markers)
+    lyrics.forEach((lyric, index) => {
+      const startX = (lyric.start / timelineEnd) * displayWidth;
+      const endX = (lyric.end / timelineEnd) * displayWidth;
+      const segmentWidth = Math.max(1, endX - startX); // Ensure minimum width
+      
+      // Get a color based on the index
+      const hue = (index * 30) % 360;
+      ctx.fillStyle = `hsla(${hue}, 70%, 60%, 0.7)`;
+      // Draw segments in lower 70% of canvas height
+      ctx.fillRect(startX, displayHeight * 0.3, segmentWidth, displayHeight * 0.7);
+      
+      // Draw border
+      ctx.strokeStyle = `hsla(${hue}, 70%, 40%, 0.9)`;
+      ctx.strokeRect(startX, displayHeight * 0.3, segmentWidth, displayHeight * 0.7);
+    });
+    
+    // Draw time markers ON TOP
+    ctx.fillStyle = '#ddd';
+    
+    // Calculate proper spacing for time markers based on timeline length
+    const timeStep = Math.max(1, Math.ceil(timelineEnd / 15));
+    for (let i = 0; i <= timelineEnd; i += timeStep) {
+      const x = (i / timelineEnd) * displayWidth;
+      // Draw full-height vertical lines
+      ctx.fillRect(x, 0, 1, displayHeight);
+      
+      // Draw time labels at the top
+      ctx.fillStyle = '#666';
+      ctx.font = '10px Arial';
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${i}s`, x + 3, 2);
+      ctx.fillStyle = '#ddd';
+    }
+    
+    // Draw current time indicator - make it more visible
+    const currentX = (currentTime / timelineEnd) * displayWidth;
+    
+    // Draw indicator shadow for better visibility
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(currentX - 2, 0, 4, displayHeight);
+    
+    // Draw indicator
+    ctx.fillStyle = 'red';
+    ctx.fillRect(currentX - 1, 0, 3, displayHeight);
+    
+    // Draw playhead triangle at the top
+    ctx.beginPath();
+    ctx.moveTo(currentX - 6, 0);
+    ctx.lineTo(currentX + 6, 0);
+    ctx.lineTo(currentX, 6);
+    ctx.closePath();
+    ctx.fillStyle = 'red';
+    ctx.fill();
+  }, [lyrics, currentTime, duration]);
+
+  // Initialize and resize the canvas for proper pixel density
+  useEffect(() => {
+    if (timelineRef.current) {
+      const canvas = timelineRef.current;
+      const container = canvas.parentElement;
+      
+      // Set canvas dimensions to match its display size to avoid blurry text
+      const resizeCanvas = () => {
+        const rect = container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set display size (css pixels)
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = '50px';
+        
+        // Set actual size in memory (scaled for pixel density)
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = 50 * dpr;
+        
+        // Scale context to ensure correct drawing
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        
+        drawTimeline();
+      };
+      
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      
+      return () => {
+        window.removeEventListener('resize', resizeCanvas);
+      };
+    }
+  }, [drawTimeline]);
+  
+  // Draw timeline visualization when lyrics or currentTime change
+  useEffect(() => {
+    if (timelineRef.current && lyrics.length > 0) {
+      // Store current time for comparison
+      lastTimeRef.current = currentTime;
+      drawTimeline();
+    }
+  }, [lyrics, currentTime, duration, drawTimeline]);
+  
+  // Force redraw timeline when currentTime changes
+  useEffect(() => {
+    // Only redraw if time actually changed
+    if (Math.abs(lastTimeRef.current - currentTime) > 0.01) {
+      lastTimeRef.current = currentTime;
+      if (timelineRef.current) {
+        drawTimeline();
+      }
+    }
+  }, [currentTime, drawTimeline]);
+
   return (
     <div style={{ marginTop: '20px' }}>
-      <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>Matched Lyrics</span>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.md
+      }}>
+        <h3 style={theme.typography.h3}>Synchronized Lyrics</h3>
+        
         {allowEditing && (
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
             <label 
               style={{ 
                 marginRight: '15px',
@@ -460,71 +489,51 @@ const LyricsDisplay = ({ matchedLyrics, currentTime, onLyricClick, duration, onU
                 Sticky Timings
               </span>
             </label>
-            <button 
+            <Button
               onClick={handleUndo}
               disabled={history.length === 0}
-              style={{
-                backgroundColor: history.length === 0 ? '#ddd' : '#ff9800',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '4px 10px',
-                marginRight: '8px',
-                cursor: history.length === 0 ? 'not-allowed' : 'pointer',
-                fontSize: '12px',
-                fontWeight: 'bold'
-              }}
-              title="Undo last change"
+              variant="secondary"
+              size="small"
             >
               Undo
-            </button>
-            <button 
+            </Button>
+            <Button
               onClick={handleReset}
-              disabled={originalLyrics.length === 0 || 
-isAtOriginalState}
-              style={{
-                backgroundColor: (originalLyrics.length === 0 || isAtOriginalState) 
-                  ? '#ddd' : '#f44336',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '4px 10px',
-                cursor: (originalLyrics.length === 0 || isAtOriginalState) ? 'not-allowed' : 'pointer',
-                fontSize: '12px',
-                fontWeight: 'bold'
-              }}
-              title="Reset to original Gemini results"
+              disabled={originalLyrics.length === 0 || isAtOriginalState}
+              variant="error"
+              size="small"
             >
               Reset
-            </button>
+            </Button>
           </div>
         )}
-      </h3>
+      </div>
       
       {/* Timeline Visualization */}
-      <div style={{ marginBottom: '10px', position: 'relative' }}>
+      <div style={{ marginBottom: theme.spacing.md, position: 'relative' }}>
         <canvas 
           ref={timelineRef}
           onClick={handleTimelineClick}
           style={{
             width: '100%',
             height: '50px',
-            borderRadius: '4px',
-            border: '1px solid #ccc',
+            borderRadius: theme.borderRadius.sm,
+            border: `1px solid ${theme.colors.border}`,
             cursor: 'pointer'
           }}
         />
       </div>
       
+      {/* Lyrics List */}
       <div 
         ref={containerRef}
         onClick={handleContainerClick}
         style={{
           maxHeight: '400px',
           overflowY: 'auto',
-          border: '1px solid #ccc',
-          padding: '10px',
-          borderRadius: '4px'
+          border: `1px solid ${theme.colors.border}`,
+          borderRadius: theme.borderRadius.sm,
+          padding: theme.spacing.sm
         }}
       >
         {lyrics.map((lyric, index) => {
@@ -536,18 +545,17 @@ isAtOriginalState}
               key={index}
               data-lyric-index={index}
               style={{
-                padding: '10px',
-                backgroundColor: isCurrentLyric ? '#E3F2FD' : 'white',
+                padding: theme.spacing.md,
+                backgroundColor: isCurrentLyric ? '#E3F2FD' : theme.colors.background.main,
                 marginBottom: '5px',
-                borderRadius: '4px',
+                borderRadius: theme.borderRadius.sm,
                 cursor: 'pointer',
                 borderLeft: `4px solid ${isCurrentLyric ? '#2196F3' : '#ddd'}`,
-                transition: 'all 0.3s ease',
+                transition: theme.transitions.fast,
                 transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
-                boxShadow: isCurrentLyric ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                boxShadow: isCurrentLyric ? theme.shadows.sm : 'none'
               }}
               onClick={(e) => {
-                // Only seek if we're not currently editing
                 if (editingIndex === null) {
                   onLyricClick(lyric.start);
                 }
@@ -560,88 +568,82 @@ isAtOriginalState}
                 position: 'relative'
               }}>
                 <div style={{
-                  fontWeight: isCurrentLyric ? '600' : 'normal',
                   flex: 1,
-                  textAlign: 'right', // Align lyrics to the right
-                  paddingRight: '700px', // Reduced padding to bring timing values closer
-                  position: 'relative',
-                  display: 'inline-block'
+                  paddingRight: theme.spacing.xl,
+                  fontWeight: isCurrentLyric ? '600' : 'normal'
                 }}>
                   <span>{lyric.text}</span>
                 </div>
                 
-                <div 
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    backgroundColor: '#f0f7ff',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    position: 'absolute',
-                    right: '500px', // Adjusted position
-                    zIndex: 5
-                  }}
-                >
-                  {/* Start time */}
-                  <span 
-                    className="timing-editor"
+                {allowEditing && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
                     style={{
-                      color: (isEditing && editingField === 'start') || (hoveredElement && hoveredElement.index === index && hoveredElement.field === 'start') 
-                        ? '#e91e63' : '#1976d2',
-                      fontWeight: '500',
-                      cursor: allowEditing ? 'grab' : 'default',
-                      padding: '4px 8px',
-                      borderRadius: '3px',
-                      border: ((isEditing && editingField === 'start') || (hoveredElement && hoveredElement.index === index && hoveredElement.field === 'start')) 
-                        ? '1px solid #e91e63' : '1px solid transparent',
-                      backgroundColor: ((isEditing && editingField === 'start') || (hoveredElement && hoveredElement.index === index && hoveredElement.field === 'start')) 
-                        ? 'rgba(233, 30, 99, 0.1)' : 'transparent',
-                      touchAction: 'none',
-                      userSelect: 'none',
-                      position: 'relative',
-                      zIndex: 10,
-                      transition: 'all 0.15s ease'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: theme.spacing.sm,
+                      backgroundColor: '#f0f7ff',
+                      padding: theme.spacing.sm,
+                      borderRadius: theme.borderRadius.sm
                     }}
-                    onMouseDown={allowEditing ? (e) => handleDragStart(e, index, 'start') : undefined}
-                    onTouchStart={allowEditing ? (e) => handleDragStart(e, index, 'start') : undefined}
-                    onMouseEnter={allowEditing ? () => handleMouseEnter(index, 'start') : undefined}
-                    onMouseLeave={allowEditing ? handleMouseLeave : undefined}
-                    title={allowEditing ? "Drag horizontally to adjust start time" : ""}
                   >
-                    {(isEditing && editingField === 'start' ? editValues.start : lyric.start).toFixed(2)}s
-                  </span>
-                  <span>-</span>
-                  {/* End time */}
-                  <span 
-                    className="timing-editor"
-                    style={{
-                      color: (isEditing && editingField === 'end') || (hoveredElement && hoveredElement.index === index && hoveredElement.field === 'end') 
-                        ? '#e91e63' : '#1976d2',
-                      fontWeight: '500',
-                      cursor: allowEditing ? 'grab' : 'default',
-                      padding: '4px 8px',
-                      borderRadius: '3px',
-                      border: ((isEditing && editingField === 'end') || (hoveredElement && hoveredElement.index === index && hoveredElement.field === 'end')) 
-                        ? '1px solid #e91e63' : '1px solid transparent',
-                      backgroundColor: ((isEditing && editingField === 'end') || (hoveredElement && hoveredElement.index === index && hoveredElement.field === 'end')) 
-                        ? 'rgba(233, 30, 99, 0.1)' : 'transparent',
-                      touchAction: 'none',
-                      userSelect: 'none',
-                      position: 'relative',
-                      zIndex: 10,
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseDown={allowEditing ? (e) => handleDragStart(e, index, 'end') : undefined}
-                    onTouchStart={allowEditing ? (e) => handleDragStart(e, index, 'end') : undefined}
-                    onMouseEnter={allowEditing ? () => handleMouseEnter(index, 'end') : undefined}
-                    onMouseLeave={allowEditing ? handleMouseLeave : undefined}
-                    title={allowEditing ? "Drag horizontally to adjust end time" : ""}
-                  >
-                    {(isEditing && editingField === 'end' ? editValues.end : lyric.end).toFixed(2)}s
-                  </span>
-                </div>
+                    <span
+                      className="timing-editor"
+                      style={{
+                        color: (isEditing && editingField === 'start') || 
+                          (hoveredElement?.index === index && hoveredElement?.field === 'start')
+                          ? '#e91e63' : '#1976d2',
+                        fontWeight: '500',
+                        cursor: allowEditing ? 'grab' : 'default',
+                        padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                        borderRadius: theme.borderRadius.sm,
+                        border: ((isEditing && editingField === 'start') || 
+                          (hoveredElement?.index === index && hoveredElement?.field === 'start'))
+                          ? '1px solid #e91e63' : '1px solid transparent',
+                        backgroundColor: ((isEditing && editingField === 'start') || 
+                          (hoveredElement?.index === index && hoveredElement?.field === 'start'))
+                          ? 'rgba(233, 30, 99, 0.1)' : 'transparent',
+                        touchAction: 'none',
+                        userSelect: 'none'
+                      }}
+                      onMouseEnter={() => handleMouseEnter(index, 'start')}
+                      onMouseLeave={handleMouseLeave}
+                      onMouseDown={(e) => handleDragStart(e, index, 'start')}
+                      onTouchStart={(e) => handleDragStart(e, index, 'start')}
+                      title={allowEditing ? "Drag horizontally to adjust start time" : ""}
+                    >
+                      {(isEditing && editingField === 'start' ? editValues.start : lyric.start).toFixed(2)}s
+                    </span>
+                    <span style={{ color: theme.colors.text.secondary }}>-</span>
+                    <span
+                      className="timing-editor"
+                      style={{
+                        color: (isEditing && editingField === 'end') || 
+                          (hoveredElement?.index === index && hoveredElement?.field === 'end')
+                          ? '#e91e63' : '#1976d2',
+                        fontWeight: '500',
+                        cursor: allowEditing ? 'grab' : 'default',
+                        padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                        borderRadius: theme.borderRadius.sm,
+                        border: ((isEditing && editingField === 'end') || 
+                          (hoveredElement?.index === index && hoveredElement?.field === 'end'))
+                          ? '1px solid #e91e63' : '1px solid transparent',
+                        backgroundColor: ((isEditing && editingField === 'end') || 
+                          (hoveredElement?.index === index && hoveredElement?.field === 'end'))
+                          ? 'rgba(233, 30, 99, 0.1)' : 'transparent',
+                        touchAction: 'none',
+                        userSelect: 'none'
+                      }}
+                      onMouseEnter={() => handleMouseEnter(index, 'end')}
+                      onMouseLeave={handleMouseLeave}
+                      onMouseDown={(e) => handleDragStart(e, index, 'end')}
+                      onTouchStart={(e) => handleDragStart(e, index, 'end')}
+                      title={allowEditing ? "Drag horizontally to adjust end time" : ""}
+                    >
+                      {(isEditing && editingField === 'end' ? editValues.end : lyric.end).toFixed(2)}s
+                    </span>
+                  </div>
+                )}
               </div>
               
               {isCurrentLyric && (
