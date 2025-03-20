@@ -218,7 +218,7 @@ const useLyrics = () => {
         body: JSON.stringify({
           lyrics,
           albumArtUrl,
-          model: selectedImageModel  // Add the selected model here
+          model: selectedPromptModel  // Fixed: Use the correct model for prompt generation
         })
       });
 
@@ -235,7 +235,7 @@ const useLyrics = () => {
       setError(`Prompt generation failed: ${err.message}`);
       throw err;
     }
-  }, [lyrics, albumArtUrl, selectedImageModel]);  // Add selectedImageModel to dependencies
+  }, [lyrics, albumArtUrl, selectedPromptModel]);  // Updated dependency to selectedPromptModel
 
   const generateImage = useCallback(async (prompt) => {
     try {

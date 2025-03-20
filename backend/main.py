@@ -359,6 +359,15 @@ def setup_argparse():
 def generate_prompt_with_gemini(lyrics, model_name, song_name):
     """Generate image prompt from lyrics using Gemini."""
     try:
+        # Validate model name
+        VALID_PROMPT_MODELS = [
+            'gemini-2.0-flash-lite',
+            'gemini-2.0-pro-exp-02-05'
+        ]
+        
+        if model_name not in VALID_PROMPT_MODELS:
+            raise ValueError(f"Invalid prompt generation model. Must be one of: {', '.join(VALID_PROMPT_MODELS)}")
+
         # Read config file
         config_path = os.path.join(os.path.dirname(__file__), 'config.json')
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -385,10 +394,17 @@ generate one prompt to put in a image generator to describe the atmosphere/objec
             contents=prompt
         )
 
-        return {
+        # Create result object with prompt model name
+        result = {
             "prompt": response.text,
+            "model": model_name,  # Using the actual model used for prompt generation
             "status": "success"
         }
+
+        # Only print once and ensure it's valid JSON
+        print(json.dumps(result), file=sys.stdout)
+        
+        return result
 
     except Exception as e:
         print(f"Error generating prompt with Gemini: {str(e)}", file=sys.stderr)
@@ -399,7 +415,7 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
     try:
         # Read config file
         config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, 'r', encoding='utf-8') as f:  # Fixed extra parenthesis
             config = json.load(f)
 
         if not config.get('geminiApiKey'):
@@ -504,8 +520,8 @@ def main():
 
             print(f"Using model: {model}", file=sys.stderr)
             result = generate_prompt_with_gemini(lyrics, model, song_name)
-            print(json.dumps(result))
-
+            # Remove duplicate print since generate_prompt_with_gemini already prints the result
+            
         elif args.mode == "generate_image":
             if not args.prompt or not args.album_art:
                 raise ValueError("Both prompt and album_art parameters are required for image generation")
