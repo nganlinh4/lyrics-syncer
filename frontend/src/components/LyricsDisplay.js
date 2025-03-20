@@ -10,23 +10,18 @@ const LyricsDisplay = ({
   onUpdateLyrics, 
   allowEditing = false 
 }) => {
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [editingField, setEditingField] = useState(null);
-  const [editValues, setEditValues] = useState({ start: 0, end: 0 });
+  // State for lyrics and editing
   const [lyrics, setLyrics] = useState([]);
   const [isSticky, setIsSticky] = useState(true);
   const [history, setHistory] = useState([]);
   const [originalLyrics, setOriginalLyrics] = useState([]);
   const [isAtOriginalState, setIsAtOriginalState] = useState(true);
-  const [hoveredElement, setHoveredElement] = useState(null);
   
+  // Refs
   const timelineRef = useRef(null);
   const containerRef = useRef(null);
-  const dragStartRef = useRef({ x: 0, value: 0 });
-  const isDraggingRef = useRef(false);
-  const lastInteractionRef = useRef(null);
-  const justFinishedDraggingRef = useRef(false);
   const lastTimeRef = useRef(0);
+  const dragInfo = useRef({ dragging: false, index: null, field: null, startX: 0, startValue: 0 });
 
   // Sync with incoming matchedLyrics prop
   useEffect(() => {
@@ -71,18 +66,6 @@ const LyricsDisplay = ({
   
   const currentIndex = getCurrentLyricIndex(currentTime);
   
-  const startEditing = (index, field) => {
-    const lyric = lyrics[index];
-    setEditingIndex(index);
-    setEditingField(field);
-    setEditValues({
-      start: lyric.start,
-      end: lyric.end
-    });
-    // Store this as the last interaction
-    lastInteractionRef.current = { index, field };
-  };
-  
   // Handle the undo operation
   const handleUndo = () => {
     if (history.length > 0) {
@@ -123,134 +106,70 @@ const LyricsDisplay = ({
     }
   };
   
-  // Handle mouse enter for hover effects
-  const handleMouseEnter = (index, field) => {
-    if (allowEditing) {
-      setHoveredElement({ index, field });
-    }
-  };
-  
-  // Handle mouse leave for hover effects
-  const handleMouseLeave = () => {
-    setHoveredElement(null);
-  };
-  
-  // Start the drag operation
-  const handleDragStart = (e, index, field) => {
+  // Start the drag operation - simplified
+  const handleMouseDown = (e, index, field) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Before editing, save the current state to history
+    // Save current state to history before making changes
     setHistory(prevHistory => [...prevHistory, JSON.parse(JSON.stringify(lyrics))]);
     
-    // Always start editing on drag - no need to check if we're already editing
-    startEditing(index, field);
+    const clientX = e.clientX;
+    const value = field === 'start' ? lyrics[index].start : lyrics[index].end;
     
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    dragStartRef.current = { 
-      x: clientX, 
-      value: field === 'start' ? lyrics[index].start : lyrics[index].end 
+    // Store drag information
+    dragInfo.current = {
+      dragging: true,
+      index: index,
+      field: field,
+      startX: clientX,
+      startValue: value
     };
     
-    // Set dragging flag to true immediately
-    isDraggingRef.current = true;
-    justFinishedDraggingRef.current = false;
-    
     // Add event listeners for dragging
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('mouseup', handleDragEnd);
-    document.addEventListener('touchmove', handleDragMove, { passive: false });
-    document.addEventListener('touchend', handleDragEnd);
-    
-    // Call handleDragMove immediately with the current event
-    // This ensures the dragging starts with the first mouse position
-    handleDragMove(e);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
   
-  // Handle the drag movement
-  const handleDragMove = (e) => {
-    if (!isDraggingRef.current || editingIndex === null || editingField === null) return;
+  // Handle mouse movement during drag - simplified
+  const handleMouseMove = (e) => {
+    const { dragging, index, field, startX, startValue } = dragInfo.current;
+    if (!dragging) return;
     
     e.preventDefault();
-    e.stopPropagation();
     
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const deltaX = clientX - dragStartRef.current.x;
+    const deltaX = e.clientX - startX;
+    const deltaTime = deltaX * 0.01; // 0.01 seconds per pixel
+    let newValue = startValue + deltaTime;
     
-    // Convert pixel movement to time - 0.01s per pixel for fine control
-    const timeDelta = deltaX * 0.01;
-    const newValue = Math.round((dragStartRef.current.value + timeDelta) * 100) / 100; // Round to 2 decimal places
-    
-    // Update the values based on which field we're editing
-    const updatedValues = { ...editValues };
-    if (editingField === 'start') {
+    // Apply constraints
+    const lyric = lyrics[index];
+    if (field === 'start') {
       // Don't let start time go below 0 or above end time - 0.1
-      updatedValues.start = Math.max(0, Math.min(updatedValues.end - 0.1, newValue));
+      newValue = Math.max(0, Math.min(lyric.end - 0.1, newValue));
     } else { // end
       // Don't let end time go below start time + 0.1 or above duration
-      updatedValues.end = Math.max(updatedValues.start + 0.1, Math.min(duration, newValue));
+      newValue = Math.max(lyric.start + 0.1, Math.min(duration || 9999, newValue));
     }
     
-    setEditValues(updatedValues);
+    // Round to 2 decimal places
+    newValue = Math.round(newValue * 100) / 100;
     
-    // Update the lyric and all subsequent lyrics immediately
-    updateTimings(editingIndex, editingField, updatedValues[editingField]);
+    // Update lyrics
+    updateTimings(index, field, newValue);
   };
   
-  // End the drag operation
-  const handleDragEnd = () => {
-    isDraggingRef.current = false;
+  // End the drag operation - simplified
+  const handleMouseUp = (e) => {
+    // Cleanup
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
     
-    // Set the flag to indicate we just finished dragging
-    // This will prevent the container click from clearing the editing state
-    justFinishedDraggingRef.current = true;
-    
-    // Reset the flag after a short delay
-    setTimeout(() => {
-      justFinishedDraggingRef.current = false;
-    }, 100);
-    
-    // Clean up event listeners
-    document.removeEventListener('mousemove', handleDragMove);
-    document.removeEventListener('mouseup', handleDragEnd);
-    document.removeEventListener('touchmove', handleDragMove);
-    document.removeEventListener('touchend', handleDragEnd);
-    
-    // Make sure we apply the final update
-    if (editingIndex !== null && editingField !== null) {
-      const finalValue = editingField === 'start' ? editValues.start : editValues.end;
-      updateTimings(editingIndex, editingField, finalValue);
-      
-      // IMPORTANT: We no longer clear the editing state
-      // This maintains focus on the current timing value
-      // allowing immediate re-dragging
-    }
+    // Reset drag info
+    dragInfo.current = { dragging: false, index: null, field: null, startX: 0, startValue: 0 };
   };
   
-  // Function to explicitly clear editing state (when clicking elsewhere)
-  const clearEditingState = () => {
-    setEditingIndex(null);
-    setEditingField(null);
-  };
-  
-  // Click handler for the container - clear editing state when clicking outside timing values
-  const handleContainerClick = (e) => {
-    // Check if the click is on a timing value
-    const target = e.target;
-    
-    // If we just finished dragging, don't clear the editing state
-    // This prevents losing focus when dropping outside of timing elements
-    if (justFinishedDraggingRef.current) {
-      return;
-    }
-    
-    // Only clear if clicking outside of timing editors
-    if (!target.classList.contains('timing-editor')) {
-      clearEditingState();
-    }
-  };
-
-  // Update the specified lyric and adjust all subsequent timings
+  // Update the specified lyric and adjust all subsequent timings - simplified
   const updateTimings = (index, field, newValue) => {
     const oldLyrics = [...lyrics];
     const currentLyric = { ...oldLyrics[index] };
@@ -527,7 +446,6 @@ const LyricsDisplay = ({
       {/* Lyrics List */}
       <div 
         ref={containerRef}
-        onClick={handleContainerClick}
         style={{
           maxHeight: '400px',
           overflowY: 'auto',
@@ -538,7 +456,7 @@ const LyricsDisplay = ({
       >
         {lyrics.map((lyric, index) => {
           const isCurrentLyric = index === currentIndex;
-          const isEditing = editingIndex === index;
+          const isDragging = dragInfo.current.dragging && dragInfo.current.index === index;
           
           return (
             <div
@@ -555,11 +473,7 @@ const LyricsDisplay = ({
                 transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
                 boxShadow: isCurrentLyric ? theme.shadows.sm : 'none'
               }}
-              onClick={(e) => {
-                if (editingIndex === null) {
-                  onLyricClick(lyric.start);
-                }
-              }}
+              onClick={() => onLyricClick(lyric.start)}
             >
               <div style={{
                 display: 'flex',
@@ -587,60 +501,44 @@ const LyricsDisplay = ({
                       borderRadius: theme.borderRadius.sm
                     }}
                   >
+                    {/* Start Time */}
                     <span
-                      className="timing-editor"
                       style={{
-                        color: (isEditing && editingField === 'start') || 
-                          (hoveredElement?.index === index && hoveredElement?.field === 'start')
-                          ? '#e91e63' : '#1976d2',
+                        color: isDragging && dragInfo.current.field === 'start' ? '#e91e63' : '#1976d2',
                         fontWeight: '500',
                         cursor: allowEditing ? 'grab' : 'default',
                         padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
                         borderRadius: theme.borderRadius.sm,
-                        border: ((isEditing && editingField === 'start') || 
-                          (hoveredElement?.index === index && hoveredElement?.field === 'start'))
+                        border: isDragging && dragInfo.current.field === 'start' 
                           ? '1px solid #e91e63' : '1px solid transparent',
-                        backgroundColor: ((isEditing && editingField === 'start') || 
-                          (hoveredElement?.index === index && hoveredElement?.field === 'start'))
+                        backgroundColor: isDragging && dragInfo.current.field === 'start'
                           ? 'rgba(233, 30, 99, 0.1)' : 'transparent',
-                        touchAction: 'none',
                         userSelect: 'none'
                       }}
-                      onMouseEnter={() => handleMouseEnter(index, 'start')}
-                      onMouseLeave={handleMouseLeave}
-                      onMouseDown={(e) => handleDragStart(e, index, 'start')}
-                      onTouchStart={(e) => handleDragStart(e, index, 'start')}
-                      title={allowEditing ? "Drag horizontally to adjust start time" : ""}
+                      onMouseDown={(e) => handleMouseDown(e, index, 'start')}
                     >
-                      {(isEditing && editingField === 'start' ? editValues.start : lyric.start).toFixed(2)}s
+                      {lyric.start.toFixed(2)}s
                     </span>
+                    
                     <span style={{ color: theme.colors.text.secondary }}>-</span>
+                    
+                    {/* End Time */}
                     <span
-                      className="timing-editor"
                       style={{
-                        color: (isEditing && editingField === 'end') || 
-                          (hoveredElement?.index === index && hoveredElement?.field === 'end')
-                          ? '#e91e63' : '#1976d2',
+                        color: isDragging && dragInfo.current.field === 'end' ? '#e91e63' : '#1976d2',
                         fontWeight: '500',
                         cursor: allowEditing ? 'grab' : 'default',
                         padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
                         borderRadius: theme.borderRadius.sm,
-                        border: ((isEditing && editingField === 'end') || 
-                          (hoveredElement?.index === index && hoveredElement?.field === 'end'))
+                        border: isDragging && dragInfo.current.field === 'end'
                           ? '1px solid #e91e63' : '1px solid transparent',
-                        backgroundColor: ((isEditing && editingField === 'end') || 
-                          (hoveredElement?.index === index && hoveredElement?.field === 'end'))
+                        backgroundColor: isDragging && dragInfo.current.field === 'end' 
                           ? 'rgba(233, 30, 99, 0.1)' : 'transparent',
-                        touchAction: 'none',
                         userSelect: 'none'
                       }}
-                      onMouseEnter={() => handleMouseEnter(index, 'end')}
-                      onMouseLeave={handleMouseLeave}
-                      onMouseDown={(e) => handleDragStart(e, index, 'end')}
-                      onTouchStart={(e) => handleDragStart(e, index, 'end')}
-                      title={allowEditing ? "Drag horizontally to adjust end time" : ""}
+                      onMouseDown={(e) => handleMouseDown(e, index, 'end')}
                     >
-                      {(isEditing && editingField === 'end' ? editValues.end : lyric.end).toFixed(2)}s
+                      {lyric.end.toFixed(2)}s
                     </span>
                   </div>
                 )}
