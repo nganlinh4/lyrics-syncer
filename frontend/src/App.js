@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import SongInput from './components/SongInput';
 import Settings from './components/Settings';
@@ -8,14 +9,16 @@ import CustomLyricsInput from './components/CustomLyricsInput';
 import ModelSelector from './components/ModelSelector';
 import ImageModelSelector from './components/ImageModelSelector';
 import PromptModelSelector from './components/PromptModelSelector';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
 import Card from './ui/Card';
 import Button from './ui/Button';
-import theme from './theme/theme'; // Import theme
+import theme from './theme/theme';
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
 
-function App() {
+const MainApp = () => {
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -86,22 +89,18 @@ function App() {
     fetchFromGenius
   } = useLyrics();
 
-  // Event handlers
-  const handleGenerateImage = async () => {
-    try {
-      setGeneratingImage(true);
-      setError(null);
-      const prompt = await generateImagePrompt();
-      if (!prompt) {
-        throw new Error('Failed to generate prompt');
-      }
-      await generateImage(prompt);
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setGeneratingImage(false);
-    }
-  };
+  // Effects
+  useEffect(() => {
+    setNeedsRefetch(true);
+    if (!isCustomLyrics) setHasDownloaded(false);
+    setMatchingComplete(false);
+    setMatchedLyrics([]);
+  }, [song, artist, setMatchedLyrics, setMatchingComplete]);
+
+  // Computed values
+  const canStartMatching = hasDownloaded && !needsRefetch && audioUrl && lyrics.length > 0;
+  const showForceButtons = !loading && hasDownloaded;
+  const showMatchingButton = canStartMatching && !matchingInProgress;
 
   const handleDownload = async () => {
     try {
@@ -132,7 +131,7 @@ function App() {
       
       setNeedsRefetch(false);
       setHasDownloaded(true);
-
+      
       const songName = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
       const audioResponse = await fetch(`${API_URL}/api/audio_data/${encodeURIComponent(songName)}`);
       
@@ -174,36 +173,10 @@ function App() {
     } catch (error) {
       setError(error.message);
       console.error('Force download error:', error);
-    }
-  };
-
-  // Handle fetching lyrics from Genius
-  const handleFetchFromGenius = async (artistName, songName) => {
-    try {
-      setLoading(true);
-      setError(null);
-      await fetchFromGenius(artistName, songName);
-      setNeedsRefetch(false);
-    } catch (error) {
-      setError(error.message);
-      console.error('Genius fetch error:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  // Effects
-  useEffect(() => {
-    setNeedsRefetch(true);
-    if (!isCustomLyrics) setHasDownloaded(false);
-    setMatchingComplete(false);
-    setMatchedLyrics([]);
-  }, [song, artist, setMatchedLyrics, setMatchingComplete]);
-
-  // Computed values
-  const canStartMatching = hasDownloaded && !needsRefetch && audioUrl && lyrics.length > 0;
-  const showForceButtons = !loading && hasDownloaded;
-  const showMatchingButton = canStartMatching && !matchingInProgress;
 
   return (
     <MainLayout onSettingsClick={() => setIsSettingsOpen(true)}>
@@ -250,7 +223,7 @@ function App() {
         }}
         onDownload={handleDownload}
         onForceDownload={handleForceDownload}
-        onFetchFromGenius={handleFetchFromGenius}
+        onFetchFromGenius={fetchFromGenius}
         showForceButton={showForceButtons}
       />
 
@@ -320,7 +293,23 @@ function App() {
         <Card title="Background Image Generation">
           <div style={{ display: 'grid', gap: '1rem' }}>
             <Button
-              onClick={handleGenerateImage}
+              onClick={async (e) => {
+                e.preventDefault();
+                try {
+                  setGeneratingImage(true);
+                  setError(null);
+                  const prompt = await generateImagePrompt();
+                  if (!prompt) {
+                    throw new Error('Failed to generate prompt');
+                  }
+                  await generateImage(prompt);
+                } catch (error) {
+                  setError(error.message);
+                  console.error('Image generation error:', error);
+                } finally {
+                  setGeneratingImage(false);
+                }
+              }}
               disabled={generatingImage || !albumArtUrl}
               variant={generatingImage ? 'disabled' : 'primary'}
             >
@@ -363,33 +352,21 @@ function App() {
                         const mimeType = generatedImage.mime_type || 'image/png';
                         const ab = new ArrayBuffer(byteString.length);
                         const ia = new Uint8Array(ab);
-                        
                         for (let i = 0; i < byteString.length; i++) {
                           ia[i] = byteString.charCodeAt(i);
                         }
-                        
                         const blob = new Blob([ab], { type: mimeType });
-                        const blobUrl = URL.createObjectURL(blob);
-                        
+                        const url = URL.createObjectURL(blob);
                         const link = document.createElement('a');
-                        link.href = blobUrl;
+                        link.href = url;
                         link.download = `${artist}_${song}_background.png`;
                         document.body.appendChild(link);
                         link.click();
-                        
-                        // Clean up
                         document.body.removeChild(link);
-                        setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+                        URL.revokeObjectURL(url); // Clean up the URL object
                       } catch (error) {
-                        console.error("Failed to download background image:", error);
-                        // Fallback method
-                        const link = document.createElement('a');
-                        const imageData = `data:${generatedImage.mime_type};base64,${generatedImage.data}`;
-                        link.href = imageData;
-                        link.download = `${artist}_${song}_background.png`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        console.error('Error downloading image:', error);
+                        setError('Failed to download the background image. Please try again.');
                       }
                     }}
                     variant="secondary"
@@ -413,6 +390,18 @@ function App() {
         </Card>
       )}
     </MainLayout>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainApp />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+      </Routes>
+    </Router>
   );
 }
 
