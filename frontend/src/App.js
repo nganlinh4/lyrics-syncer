@@ -10,6 +10,7 @@ import ImageModelSelector from './components/ImageModelSelector';
 import PromptModelSelector from './components/PromptModelSelector';
 import Card from './ui/Card';
 import Button from './ui/Button';
+import theme from './theme/theme'; // Import theme
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
@@ -345,9 +346,58 @@ function App() {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}
                 />
-                <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                  This image was generated using the song's lyrics and album art as inspiration.
-                </p>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: theme.spacing.sm 
+                }}>
+                  <p style={{ fontSize: '12px', color: '#666' }}>
+                    This image was generated using the song's lyrics and album art as inspiration.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      try {
+                        // For base64 images, we can convert directly to blob
+                        const byteString = atob(generatedImage.data);
+                        const mimeType = generatedImage.mime_type || 'image/png';
+                        const ab = new ArrayBuffer(byteString.length);
+                        const ia = new Uint8Array(ab);
+                        
+                        for (let i = 0; i < byteString.length; i++) {
+                          ia[i] = byteString.charCodeAt(i);
+                        }
+                        
+                        const blob = new Blob([ab], { type: mimeType });
+                        const blobUrl = URL.createObjectURL(blob);
+                        
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = `${artist}_${song}_background.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        
+                        // Clean up
+                        document.body.removeChild(link);
+                        setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+                      } catch (error) {
+                        console.error("Failed to download background image:", error);
+                        // Fallback method
+                        const link = document.createElement('a');
+                        const imageData = `data:${generatedImage.mime_type};base64,${generatedImage.data}`;
+                        link.href = imageData;
+                        link.download = `${artist}_${song}_background.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }
+                    }}
+                    variant="secondary"
+                    size="small"
+                  >
+                    Download Background
+                  </Button>
+                </div>
               </div>
             )}
           </div>

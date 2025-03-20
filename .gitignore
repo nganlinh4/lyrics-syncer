@@ -20,11 +20,16 @@ node_modules/
 
 # Media files
 /audio/
+/album_art/
 *.mp3
 *.wav
 *.ogg
 *.m4a
 *.webm
+*.jpg
+*.jpeg
+*.png
+*.gif
 
 # Generated files
 /lyrics/

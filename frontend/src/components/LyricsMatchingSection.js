@@ -36,6 +36,38 @@ const LyricsMatchingSection = ({
     return null;
   }
 
+  const handleAlbumArtDownload = async () => {
+    try {
+      // Fetch the image to avoid cross-origin issues
+      const response = await fetch(albumArtUrl);
+      const blob = await response.blob();
+      
+      // Create object URL from the blob
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${artist}_${song}_album_art.png`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    } catch (error) {
+      console.error("Failed to download album art:", error);
+      // Fallback to the original method if fetch fails
+      const link = document.createElement('a');
+      link.href = albumArtUrl;
+      link.download = `${artist}_${song}_album_art.png`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   return (
     <Card title="Lyrics Matching">
       <div style={{ display: 'grid', gap: theme.spacing.lg }}>
@@ -99,7 +131,9 @@ const LyricsMatchingSection = ({
               {albumArtUrl && (
                 <div style={{ 
                   display: 'flex',
-                  justifyContent: 'center'
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: theme.spacing.md
                 }}>
                   <img 
                     src={albumArtUrl} 
@@ -112,6 +146,13 @@ const LyricsMatchingSection = ({
                       boxShadow: theme.shadows.md
                     }}
                   />
+                  <Button
+                    onClick={handleAlbumArtDownload}
+                    variant="secondary"
+                    size="small"
+                  >
+                    Download Album Art
+                  </Button>
                 </div>
               )}
               

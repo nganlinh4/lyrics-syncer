@@ -36,6 +36,7 @@ app.use(express.json());
 ensureDirectories({
   AUDIO_DIR: config.audioDir,
   LYRICS_DIR: config.lyricsDir,
+  ALBUM_ART_DIR: config.albumArtDir, // Added album art directory
   DEBUG_DIR: config.debugDir,
   TEMP_DIR: config.tempDir
 });
@@ -50,6 +51,18 @@ app.use('/audio', express.static(config.audioDir, {
       'Cache-Control': 'no-cache'
     });
     console.log(`Serving audio file: ${filepath}`);
+  }
+}));
+
+// Set up static file serving for album art files
+app.use('/album_art', express.static(config.albumArtDir, {
+  setHeaders: (res, filepath) => {
+    res.set({
+      'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'image/png',
+      'Cache-Control': 'no-cache'
+    });
+    console.log(`Serving album art file: ${filepath}`);
   }
 }));
 

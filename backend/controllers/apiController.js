@@ -284,17 +284,36 @@ export const generateImage = async (req, res) => {
       return res.status(400).json({ error: 'Gemini API key not set' });
     }
 
+    // Check if the URL is a local URL (starts with http://localhost)
+    let artPath = artUrl;
+    if (artUrl.startsWith('http://localhost')) {
+      // Extract the path part from the URL
+      const urlPath = new URL(artUrl).pathname;
+      // Convert from URL path to local file path
+      const fileName = path.basename(urlPath);
+      // The album art is likely in the album_art directory
+      artPath = path.join(path.dirname(config.lyricsDir), 'album_art', fileName);
+      
+      // Verify that the file exists
+      if (!await fileExists(artPath)) {
+        return res.status(404).json({ 
+          error: `Album art file not found at ${artPath}`, 
+          status: 'error' 
+        });
+      }
+    }
+
     console.log('Running image generation with args:', {
       mode: 'generate_image',
       prompt,
-      albumArt: artUrl.substring(0, 30) + '...' // Log truncated URL for privacy
+      albumArt: artPath.substring(0, 30) + '...' // Log truncated path for privacy
     });
 
     const pythonArgs = [
       config.pythonScriptPath,
       '--mode', 'generate_image',
       '--prompt', prompt,
-      '--album_art', artUrl,
+      '--album_art', artPath,
       '--model', model
     ];
 

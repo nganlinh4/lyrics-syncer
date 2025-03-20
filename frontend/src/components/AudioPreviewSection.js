@@ -2,6 +2,7 @@
 import React from 'react';
 import Card from '../ui/Card';
 import AudioPlayer from './AudioPlayer';
+import Button from '../ui/Button';
 import theme from '../theme/theme';
 
 const AudioPreviewSection = ({
@@ -17,6 +18,38 @@ const AudioPreviewSection = ({
 }) => {
   if (!audioUrl) return null;
 
+  const handleAlbumArtDownload = async () => {
+    try {
+      // Fetch the image to avoid cross-origin issues
+      const response = await fetch(albumArtUrl);
+      const blob = await response.blob();
+      
+      // Create object URL from the blob
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'album_art.png'; // Default name
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    } catch (error) {
+      console.error("Failed to download album art:", error);
+      // Fallback to the original method if fetch fails
+      const link = document.createElement('a');
+      link.href = albumArtUrl;
+      link.download = 'album_art.png';
+      link.target = '_blank'; // Avoid opening in the same tab
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   return (
     <Card title="Audio Preview">
       <div style={{ display: 'grid', gap: theme.spacing.md }}>
@@ -29,8 +62,9 @@ const AudioPreviewSection = ({
           {albumArtUrl && (
             <div style={{ 
               display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'flex-start'
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: theme.spacing.md
             }}>
               <img 
                 src={albumArtUrl} 
@@ -44,6 +78,13 @@ const AudioPreviewSection = ({
                   boxShadow: theme.shadows.md
                 }}
               />
+              <Button
+                onClick={handleAlbumArtDownload}
+                variant="secondary"
+                size="small"
+              >
+                Download Album Art
+              </Button>
             </div>
           )}
 

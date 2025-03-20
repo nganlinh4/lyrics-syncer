@@ -1,6 +1,8 @@
 // filepath: c:\WORK_win\lyrics-syncer\backend\controllers\lyricsController.js
 import fs from 'fs/promises';
+import * as fsSync from 'fs';
 import path from 'path';
+import axios from 'axios';
 import config from '../config/config.js';
 import { fileExists, getSongName } from '../utils/fileUtils.js';
 
@@ -61,6 +63,10 @@ export const getLyrics = async (req, res) => {
     const songName = getSongName(artist, song);
     const lyricsFilePath = path.join(config.lyricsDir, `${songName}.txt`);
     const metadataFilePath = path.join(config.lyricsDir, `${songName}_metadata.json`);
+    const albumArtFilePath = path.join(config.albumArtDir, `${songName}.png`);
+
+    // Ensure album art directory exists
+    await fs.mkdir(config.albumArtDir, { recursive: true });
 
     if (!appConfig.geniusApiKey) {
       return res.status(400).json({ error: 'Genius API key not set. Please provide it through the frontend.' });
@@ -77,25 +83,42 @@ export const getLyrics = async (req, res) => {
       
       // Get lyrics from cache or fetch new ones
       let lyrics, albumArtUrl;
-      if (!force && await fileExists(lyricsFilePath)) {
-        console.log(`Using cached lyrics for ${songName}`);
+      if (!force && await fileExists(lyricsFilePath) && await fileExists(albumArtFilePath)) {
+        console.log(`Using cached lyrics and album art for ${songName}`);
         lyrics = await fs.readFile(lyricsFilePath, 'utf-8');
         const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
         albumArtUrl = metadata.albumArtUrl;
       } else {
-        console.log('Fetching fresh lyrics from Genius...');
+        console.log('Fetching fresh lyrics and album art from Genius...');
         lyrics = await geniusResult.lyrics();
         await fs.writeFile(lyricsFilePath, lyrics, 'utf-8');
       
         // Get fresh album art URL
         albumArtUrl = geniusResult.image || geniusResult.header_image_url || geniusResult.song_art_image_url;
         
-        // Cache the metadata
+        // Download and save the album art
+        if (albumArtUrl) {
+          console.log(`Downloading album art from: ${albumArtUrl}`);
+          try {
+            const response = await axios.get(albumArtUrl, { responseType: 'arraybuffer' });
+            await fs.writeFile(albumArtFilePath, Buffer.from(response.data), 'binary');
+            console.log(`Album art saved to: ${albumArtFilePath}`);
+          } catch (downloadError) {
+            console.error(`Error downloading album art: ${downloadError.message}`);
+          }
+        }
+        
+        // Cache the metadata - this time using the local server URL for albumArtUrl
+        const serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${songName}.png`;
         const metadata = {
-          albumArtUrl,
+          albumArtUrl: serverAlbumArtUrl,
+          originalAlbumArtUrl: albumArtUrl, // Keep the original URL for reference
           cached: new Date().toISOString()
         };
         await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
+        
+        // Use the server URL for the response
+        albumArtUrl = serverAlbumArtUrl;
       }
       
       console.log('Album Art URL:', albumArtUrl);
@@ -119,6 +142,7 @@ export const forceLyrics = async (req, res) => {
     const songName = getSongName(artist, song);
     const lyricsFilePath = path.join(config.lyricsDir, `${songName}.txt`);
     const metadataFilePath = path.join(config.lyricsDir, `${songName}_metadata.json`);
+    const albumArtFilePath = path.join(config.albumArtDir, `${songName}.png`);
 
     // Delete existing lyrics file if it exists
     if (await fileExists(lyricsFilePath)) {
@@ -127,6 +151,10 @@ export const forceLyrics = async (req, res) => {
     // Delete existing metadata file if it exists
     if (await fileExists(metadataFilePath)) {
       await fs.unlink(metadataFilePath);
+    }
+    // Delete existing album art file if it exists
+    if (await fileExists(albumArtFilePath)) {
+      await fs.unlink(albumArtFilePath);
     }
 
     req.body.force = true;

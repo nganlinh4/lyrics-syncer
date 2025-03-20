@@ -179,8 +179,7 @@ def clean_gemini_response(response_text: str, debug_file: str = None) -> str:
                         data.append({
                             "start": start,
                             "end": end,
-                            "text": text
-,
+                            "text": text,
                             "language": language
                         })
 
@@ -412,13 +411,22 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
         # Prepare input for Gemini with pre-text
         final_prompt = f"Expand the image into 16:9 ratio (landscape ratio). Then decorate my given image with {prompt}"
 
-        # Download the image from URL
-        response = requests.get(album_art_url)
-        if response.status_code != 200:
-            raise ValueError("Failed to download album art")
-
-        image = Image.open(io.BytesIO(response.content))
-
+        # Check if album_art_url is a local file path or URL
+        if os.path.exists(album_art_url):
+            # It's a local file path
+            print(f"Using local album art file: {album_art_url}", file=sys.stderr)
+            image = Image.open(album_art_url)
+        else:
+            # Attempt to download from URL
+            try:
+                print(f"Attempting to download album art from URL: {album_art_url}", file=sys.stderr)
+                response = requests.get(album_art_url)
+                if response.status_code != 200:
+                    raise ValueError("Failed to download album art")
+                image = Image.open(io.BytesIO(response.content))
+            except Exception as download_error:
+                print(f"Error downloading album art: {str(download_error)}", file=sys.stderr)
+                raise ValueError(f"Failed to download album art: {str(download_error)}")
 
         # Generate response using the Client
         response = client.models.generate_content(

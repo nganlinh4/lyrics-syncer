@@ -15,6 +15,7 @@ export default {
   rootDir: ROOT_DIR,
   audioDir: path.join(ROOT_DIR, '..', 'audio'),
   lyricsDir: path.join(ROOT_DIR, '..', 'lyrics'),
+  albumArtDir: path.join(ROOT_DIR, '..', 'album_art'), // Added album art directory
   debugDir: path.join(ROOT_DIR, 'debug'),
   tempDir: path.join(ROOT_DIR, '..', 'audio', 'temp'),
   
