@@ -13,6 +13,7 @@ import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import Card from './ui/Card';
 import Button from './ui/Button';
+import ErrorDisplay from './ui/ErrorDisplay';
 import theme from './theme/theme';
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
@@ -207,37 +208,83 @@ const MainApp = () => {
         PromptModelSelector={PromptModelSelector}
       />
 
-      {/* Song Input Section */}
-      <SongInput
-        artist={artist}
-        song={song}
-        loading={loading}
-        geniusLoading={geniusLoading}
-        onArtistChange={(e) => {
-          setArtist(e.target.value);
-          setNeedsRefetch(true);
-          localStorage.setItem('lastArtist', e.target.value);
-        }}
-        onSongChange={(e) => {
-          setSong(e.target.value);
-          setNeedsRefetch(true);
-          localStorage.setItem('lastSong', e.target.value);
-        }}
-        onDownload={handleDownload}
-        onForceDownload={handleForceDownload}
-        onFetchFromGenius={fetchFromGenius}
-        showForceButton={showForceButtons}
-      />
+      <div style={{ display: 'grid', gap: theme.spacing.xl, maxWidth: '800px', margin: '0 auto', padding: theme.spacing.lg }}>
+        {/* Error Display */}
+        {apiError && <ErrorDisplay message={apiError} onClose={() => setError(null)} />}
+        {lyricsError && <ErrorDisplay message={lyricsError} onClose={() => setError(null)} />}
 
-      {/* Audio Preview Section - only show when not matching lyrics */}
-      {audioUrl && !matchingComplete && !matchingInProgress && (
-        <AudioPreviewSection
+        {/* Song Input */}
+        <SongInput
+          artist={artist}
+          song={song}
+          loading={loading}
+          geniusLoading={geniusLoading}
+          onArtistChange={(e) => {
+            setArtist(e.target.value);
+            setNeedsRefetch(true);
+            localStorage.setItem('lastArtist', e.target.value);
+          }}
+          onSongChange={(e) => {
+            setSong(e.target.value);
+            setNeedsRefetch(true);
+            localStorage.setItem('lastSong', e.target.value);
+          }}
+          onDownload={handleDownload}
+          onForceDownload={handleForceDownload}
+          onFetchFromGenius={fetchFromGenius}
+          showForceButton={showForceButtons}
+        />
+
+        {/* Audio Preview Section - show whenever there's content */}
+        {(audioUrl || lyrics.length > 0 || albumArtUrl) && !matchingComplete && !matchingInProgress && (
+          <AudioPreviewSection
+            audioUrl={audioUrl}
+            audioRef={audioRef}
+            containerRef={containerRef}
+            fileSize={fileSize}
+            albumArtUrl={albumArtUrl}
+            lyrics={lyrics}
+            onError={(e) => {
+              console.error("Audio player error:", e);
+              console.log("Failed to load audio URL:", audioUrl);
+              setError("Error loading audio. Please try again.");
+            }}
+            onLoadedMetadata={(e) => {
+              console.log("Audio metadata loaded, duration:", e.target.duration);
+            }}
+            handleAudioRef={handleAudioRef}
+          />
+        )}
+
+        {/* Custom Lyrics Input */}
+        {!matchingInProgress && (
+          <CustomLyricsInput
+            onCustomLyrics={handleCustomLyrics}
+          />
+        )}
+
+        {/* Lyrics Matching Section */}
+        <LyricsMatchingSection
+          matchingInProgress={matchingInProgress}
+          showMatchingButton={showMatchingButton}
+          onAdvancedMatch={handleAdvancedMatch}
+          processingStatus={processingStatus}
+          matchingProgress={matchingProgress}
+          matchingComplete={matchingComplete}
+          matchedLyrics={matchedLyrics}
+          currentTime={currentTime}
+          onLyricClick={seekTo}
+          audioDuration={audioDuration}
+          onUpdateLyrics={handleUpdateLyrics}
+          onCustomLyrics={handleCustomLyrics}
+          onDownloadJSON={handleDownloadJSON}
+          artist={artist}
+          song={song}
           audioUrl={audioUrl}
-          audioRef={audioRef}
-          containerRef={containerRef}
-          fileSize={fileSize}
-          albumArtUrl={albumArtUrl}
           lyrics={lyrics}
+          selectedModel={selectedModel}
+          audioRef={audioRef}
+          handleAudioRef={handleAudioRef}
           onError={(e) => {
             console.error("Audio player error:", e);
             console.log("Failed to load audio URL:", audioUrl);
@@ -246,151 +293,111 @@ const MainApp = () => {
           onLoadedMetadata={(e) => {
             console.log("Audio metadata loaded, duration:", e.target.duration);
           }}
-          handleAudioRef={handleAudioRef}
+          albumArtUrl={albumArtUrl}
         />
-      )}
 
-      {/* Custom Lyrics Input */}
-      {!matchingInProgress && (
-        <CustomLyricsInput
-          onCustomLyrics={handleCustomLyrics}
-        />
-      )}
-
-      {/* Lyrics Matching Section */}
-      <LyricsMatchingSection
-        matchingInProgress={matchingInProgress}
-        showMatchingButton={showMatchingButton}
-        onAdvancedMatch={handleAdvancedMatch}
-        processingStatus={processingStatus}
-        matchingProgress={matchingProgress}
-        matchingComplete={matchingComplete}
-        matchedLyrics={matchedLyrics}
-        currentTime={currentTime}
-        onLyricClick={seekTo}
-        audioDuration={audioDuration}
-        onUpdateLyrics={handleUpdateLyrics}
-        onCustomLyrics={handleCustomLyrics}
-        onDownloadJSON={handleDownloadJSON}
-        artist={artist}
-        song={song}
-        audioUrl={audioUrl}
-        lyrics={lyrics}
-        selectedModel={selectedModel}
-        audioRef={audioRef}
-        handleAudioRef={handleAudioRef}
-        onError={(e) => {
-          console.error("Audio player error:", e);
-          console.log("Failed to load audio URL:", audioUrl);
-          setError("Error loading audio. Please try again.");
-        }}
-        onLoadedMetadata={(e) => {
-          console.log("Audio metadata loaded, duration:", e.target.duration);
-        }}
-        albumArtUrl={albumArtUrl}
-      />
-
-      {/* Image Generation Section */}
-      {lyrics.length > 0 && (
-        <Card title="Background Image Generation">
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <Button
-              onClick={async (e) => {
-                e.preventDefault();
-                try {
-                  setGeneratingImage(true);
-                  setError(null);
-                  const prompt = await generateImagePrompt();
-                  if (!prompt) {
-                    throw new Error('Failed to generate prompt');
+        {/* Image Generation Section */}
+        {lyrics.length > 0 && (
+          <Card title="Background Image Generation">
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <Button
+                onClick={async (e) => {
+                  e.preventDefault();
+                  try {
+                    setGeneratingImage(true);
+                    setError(null);
+                    const prompt = await generateImagePrompt();
+                    if (!prompt) {
+                      throw new Error('Failed to generate prompt');
+                    }
+                    await generateImage(prompt);
+                  } catch (error) {
+                    setError(error.message);
+                    console.error('Image generation error:', error);
+                  } finally {
+                    setGeneratingImage(false);
                   }
-                  await generateImage(prompt);
-                } catch (error) {
-                  setError(error.message);
-                  console.error('Image generation error:', error);
-                } finally {
-                  setGeneratingImage(false);
-                }
-              }}
-              disabled={generatingImage || !albumArtUrl}
-              variant={generatingImage ? 'disabled' : 'primary'}
-            >
-              {generatingImage ? 'Generating...' : 'Generate Background Image'}
-            </Button>
+                }}
+                disabled={generatingImage || !albumArtUrl}
+                variant={generatingImage ? 'disabled' : 'primary'}
+              >
+                {generatingImage ? 'Generating...' : 'Generate Background Image'}
+              </Button>
 
-            {generatedPrompt && (
-              <p style={{ fontSize: '0.9em', color: '#666' }}>
-                Generated Prompt: {generatedPrompt}
-              </p>
-            )}
+              {generatedPrompt && (
+                <p style={{ fontSize: '0.9em', color: '#666' }}>
+                  Generated Prompt: {generatedPrompt}
+                </p>
+              )}
 
-            {generatedImage && (
-              <div>
-                <img
-                  src={`data:${generatedImage.mime_type};base64,${generatedImage.data}`}
-                  alt="Generated background"
-                  style={{
-                    width: '100%',
-                    maxWidth: '1920px',
-                    height: 'auto',
-                    borderRadius: '4px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                  }}
-                />
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: theme.spacing.sm 
-                }}>
-                  <p style={{ fontSize: '12px', color: '#666' }}>
-                    This image was generated using the song's lyrics and album art as inspiration.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      try {
-                        // For base64 images, we can convert directly to blob
-                        const byteString = atob(generatedImage.data);
-                        const mimeType = generatedImage.mime_type || 'image/png';
-                        const ab = new ArrayBuffer(byteString.length);
-                        const ia = new Uint8Array(ab);
-                        for (let i = 0; i < byteString.length; i++) {
-                          ia[i] = byteString.charCodeAt(i);
-                        }
-                        const blob = new Blob([ab], { type: mimeType });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = `${artist}_${song}_background.png`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(url); // Clean up the URL object
-                      } catch (error) {
-                        console.error('Error downloading image:', error);
-                        setError('Failed to download the background image. Please try again.');
-                      }
+              {generatedImage && (
+                <div>
+                  <img
+                    src={`data:${generatedImage.mime_type};base64,${generatedImage.data}`}
+                    alt="Generated background"
+                    style={{
+                      width: '100%',
+                      maxWidth: '1920px',
+                      height: 'auto',
+                      borderRadius: '4px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                     }}
-                    variant="secondary"
-                    size="small"
-                  >
-                    Download Background
-                  </Button>
+                  />
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: theme.spacing.sm 
+                  }}>
+                    <p style={{ fontSize: '12px', color: '#666' }}>
+                      This image was generated using the song's lyrics and album art as inspiration.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        try {
+                          // For base64 images, we can convert directly to blob
+                          const byteString = atob(generatedImage.data);
+                          const mimeType = generatedImage.mime_type || 'image/png';
+                          const ab = new ArrayBuffer(byteString.length);
+                          const ia = new Uint8Array(ab);
+                          for (let i = 0; i < byteString.length; i++) {
+                            ia[i] = byteString.charCodeAt(i);
+                          }
+                          const blob = new Blob([ab], { type: mimeType });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = `${artist}_${song}_background.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(url); // Clean up the URL object
+                        } catch (error) {
+                          console.error('Error downloading image:', error);
+                          setError('Failed to download the background image. Please try again.');
+                        }
+                      }}
+                      variant="secondary"
+                      size="small"
+                    >
+                      Download Background
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
+              )}
+            </div>
+          </Card>
+        )}
 
-      {/* Error Display */}
-      {(apiError || lyricsError) && (
-        <Card>
-          <div style={{ color: '#f44336' }}>
-            {apiError || lyricsError}
-          </div>
-        </Card>
-      )}
+        {/* Error Display */}
+        {(apiError || lyricsError) && (
+          <Card>
+            <div style={{ color: '#f44336' }}>
+              {apiError || lyricsError}
+            </div>
+          </Card>
+        )}
+      </div>
     </MainLayout>
   );
 };
