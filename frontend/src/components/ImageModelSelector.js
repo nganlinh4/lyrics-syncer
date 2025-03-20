@@ -6,16 +6,6 @@ const IMAGE_MODELS = [
     id: 'gemini-2.0-flash-exp-image-generation',
     name: 'Gemini 2.0 Flash Experimental',
     description: 'Image generation optimized for abstract visualizations'
-  },
-  {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
-    description: 'Advanced image generation model for detailed visuals'
-  },
-  {
-    id: 'imagen-3.0-generate-002',
-    name: 'Imagen 3.0 Generate',
-    description: 'Advanced image generation model for detailed visuals'
   }
 ];
 

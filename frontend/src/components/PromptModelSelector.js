@@ -8,11 +8,6 @@ const PROMPT_MODELS = [
     description: 'Fast prompt generation with good contextual understanding'
   },
   {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
-    description: 'Fast prompt generation with good contextual understanding'
-  },
-  {
     id: 'gemini-2.0-pro-exp-02-05',
     name: 'Gemini 2.0 Pro Experimental',
     description: 'Stronger prompt generation with advanced contextual understanding'

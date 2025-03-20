@@ -220,7 +220,10 @@ function App() {
           localStorage.setItem('selectedModel', model);
         }}
         selectedImageModel={selectedImageModel}
-        onImageModelChange={setSelectedImageModel}
+        onImageModelChange={(model) => {
+          setSelectedImageModel(model);
+          localStorage.setItem('selectedImageModel', model);
+        }}
         selectedPromptModel={selectedPromptModel}
         onPromptModelChange={setSelectedPromptModel}
         ModelSelector={ModelSelector}

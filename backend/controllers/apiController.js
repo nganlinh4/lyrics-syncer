@@ -192,6 +192,10 @@ export const generateImagePrompt = async (req, res) => {
       return res.status(400).json({ error: 'Missing lyrics' });
     }
 
+    if (!model) {
+      return res.status(400).json({ error: 'Model must be specified' });
+    }
+
     if (!await fileExists(config.configFilePath)) {
       return res.status(400).json({ error: 'Config file not found' });
     }
@@ -201,14 +205,11 @@ export const generateImagePrompt = async (req, res) => {
       return res.status(400).json({ error: 'Gemini API key not set' });
     }
 
-    // Use a default model if none provided
-    const modelToUse = model || 'gemini-pro';
-
     const pythonArgs = [
       config.pythonScriptPath,
       '--mode', 'generate_prompt',
       '--lyrics', JSON.stringify(lyrics),
-      '--model', modelToUse
+      '--model', model
     ];
 
     // Add song name parameter if albumArtUrl is provided

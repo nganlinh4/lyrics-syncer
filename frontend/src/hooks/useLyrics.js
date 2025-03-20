@@ -8,8 +8,12 @@ const useLyrics = () => {
   const [matchingComplete, setMatchingComplete] = useState(false);
   const [error, setError] = useState(null);
   const [processingStatus, setProcessingStatus] = useState('');
-  const [selectedImageModel, setSelectedImageModel] = useState('gemini-2.0-flash-exp-image-generation');
-  const [selectedPromptModel, setSelectedPromptModel] = useState('gemini-2.0-pro-exp-prompt');
+  const [selectedImageModel, setSelectedImageModel] = useState(() => {
+    const savedModel = localStorage.getItem('selectedImageModel');
+    const defaultModel = 'gemini-2.0-flash-exp-image-generation';
+    return savedModel || defaultModel;
+  });
+  const [selectedPromptModel, setSelectedPromptModel] = useState('');
   const [isCustomLyrics, setIsCustomLyrics] = useState(false);
   const [matchingProgress, setMatchingProgress] = useState(0);
   const [languageDetected, setLanguageDetected] = useState('');
@@ -209,7 +213,7 @@ const useLyrics = () => {
         body: JSON.stringify({
           lyrics,
           albumArtUrl,
-          model: selectedPromptModel
+          model: selectedImageModel  // Add the selected model here
         })
       });
 
@@ -226,7 +230,7 @@ const useLyrics = () => {
       setError(`Prompt generation failed: ${err.message}`);
       throw err;
     }
-  }, [lyrics, albumArtUrl, selectedPromptModel]);
+  }, [lyrics, albumArtUrl, selectedImageModel]);  // Add selectedImageModel to dependencies
 
   const generateImage = useCallback(async (prompt) => {
     try {
