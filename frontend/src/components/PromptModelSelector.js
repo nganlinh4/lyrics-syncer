@@ -1,38 +1,38 @@
 import React from 'react';
 import theme from '../theme/theme';
 
-const IMAGE_MODELS = [
+const PROMPT_MODELS = [
   {
-    id: 'gemini-2.0-flash-exp-image-generation',
-    name: 'Gemini 2.0 Flash Experimental',
-    description: 'Image generation optimized for abstract visualizations'
+    id: 'gemini-2.0-flash-lite',
+    name: 'Gemini 2.0 Flash Lite',
+    description: 'Fast prompt generation with good contextual understanding'
   },
   {
     id: 'gemini-2.0-flash',
     name: 'Gemini 2.0 Flash',
-    description: 'Advanced image generation model for detailed visuals'
+    description: 'Fast prompt generation with good contextual understanding'
   },
   {
-    id: 'imagen-3.0-generate-002',
-    name: 'Imagen 3.0 Generate',
-    description: 'Advanced image generation model for detailed visuals'
+    id: 'gemini-2.0-pro-exp-02-05',
+    name: 'Gemini 2.0 Pro Experimental',
+    description: 'Stronger prompt generation with advanced contextual understanding'
   }
 ];
 
-const ImageModelSelector = ({ selectedModel, onModelChange }) => {
+const PromptModelSelector = ({ selectedModel, onModelChange }) => {
   return (
     <div style={{
       display: 'grid',
       gap: theme.spacing.sm
     }}>
       <label
-        htmlFor="imageModelSelect"
+        htmlFor="promptModelSelect"
         style={{
           ...theme.typography.body,
           fontWeight: '500'
         }}
       >
-        Image Generation Model:
+        Prompt Generation Model:
       </label>
       
       <div style={{
@@ -40,7 +40,7 @@ const ImageModelSelector = ({ selectedModel, onModelChange }) => {
         gap: theme.spacing.sm
       }}>
         <select
-          id="imageModelSelect"
+          id="promptModelSelect"
           value={selectedModel}
           onChange={(e) => onModelChange(e.target.value)}
           style={{
@@ -54,7 +54,7 @@ const ImageModelSelector = ({ selectedModel, onModelChange }) => {
             transition: theme.transitions.fast
           }}
         >
-          {IMAGE_MODELS.map(model => (
+          {PROMPT_MODELS.map(model => (
             <option key={model.id} value={model.id}>
               {model.name}
             </option>
@@ -66,11 +66,11 @@ const ImageModelSelector = ({ selectedModel, onModelChange }) => {
           color: theme.colors.text.secondary,
           marginTop: theme.spacing.xs
         }}>
-          {IMAGE_MODELS.find(m => m.id === selectedModel)?.description}
+          {PROMPT_MODELS.find(m => m.id === selectedModel)?.description}
         </p>
       </div>
     </div>
   );
 };
 
-export default ImageModelSelector;
+export default PromptModelSelector;

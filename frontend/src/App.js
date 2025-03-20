@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from './layouts/MainLayout';
 import SongInput from './components/SongInput';
-import APIKeyConfig from './components/APIKeyConfig';
+import Settings from './components/Settings';
 import AudioPreviewSection from './components/AudioPreviewSection';
 import LyricsMatchingSection from './components/LyricsMatchingSection';
 import DeleteCacheButton from './components/DeleteCacheButton';
 import CustomLyricsInput from './components/CustomLyricsInput';
 import ModelSelector from './components/ModelSelector';
 import ImageModelSelector from './components/ImageModelSelector';
+import PromptModelSelector from './components/PromptModelSelector';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import useApiKeys from './hooks/useApiKeys';
@@ -15,12 +16,17 @@ import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
 
 function App() {
-  // State management
+  // Settings state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Model state
   const [selectedModel, setSelectedModel] = useState(() => {
     const savedModel = localStorage.getItem('selectedModel');
     const defaultModel = 'gemini-2.0-pro-exp-02-05';
     return savedModel || defaultModel;
   });
+
+  // Other state
   const [artist, setArtist] = useState(() => localStorage.getItem('lastArtist') || '');
   const [song, setSong] = useState(() => localStorage.getItem('lastSong') || '');
   const [loading, setLoading] = useState(false);
@@ -46,7 +52,8 @@ function App() {
     audioRef,
     setAudioUrl,
     setFileSize,
-    seekTo
+    seekTo,
+    handleAudioRef
   } = useAudioControl();
 
   const {
@@ -59,7 +66,9 @@ function App() {
     error: lyricsError,
     processingStatus,
     selectedImageModel,
+    selectedPromptModel,
     setSelectedImageModel,
+    setSelectedPromptModel,
     setMatchingComplete,
     isCustomLyrics,
     matchingProgress,
@@ -198,7 +207,27 @@ function App() {
   const showMatchingButton = canStartMatching && !matchingInProgress;
 
   return (
-    <MainLayout>
+    <MainLayout onSettingsClick={() => setIsSettingsOpen(true)}>
+      <Settings
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        apiKeys={apiKeys}
+        onApiKeyChange={handleApiKeyChange}
+        onSaveApiKey={handleSaveApiKey}
+        selectedModel={selectedModel}
+        onModelChange={(model) => {
+          setSelectedModel(model);
+          localStorage.setItem('selectedModel', model);
+        }}
+        selectedImageModel={selectedImageModel}
+        onImageModelChange={setSelectedImageModel}
+        selectedPromptModel={selectedPromptModel}
+        onPromptModelChange={setSelectedPromptModel}
+        ModelSelector={ModelSelector}
+        ImageModelSelector={ImageModelSelector}
+        PromptModelSelector={PromptModelSelector}
+      />
+
       {/* Song Input Section */}
       <SongInput
         artist={artist}
@@ -225,19 +254,6 @@ function App() {
         showForceButton={showForceButtons}
       />
 
-      {/* API Configuration Section */}
-      <APIKeyConfig
-        apiKeys={apiKeys}
-        onApiKeyChange={handleApiKeyChange}
-        onSaveApiKey={handleSaveApiKey}
-        selectedModel={selectedModel}
-        onModelChange={(model) => {
-          setSelectedModel(model);
-          localStorage.setItem('selectedModel', model);
-        }}
-        ModelSelector={ModelSelector}
-      />
-
       {/* Audio Preview Section - only show when not matching lyrics */}
       {audioUrl && !matchingComplete && !matchingInProgress && (
         <AudioPreviewSection
@@ -254,6 +270,7 @@ function App() {
           onLoadedMetadata={(e) => {
             console.log("Audio metadata loaded, duration:", e.target.duration);
           }}
+          handleAudioRef={handleAudioRef}
         />
       )}
 
@@ -285,6 +302,7 @@ function App() {
         lyrics={lyrics}
         selectedModel={selectedModel}
         audioRef={audioRef}
+        handleAudioRef={handleAudioRef}
         onError={(e) => {
           console.error("Audio player error:", e);
           console.log("Failed to load audio URL:", audioUrl);
@@ -300,11 +318,6 @@ function App() {
       {lyrics.length > 0 && (
         <Card title="Background Image Generation">
           <div style={{ display: 'grid', gap: '1rem' }}>
-            <ImageModelSelector
-              selectedModel={selectedImageModel}
-              onModelChange={setSelectedImageModel}
-            />
-
             <Button
               onClick={handleGenerateImage}
               disabled={generatingImage || !albumArtUrl}
