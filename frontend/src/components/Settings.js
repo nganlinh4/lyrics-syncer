@@ -34,7 +34,7 @@ const Settings = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete cache');
+        throw new Error(t('errors.cacheDelete'));
       }
 
       const data = await response.json();
@@ -193,7 +193,7 @@ const Settings = ({
 
             {/* Cache Management Section */}
             <section>
-              <h3 style={theme.typography.h3}>Cache Management</h3>
+              <h3 style={theme.typography.h3}>{t('settings.cache.title')}</h3>
               <div style={{ 
                 padding: theme.spacing.md,
                 backgroundColor: theme.colors.background.light,
@@ -207,14 +207,14 @@ const Settings = ({
                       variant="error"
                       style={{ marginBottom: theme.spacing.md }}
                     >
-                      {loading ? t('common.loading') : 'Clear All Cache'}
+                      {loading ? t('common.loading') : t('settings.cache.clearAll')}
                     </Button>
                     
                     <p style={{
                       ...theme.typography.small,
                       color: theme.colors.text.secondary
                     }}>
-                      This will delete all cached audio files, lyrics, and debug information.
+                      {t('settings.cache.description')}
                     </p>
                   </div>
 

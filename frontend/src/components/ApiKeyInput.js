@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Button from '../ui/Button';
 import ApiKeyInstructions from './ApiKeyInstructions';
 import StatusIndicator from './StatusIndicator';
@@ -11,8 +12,8 @@ const ApiKeyInput = ({
   onChange, 
   onSave 
 }) => {
+  const { t } = useTranslation();
   const [showKey, setShowKey] = useState(false);
-  const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
   
   return (
     <div style={{ display: 'grid', gap: theme.spacing.md }}>
@@ -25,7 +26,7 @@ const ApiKeyInput = ({
             color: theme.colors.text.primary
           }}
         >
-          {capitalizedType} API Key:
+          {t(`settings.${type}ApiKey`)}
         </label>
         
         <div style={{ 
@@ -43,13 +44,13 @@ const ApiKeyInput = ({
               style={{
                 width: '100%',
                 padding: theme.spacing.sm,
-                paddingRight: '40px', // Space for the eye icon
+                paddingRight: '40px',
                 borderRadius: theme.borderRadius.sm,
                 border: `1px solid ${theme.colors.border}`,
                 fontSize: theme.typography.body.fontSize,
                 transition: theme.transitions.fast
               }}
-              placeholder={`Enter your ${capitalizedType} API key`}
+              placeholder={t('settings.apiKeyPlaceholder')}
             />
             <button
               onClick={() => setShowKey(!showKey)}
@@ -64,7 +65,7 @@ const ApiKeyInput = ({
                 padding: '4px',
                 color: theme.colors.text.secondary
               }}
-              title={showKey ? 'Hide API key' : 'Show API key'}
+              title={showKey ? t('common.hide') : t('common.view')}
             >
               {showKey ? '👁️' : '👁️‍🗨️'}
             </button>
@@ -75,7 +76,7 @@ const ApiKeyInput = ({
             variant="primary"
             size="small"
           >
-            Save
+            {t('common.save')}
           </Button>
 
           <StatusIndicator status={status} />

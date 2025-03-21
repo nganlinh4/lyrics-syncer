@@ -1,23 +1,26 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import theme from '../theme/theme';
 
 const StatusIndicator = ({ status }) => {
+  const { t } = useTranslation();
+  
   const getStatusStyles = () => {
     const statuses = {
       saved: {
         color: theme.colors.success,
         icon: '✓',
-        text: 'Saved'
+        textKey: 'common.saved'
       },
       unsaved: {
         color: theme.colors.text.secondary,
         icon: '○',
-        text: 'Not saved'
+        textKey: 'common.unsaved'
       },
       error: {
         color: theme.colors.error,
         icon: '!',
-        text: 'Error'
+        textKey: 'common.error'
       }
     };
     return statuses[status] || statuses.unsaved;
@@ -48,7 +51,7 @@ const StatusIndicator = ({ status }) => {
       }}>
         {statusStyle.icon}
       </span>
-      {statusStyle.text}
+      {t(statusStyle.textKey)}
     </span>
   );
 };

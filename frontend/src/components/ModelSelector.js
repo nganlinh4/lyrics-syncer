@@ -1,20 +1,23 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import theme from '../theme/theme';
 
 const AVAILABLE_MODELS = [
   {
     id: 'gemini-2.0-pro-exp-02-05',
-    name: 'Gemini 2.0 Pro Experimental',
-    description: 'The strongest model for lyrics timing. But not always the best.'
+    nameKey: 'settings.models.chat.geminiPro',
+    descriptionKey: 'settings.modelDescription.geminiPro'
   },
   {
     id: 'gemini-2.0-flash-thinking-exp-01-21',
-    name: 'Gemini 2.0 Flash Thinking Experimental',
-    description: 'Slower but sometimes more accurate model for lyrics timing.'
+    nameKey: 'settings.models.chat.geminiFlash',
+    descriptionKey: 'settings.modelDescription.geminiFlashLite'
   }
 ];
 
 const ModelSelector = ({ selectedModel, onModelChange }) => {
+  const { t } = useTranslation();
+
   return (
     <div style={{
       display: 'grid',
@@ -27,7 +30,7 @@ const ModelSelector = ({ selectedModel, onModelChange }) => {
           fontWeight: '500'
         }}
       >
-        Lyrics Matching Model:
+        {t('settings.models.chat.lyricsMatching')}
       </label>
       
       <div style={{
@@ -51,7 +54,7 @@ const ModelSelector = ({ selectedModel, onModelChange }) => {
         >
           {AVAILABLE_MODELS.map(model => (
             <option key={model.id} value={model.id}>
-              {model.name}
+              {t(model.nameKey)}
             </option>
           ))}
         </select>
@@ -61,7 +64,7 @@ const ModelSelector = ({ selectedModel, onModelChange }) => {
           color: theme.colors.text.secondary,
           marginTop: theme.spacing.xs
         }}>
-          {AVAILABLE_MODELS.find(m => m.id === selectedModel)?.description}
+          {t(AVAILABLE_MODELS.find(m => m.id === selectedModel)?.descriptionKey)}
         </p>
       </div>
     </div>

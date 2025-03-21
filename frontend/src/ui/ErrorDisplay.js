@@ -1,7 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import theme from '../theme/theme';
 
 const ErrorDisplay = ({ error, variant = 'inline', onRetry }) => {
+  const { t } = useTranslation();
+
   if (!error) return null;
 
   const getStyles = () => {
@@ -41,7 +44,7 @@ const ErrorDisplay = ({ error, variant = 'inline', onRetry }) => {
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
         <div style={{ flex: 1 }}>
-          {typeof error === 'string' ? error : error.message || 'An error occurred'}
+          {typeof error === 'string' ? error : error.message || t('errors.generic')}
         </div>
         {onRetry && (
           <button
@@ -59,7 +62,7 @@ const ErrorDisplay = ({ error, variant = 'inline', onRetry }) => {
               }
             }}
           >
-            Retry
+            {t('common.retry')}
           </button>
         )}
       </div>

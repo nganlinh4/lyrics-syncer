@@ -1,20 +1,23 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import theme from '../theme/theme';
 
 const PROMPT_MODELS = [
   {
     id: 'gemini-2.0-flash-lite',
-    name: 'Gemini 2.0 Flash Lite',
-    description: 'Fast prompt generation with good contextual understanding'
+    nameKey: 'settings.models.prompt.geminiFlash',
+    descriptionKey: 'settings.modelDescription.geminiFlashLite'
   },
   {
     id: 'gemini-2.0-pro-exp-02-05',
-    name: 'Gemini 2.0 Pro Experimental',
-    description: 'Stronger prompt generation with advanced contextual understanding'
+    nameKey: 'settings.models.prompt.geminiPro',
+    descriptionKey: 'settings.modelDescription.geminiPro'
   }
 ];
 
 const PromptModelSelector = ({ selectedModel, onModelChange }) => {
+  const { t } = useTranslation();
+
   return (
     <div style={{
       display: 'grid',
@@ -27,7 +30,7 @@ const PromptModelSelector = ({ selectedModel, onModelChange }) => {
           fontWeight: '500'
         }}
       >
-        Prompt Generation Model:
+        {t('settings.models.prompt.promptGeneration')}
       </label>
       
       <div style={{
@@ -51,7 +54,7 @@ const PromptModelSelector = ({ selectedModel, onModelChange }) => {
         >
           {PROMPT_MODELS.map(model => (
             <option key={model.id} value={model.id}>
-              {model.name}
+              {t(model.nameKey)}
             </option>
           ))}
         </select>
@@ -61,7 +64,7 @@ const PromptModelSelector = ({ selectedModel, onModelChange }) => {
           color: theme.colors.text.secondary,
           marginTop: theme.spacing.xs
         }}>
-          {PROMPT_MODELS.find(m => m.id === selectedModel)?.description}
+          {t(PROMPT_MODELS.find(m => m.id === selectedModel)?.descriptionKey)}
         </p>
       </div>
     </div>

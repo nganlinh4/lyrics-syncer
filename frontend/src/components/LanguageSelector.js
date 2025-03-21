@@ -21,8 +21,8 @@ const LanguageSelector = () => {
   return (
     <button
       onClick={toggleLanguage}
-      aria-label={isKorean ? 'Switch to English' : '한국어로 전환'}
-      title={isKorean ? 'Switch to English' : '한국어로 전환'}
+      aria-label={t(isKorean ? 'language.toggleToEnglish' : 'language.toggleToKorean')}
+      title={t(isKorean ? 'language.toggleToEnglish' : 'language.toggleToKorean')}
       style={{
         color: theme.colors.text.secondary,
         display: 'flex',

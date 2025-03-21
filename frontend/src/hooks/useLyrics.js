@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const useLyrics = () => {
+  const { t } = useTranslation();
   const [lyrics, setLyrics] = useState([]);
   const [albumArtUrl, setAlbumArtUrl] = useState('');
   const [matchedLyrics, setMatchedLyrics] = useState([]);
@@ -89,7 +91,7 @@ const useLyrics = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Matching process failed');
+        throw new Error(errorData.error || t('errors.matchingFailed'));
       }
 
       // Check for streaming or complete response
@@ -115,7 +117,7 @@ const useLyrics = () => {
           return;
         } catch (parseError) {
           console.error('Error parsing JSON response:', parseError);
-          throw new Error('Failed to parse server response');
+          throw new Error(t('errors.invalidResponse'));
         }
       }
 
@@ -172,7 +174,7 @@ const useLyrics = () => {
     } finally {
       setMatchingInProgress(false);
     }
-  }, []);
+  }, [t]);
 
   const handleUpdateLyrics = useCallback((updatedLyrics) => {
     setMatchedLyrics(updatedLyrics);
@@ -180,7 +182,7 @@ const useLyrics = () => {
 
   const handleDownloadJSON = useCallback(() => {
     if (!matchedLyrics.length) {
-      setError('No lyrics to download');
+      setError(t('errors.noLyricsToDownload'));
       return;
     }
 
@@ -197,9 +199,9 @@ const useLyrics = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(`Download failed: ${err.message}`);
+      setError(`${t('errors.generic')}: ${err.message}`);
     }
-  }, [matchedLyrics]);
+  }, [matchedLyrics, t]);
 
   const handleCustomLyrics = useCallback((customLyrics) => {
     setLyrics(customLyrics);
@@ -279,7 +281,7 @@ const useLyrics = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch from Genius');
+        throw new Error(errorData.error || t('errors.geniusFetchFailed'));
       }
 
       const data = await response.json();
@@ -295,7 +297,7 @@ const useLyrics = () => {
     } finally {
       setLoading(false); // Make sure to clear loading state even if there's an error
     }
-  }, []);
+  }, [t]);
 
   return {
     lyrics,

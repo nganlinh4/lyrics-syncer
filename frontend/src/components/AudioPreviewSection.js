@@ -1,5 +1,6 @@
 // filepath: c:\WORK_win\lyrics-syncer\frontend\src\components\AudioPreviewSection.js
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import Card from '../ui/Card';
 import AudioPlayer from './AudioPlayer';
 import Button from '../ui/Button';
@@ -16,6 +17,7 @@ const AudioPreviewSection = ({
   handleAudioRef,
   lyrics = []
 }) => {
+  const { t } = useTranslation();
   const hasContent = audioUrl || albumArtUrl || lyrics.length > 0;
   if (!hasContent) return null;
 
@@ -44,7 +46,7 @@ const AudioPreviewSection = ({
   };
 
   return (
-    <Card title="Preview">
+    <Card title={t('common.preview')}>
       <div style={{ display: 'grid', gap: theme.spacing.md }}>
         {/* Content Section */}
         {(albumArtUrl || lyrics.length > 0) && (
@@ -79,7 +81,7 @@ const AudioPreviewSection = ({
                   variant="secondary"
                   size="small"
                 >
-                  Download Album Art
+                  {t('common.downloadAlbumArt')}
                 </Button>
               </div>
             )}
@@ -98,7 +100,7 @@ const AudioPreviewSection = ({
                   ...theme.typography.h3,
                   marginBottom: theme.spacing.sm
                 }}>
-                  Lyrics from Genius
+                  {t('lyrics.fromGenius')}
                 </h3>
                 {lyrics.map((line, index) => (
                   <p 
@@ -137,7 +139,7 @@ const AudioPreviewSection = ({
                 color: theme.colors.text.secondary,
                 marginTop: theme.spacing.xs
               }}>
-                File Size: {Math.round(fileSize / 1024)} KB
+                {t('audio.fileSize')}: {Math.round(fileSize / 1024)} KB
               </p>
             )}
           </>

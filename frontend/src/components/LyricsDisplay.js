@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import Button from '../ui/Button';
 import theme from '../theme/theme';
 
@@ -10,6 +11,8 @@ const LyricsDisplay = ({
   onUpdateLyrics, 
   allowEditing = false 
 }) => {
+  const { t } = useTranslation();
+
   // State for lyrics and editing
   const [lyrics, setLyrics] = useState([]);
   const [isSticky, setIsSticky] = useState(true);
@@ -406,7 +409,7 @@ const LyricsDisplay = ({
         alignItems: 'center',
         marginBottom: theme.spacing.md
       }}>
-        <h3 style={theme.typography.h3}>Synchronized Lyrics</h3>
+        <h3 style={theme.typography.h3}>{t('lyrics.synchronizedLyrics')}</h3>
         
         {allowEditing && (
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
@@ -428,7 +431,7 @@ const LyricsDisplay = ({
                 fontSize: '14px',
                 color: '#666'
               }}>
-                Sticky Timings
+                {t('lyrics.stickyTimingsToggle')}
               </span>
             </label>
             <Button
@@ -437,7 +440,7 @@ const LyricsDisplay = ({
               variant="secondary"
               size="small"
             >
-              Undo
+              {t('common.undo')}
             </Button>
             <Button
               onClick={handleReset}
@@ -445,7 +448,7 @@ const LyricsDisplay = ({
               variant="error"
               size="small"
             >
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         )}
@@ -591,9 +594,7 @@ const LyricsDisplay = ({
       {allowEditing && (
         <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
           <p>
-            Drag timing values horizontally to adjust (left/right). Changes to earlier timings will automatically update later ones.
-            Use the Undo button to revert the last change or Reset to go back to the original Gemini results.<br/>
-            Toggle "Sticky Timings" to control whether adjusting a timing affects all subsequent timings.
+            {t('lyrics.timingInstructions')}
           </p>
         </div>
       )}
