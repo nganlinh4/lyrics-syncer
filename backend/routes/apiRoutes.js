@@ -5,13 +5,17 @@ import {
   forceMatchLyrics, 
   generateImagePrompt, 
   generateImage,
-  deleteCache 
+  deleteCache,
+  uploadAlbumArt
 } from '../controllers/apiController.js';
 
 const router = express.Router();
 
 // API key management
 router.post('/save_api_key', saveApiKey);
+
+// Album art upload endpoint
+router.post('/upload_album_art', uploadAlbumArt);
 
 // Lyrics matching endpoints
 router.post('/match_lyrics', matchLyrics);

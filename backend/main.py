@@ -415,7 +415,7 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
     try:
         # Read config file
         config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-        with open(config_path, 'r', encoding='utf-8') as f:  # Fixed extra parenthesis
+        with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
 
         if not config.get('geminiApiKey'):
@@ -427,11 +427,18 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
         # Prepare input for Gemini with pre-text
         final_prompt = f"Expand the image into 16:9 ratio (landscape ratio). Then decorate my given image with {prompt}"
 
-        # Check if album_art_url is a local file path or URL
-        if os.path.exists(album_art_url):
-            # It's a local file path
+        # For base64 data URLs, decode and use directly
+        if isinstance(album_art_url, str) and album_art_url.startswith('data:'):
+            # Extract base64 data after the comma
+            base64_data = album_art_url.split(',')[1]
+            image_bytes = base64.b64decode(base64_data)
+            image = Image.open(io.BytesIO(image_bytes))
+        # Check if it's a local file path
+        elif os.path.exists(album_art_url):
             print(f"Using local album art file: {album_art_url}", file=sys.stderr)
-            image = Image.open(album_art_url)
+            with open(album_art_url, 'rb') as f:
+                image_bytes = f.read()
+                image = Image.open(io.BytesIO(image_bytes))
         else:
             # Attempt to download from URL
             try:
@@ -448,12 +455,9 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
         response = client.models.generate_content(
             model=model_name,
             contents=[final_prompt, image],
-            config=types.GenerateContentConfig(response_modalities=["Text", "Image"]
-    ),
+            config=types.GenerateContentConfig(response_modalities=["Text", "Image"])
         )
 
-        # Debug print the response attributes
-        
         # Access the parts instead of direct image attribute
         image_part = None
         if hasattr(response, 'candidates'):

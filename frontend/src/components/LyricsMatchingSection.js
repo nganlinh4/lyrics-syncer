@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -30,9 +30,11 @@ const LyricsMatchingSection = ({
   handleAudioRef,
   onError,
   onLoadedMetadata,
-  albumArtUrl
+  albumArtUrl,
+  onAlbumArtChange
 }) => {
   const { t } = useTranslation();
+  const fileInputRef = useRef(null);
 
   // Only render the section if there's something to show
   if (!showMatchingButton && !matchingInProgress && !matchingComplete) {
@@ -68,6 +70,68 @@ const LyricsMatchingSection = ({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  };
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      onError(new Error(t('errors.invalidImage')));
+      return;
+    }
+
+    if (!artist || !song) {
+      onError(new Error(t('errors.artistSongRequired')));
+      return;
+    }
+
+    try {
+      // Read file as base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64Data = reader.result;
+
+          // Create temporary object URL for immediate display
+          const objectUrl = URL.createObjectURL(file);
+          void onAlbumArtChange?.(objectUrl);
+
+          // Upload the file to the server
+          const API_URL = 'http://localhost:3001';
+          const response = await fetch(`${API_URL}/api/upload_album_art`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              artist,
+              song,
+              imageData: base64Data
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to upload album art');
+          }
+
+          // Get the server URL for the saved file
+          const data = await response.json();
+          
+          // Update the album art URL to point to the saved file
+          void onAlbumArtChange?.(data.albumArtUrl);
+          
+          // Clean up temporary object URL
+          URL.revokeObjectURL(objectUrl);
+        } catch (uploadError) {
+          console.error("Failed to upload album art to server:", uploadError);
+          onError(new Error(t('errors.uploadFailed')));
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Failed to process album art:", error);
+      onError(new Error(t('errors.uploadFailed')));
     }
   };
 
@@ -141,6 +205,7 @@ const LyricsMatchingSection = ({
                   <img 
                     src={albumArtUrl} 
                     alt="Album Art"
+                    key={albumArtUrl} // Add key prop to force re-render when URL changes
                     style={{ 
                       maxWidth: '300px',
                       maxHeight: '300px',
@@ -149,13 +214,38 @@ const LyricsMatchingSection = ({
                       boxShadow: theme.shadows.md
                     }}
                   />
-                  <Button
-                    onClick={handleAlbumArtDownload}
-                    variant="secondary"
-                    size="small"
-                  >
-                    {t('common.download')}
-                  </Button>
+                  <div style={{
+                    display: 'flex',
+                    gap: theme.spacing.sm,
+                    flexWrap: 'wrap',
+                    justifyContent: 'center'
+                  }}>
+                    <Button
+                      onClick={handleAlbumArtDownload}
+                      variant="secondary"
+                      size="small"
+                    >
+                      {t('common.downloadAlbumArt')}
+                    </Button>
+                    {onAlbumArtChange && (
+                      <>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                        />
+                        <Button
+                          onClick={() => fileInputRef.current?.click()}
+                          variant="secondary"
+                          size="small"
+                        >
+                          {t('common.changeAlbumArt')}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
               

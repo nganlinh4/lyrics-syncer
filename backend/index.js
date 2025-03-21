@@ -31,7 +31,8 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'Content-Length', 'Accept-Ranges']
 }));
 
-app.use(express.json());
+// Increase JSON body size limit to 10MB
+app.use(express.json({ limit: '10mb' }));
 
 // Ensure required directories exist
 ensureDirectories({

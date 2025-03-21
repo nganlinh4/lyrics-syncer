@@ -41,6 +41,8 @@ const MainApp = () => {
   const [needsRefetch, setNeedsRefetch] = useState(true);
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [albumArtUrl, setAlbumArtUrl] = useState('');
+  const [customAlbumArt, setCustomAlbumArt] = useState('');
 
   // Custom hooks
   const {
@@ -65,7 +67,6 @@ const MainApp = () => {
 
   const {
     lyrics,
-    albumArtUrl,
     matchedLyrics,
     setMatchedLyrics,
     matchingInProgress,
@@ -183,6 +184,15 @@ const MainApp = () => {
     }
   };
 
+  const handleAlbumArtChange = (newUrl) => {
+    setCustomAlbumArt(newUrl);
+    setAlbumArtUrl(newUrl);
+  };
+
+  const onLoadedMetadata = (e) => {
+    console.log("Audio metadata loaded, duration:", e.target.duration);
+  };
+
   return (
     <MainLayout onSettingsClick={() => setIsSettingsOpen(true)}>
       <Settings
@@ -239,7 +249,16 @@ const MainApp = () => {
           }}
           onDownload={handleDownload}
           onForceDownload={handleForceDownload}
-          onFetchFromGenius={fetchFromGenius}
+          onFetchFromGenius={async (artist, song, force = false) => {
+            try {
+              const result = await fetchFromGenius(artist, song, force);
+              if (result && result.albumArtUrl) {
+                setAlbumArtUrl(result.albumArtUrl);
+              }
+            } catch (error) {
+              setError(error.message);
+            }
+          }}
         />
 
         {/* Audio Preview Section with improved dark mode contrast */}
@@ -251,15 +270,13 @@ const MainApp = () => {
               containerRef={containerRef}
               fileSize={fileSize}
               albumArtUrl={albumArtUrl}
-              lyrics={lyrics}
-              onError={(e) => {
-                console.error("Audio player error:", e);
-                setError("Error loading audio. Please try again.");
-              }}
-              onLoadedMetadata={(e) => {
-                console.log("Audio metadata loaded, duration:", e.target.duration);
-              }}
+              onError={setError}
+              onLoadedMetadata={onLoadedMetadata}
               handleAudioRef={handleAudioRef}
+              lyrics={lyrics}
+              artist={artist}
+              song={song}
+              onAlbumArtChange={handleAlbumArtChange}
             />
           </Card>
         )}
@@ -304,6 +321,7 @@ const MainApp = () => {
             }}
             albumArtUrl={albumArtUrl}
             className={matchingInProgress ? 'processing' : ''}
+            onAlbumArtChange={handleAlbumArtChange}
           />
         )}
 

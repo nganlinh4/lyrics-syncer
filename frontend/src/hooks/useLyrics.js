@@ -214,13 +214,29 @@ const useLyrics = () => {
     try {
       setError(null);
       
+      // Handle blob URLs (custom uploaded images) consistently with generateImage
+      let imageData;
+      if (albumArtUrl.startsWith('blob:')) {
+        const response = await fetch(albumArtUrl);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        imageData = await new Promise((resolve) => {
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+      }
+
       const response = await fetch(`${API_URL}/api/generate_image_prompt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lyrics,
-          albumArtUrl,
-          model: selectedPromptModel  // Fixed: Use the correct model for prompt generation
+          albumArtUrl: imageData ? undefined : albumArtUrl,
+          albumArtData: imageData ? {
+            data: imageData,
+            mimeType: 'image/png'
+          } : undefined,
+          model: selectedPromptModel
         })
       });
 
@@ -243,12 +259,28 @@ const useLyrics = () => {
     try {
       setError(null);
       
+      // If albumArtUrl is an object URL (custom uploaded image), fetch it and convert to base64
+      let imageData;
+      if (albumArtUrl.startsWith('blob:')) {
+        const response = await fetch(albumArtUrl);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        imageData = await new Promise((resolve) => {
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+      }
+
       const response = await fetch(`${API_URL}/api/generate_image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          albumArtUrl,
+          albumArtUrl: imageData ? undefined : albumArtUrl,
+          albumArtData: imageData ? {
+            data: imageData,
+            mimeType: 'image/png'
+          } : undefined,
           model: selectedImageModel
         })
       });
@@ -290,7 +322,9 @@ const useLyrics = () => {
         setLyrics(lyricsArray);
         setAlbumArtUrl(data.albumArtUrl || '');
         setIsCustomLyrics(false);
+        return { albumArtUrl: data.albumArtUrl }; // Return the albumArtUrl
       }
+      return {};
     } catch (err) {
       setError(`Genius fetch failed: ${err.message}`);
       throw err;

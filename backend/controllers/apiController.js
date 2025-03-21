@@ -192,7 +192,7 @@ export const forceMatchLyrics = async (req, res) => {
  */
 export const generateImagePrompt = async (req, res) => {
   try {
-    const { lyrics, albumArtUrl, model } = req.body;
+    const { lyrics, albumArtUrl, albumArtData, model } = req.body;
     
     if (!lyrics) {
       return res.status(400).json({ error: 'Missing lyrics' });
@@ -211,6 +211,31 @@ export const generateImagePrompt = async (req, res) => {
       return res.status(400).json({ error: 'Gemini API key not set' });
     }
 
+    let artPath;
+    if (albumArtData) {
+      // Create data URL for base64 image data
+      artPath = `data:${albumArtData.mimeType};base64,${albumArtData.data}`;
+    } else if (albumArtUrl) {
+      if (albumArtUrl.startsWith('http://localhost')) {
+        // Extract the path part from the URL and decode it
+        const urlPath = new URL(albumArtUrl).pathname;
+        // Convert from URL path to local file path
+        const fileName = decodeURIComponent(path.basename(urlPath));
+        // The album art is likely in the album_art directory
+        artPath = path.join(path.dirname(config.lyricsDir), 'album_art', fileName);
+        
+        // Verify that the file exists
+        if (!await fileExists(artPath)) {
+          return res.status(404).json({ 
+            error: `Album art file not found at ${artPath}`, 
+            status: 'error' 
+          });
+        }
+      } else {
+        artPath = albumArtUrl;
+      }
+    }
+
     const pythonArgs = [
       config.pythonScriptPath,
       '--mode', 'generate_prompt',
@@ -218,13 +243,17 @@ export const generateImagePrompt = async (req, res) => {
       '--model', model
     ];
 
-    // Add song name parameter if albumArtUrl is provided
-    if (albumArtUrl) {
+    // Add album art path if available
+    if (artPath) {
       pythonArgs.push('--album_art');
-      pythonArgs.push(albumArtUrl);
+      pythonArgs.push(artPath);
     }
 
-    console.log('Running Python with args:', pythonArgs);
+    console.log('Running Python with args:', {
+      mode: 'generate_prompt',
+      model,
+      hasAlbumArt: !!artPath
+    });
 
     const pythonProcess = spawn('python', pythonArgs);
     
@@ -272,13 +301,40 @@ export const generateImagePrompt = async (req, res) => {
  */
 export const generateImage = async (req, res) => {
   try {
-    const { prompt, albumArt, albumArtUrl, model } = req.body;
+    const { prompt, albumArt, albumArtUrl, albumArtData, model } = req.body;
     
-    // Use either albumArt or albumArtUrl (for backward compatibility)
-    const artUrl = albumArt || albumArtUrl;
+    // Handle different ways album art can be provided
+    let artPath;
     
-    if (!prompt || !artUrl) {
-      return res.status(400).json({ error: 'Missing prompt or album art URL' });
+    if (albumArtData) {
+      // Create data URL for base64 image data
+      artPath = `data:${albumArtData.mimeType};base64,${albumArtData.data}`;
+    } else {
+      // Use either albumArt or albumArtUrl (for backward compatibility)
+      const artUrl = albumArt || albumArtUrl;
+      
+      if (!prompt || !artUrl) {
+        return res.status(400).json({ error: 'Missing prompt or album art URL' });
+      }
+
+      // Check if the URL is a local URL (starts with http://localhost)
+      artPath = artUrl;
+      if (artUrl.startsWith('http://localhost')) {
+        // Extract the path part from the URL and decode it
+        const urlPath = new URL(artUrl).pathname;
+        // Convert from URL path to local file path
+        const fileName = decodeURIComponent(path.basename(urlPath));
+        // The album art is likely in the album_art directory
+        artPath = path.join(path.dirname(config.lyricsDir), 'album_art', fileName);
+        
+        // Verify that the file exists
+        if (!await fileExists(artPath)) {
+          return res.status(404).json({ 
+            error: `Album art file not found at ${artPath}`, 
+            status: 'error' 
+          });
+        }
+      }
     }
 
     if (!await fileExists(config.configFilePath)) {
@@ -290,29 +346,10 @@ export const generateImage = async (req, res) => {
       return res.status(400).json({ error: 'Gemini API key not set' });
     }
 
-    // Check if the URL is a local URL (starts with http://localhost)
-    let artPath = artUrl;
-    if (artUrl.startsWith('http://localhost')) {
-      // Extract the path part from the URL
-      const urlPath = new URL(artUrl).pathname;
-      // Convert from URL path to local file path
-      const fileName = path.basename(urlPath);
-      // The album art is likely in the album_art directory
-      artPath = path.join(path.dirname(config.lyricsDir), 'album_art', fileName);
-      
-      // Verify that the file exists
-      if (!await fileExists(artPath)) {
-        return res.status(404).json({ 
-          error: `Album art file not found at ${artPath}`, 
-          status: 'error' 
-        });
-      }
-    }
-
     console.log('Running image generation with args:', {
       mode: 'generate_image',
       prompt,
-      albumArt: artPath.substring(0, 30) + '...' // Log truncated path for privacy
+      hasAlbumArt: !!artPath
     });
 
     const pythonArgs = [
@@ -404,6 +441,70 @@ export const deleteCache = async (req, res) => {
     res.json({ success: true, results });
   } catch (error) {
     console.error("Error in /api/delete_cache:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Upload album art
+ */
+export const uploadAlbumArt = async (req, res) => {
+  try {
+    const { artist, song, imageData } = req.body;
+    
+    if (!artist || !song || !imageData) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    // Generate filename in the same format as other album art files
+    const filename = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}.png`;
+    const filePath = path.join(config.albumArtDir, filename);
+
+    // Create album_art directory if it doesn't exist
+    await fs.mkdir(config.albumArtDir, { recursive: true });
+
+    // Check if the file already exists and delete it if it does
+    if (await fileExists(filePath)) {
+      console.log(`Replacing existing album art at: ${filePath}`);
+      try {
+        await fs.unlink(filePath);
+      } catch (unlinkError) {
+        console.error(`Error deleting existing album art: ${unlinkError.message}`);
+        // Continue anyway, as we'll overwrite the file
+      }
+    }
+
+    // Convert base64 to buffer and save
+    const buffer = Buffer.from(imageData.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    await fs.writeFile(filePath, buffer);
+    console.log(`Saved new album art to: ${filePath}`);
+
+    // Also update metadata file if it exists
+    const metadataFilePath = path.join(config.lyricsDir, `${filename.replace('.png', '')}_metadata.json`);
+    if (await fileExists(metadataFilePath)) {
+      try {
+        const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
+        
+        // Update albumArtUrl in metadata
+        const serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${filename}`;
+        metadata.albumArtUrl = serverAlbumArtUrl;
+        metadata.originalAlbumArtUrl = 'custom_upload';
+        metadata.lastModified = new Date().toISOString();
+        
+        await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
+        console.log(`Updated metadata file at: ${metadataFilePath}`);
+      } catch (metadataError) {
+        console.error(`Error updating metadata file: ${metadataError.message}`);
+        // Continue anyway, as the album art upload was successful
+      }
+    }
+
+    // Add a timestamp parameter to force browser to refresh the image
+    const timestamp = new Date().getTime();
+    const serverUrl = `http://localhost:${config.port}/album_art/${filename}?t=${timestamp}`;
+    res.json({ albumArtUrl: serverUrl });
+  } catch (error) {
+    console.error('Error in uploadAlbumArt:', error);
     res.status(500).json({ error: error.message });
   }
 };
