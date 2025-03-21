@@ -1,5 +1,6 @@
 // filepath: c:\WORK_win\lyrics-syncer\frontend\src\components\SongInput.js
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import theme from '../theme/theme';
@@ -14,8 +15,9 @@ const SongInput = ({
   onForceDownload,
   onFetchFromGenius,
   showForceButton,
-  geniusLoading // Add this prop
+  geniusLoading
 }) => {
+  const { t } = useTranslation();
   const [sameAsYoutube, setSameAsYoutube] = useState(() => 
     localStorage.getItem('sameAsYoutube') !== 'false'
   );
@@ -45,14 +47,14 @@ const SongInput = ({
   };
 
   return (
-    <Card title="Song Details">
+    <Card title={t('lyrics.title')}>
       <div style={{ display: 'grid', gap: theme.spacing.lg }}>
         {/* YouTube Section */}
         <section>
-          <h3 style={theme.typography.h3}>YouTube Audio Source</h3>
+          <h3 style={theme.typography.h3}>{t('audio.source')}</h3>
           <div style={{ display: 'grid', gap: theme.spacing.md }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
-              <label htmlFor="artist" style={theme.typography.body}>Artist:</label>
+              <label htmlFor="artist" style={theme.typography.body}>{t('audio.artist')}:</label>
               <input
                 type="text"
                 id="artist"
@@ -68,7 +70,7 @@ const SongInput = ({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
-              <label htmlFor="song" style={theme.typography.body}>Song:</label>
+              <label htmlFor="song" style={theme.typography.body}>{t('audio.song')}:</label>
               <input
                 type="text"
                 id="song"
@@ -89,7 +91,7 @@ const SongInput = ({
                 disabled={loading || !artist || !song}
                 variant="primary"
               >
-                {loading ? 'Downloading...' : 'Download Audio'}
+                {loading ? t('common.loading') : t('audio.download')}
               </Button>
               
               {showForceButton && (
@@ -98,7 +100,7 @@ const SongInput = ({
                   disabled={loading}
                   variant="warning"
                 >
-                  Force Redownload
+                  {t('audio.force')}
                 </Button>
               )}
             </div>
@@ -107,7 +109,7 @@ const SongInput = ({
 
         {/* Genius Section */}
         <section>
-          <h3 style={theme.typography.h3}>Genius Lyrics Source</h3>
+          <h3 style={theme.typography.h3}>{t('lyrics.genius.source')}</h3>
           <div style={{ display: 'grid', gap: theme.spacing.md }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
               <input
@@ -122,13 +124,13 @@ const SongInput = ({
                   }
                 }}
               />
-              <span style={theme.typography.body}>Use same as YouTube</span>
+              <span style={theme.typography.body}>{t('lyrics.genius.useSame')}</span>
             </label>
 
             {!sameAsYoutube && (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
-                  <label htmlFor="geniusArtist" style={theme.typography.body}>Artist:</label>
+                  <label htmlFor="geniusArtist" style={theme.typography.body}>{t('audio.artist')}:</label>
                   <input
                     type="text"
                     id="geniusArtist"
@@ -144,7 +146,7 @@ const SongInput = ({
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', alignItems: 'center', gap: theme.spacing.md }}>
-                  <label htmlFor="geniusSong" style={theme.typography.body}>Song:</label>
+                  <label htmlFor="geniusSong" style={theme.typography.body}>{t('audio.song')}:</label>
                   <input
                     type="text"
                     id="geniusSong"
@@ -167,7 +169,7 @@ const SongInput = ({
                 disabled={geniusLoading || (sameAsYoutube ? (!artist || !song) : (!geniusArtist || !geniusSong))}
                 variant="secondary"
               >
-                {geniusLoading ? 'Loading...' : 'Get Lyrics from Genius'}
+                {geniusLoading ? t('common.loading') : t('lyrics.genius.fetch')}
               </Button>
 
               <Button
@@ -175,7 +177,7 @@ const SongInput = ({
                 disabled={geniusLoading || (sameAsYoutube ? (!artist || !song) : (!geniusArtist || !geniusSong))}
                 variant="warning"
               >
-                Force Refetch Lyrics
+                {t('lyrics.genius.force')}
               </Button>
             </div>
           </div>

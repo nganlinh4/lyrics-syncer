@@ -1,48 +1,60 @@
 import axios from 'axios';
+import fs from 'fs/promises';
+import path from 'path';
 
-export const translateText = async (req, res) => {
-  try {
-    const { text, source = 'en', target } = req.body;
+// Cache translations to avoid unnecessary API calls
+const translationCache = new Map();
+
+const translateObject = async (obj, targetLang, sourceKey = '') => {
+  const translatedObj = {};
+  
+  for (const [key, value] of Object.entries(obj)) {
+    const fullKey = sourceKey ? `${sourceKey}.${key}` : key;
     
-    if (!text || !target) {
-      return res.status(400).json({ error: 'Missing required fields: text and target language' });
-    }
-    
-    // First try using Google Translate API (free and no API key required)
-    try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=${source}&tl=${target}&q=${encodeURIComponent(text)}`;
-      const response = await axios.get(url);
+    if (typeof value === 'object') {
+      translatedObj[key] = await translateObject(value, targetLang, fullKey);
+    } else if (typeof value === 'string') {
+      const cacheKey = `${targetLang}:${fullKey}:${value}`;
       
-      if (response.data && response.data[0] && response.data[0][0] && response.data[0][0][0]) {
-        const translatedText = response.data[0][0][0];
-        return res.json({ translatedText });
+      if (translationCache.has(cacheKey)) {
+        translatedObj[key] = translationCache.get(cacheKey);
+        continue;
       }
-    } catch (googleError) {
-      console.error('Google translation error:', googleError.message);
-      // If Google fails, we'll try the fallback below
-    }
-    
-    // Fallback to LibreTranslate
-    try {
-      const libreTranslateUrl = 'https://libretranslate.de/translate';
-      const response = await axios.post(libreTranslateUrl, {
-        q: text,
-        source: source,
-        target: target,
-        format: 'text',
-      });
-      
-      if (response.data && response.data.translatedText) {
-        return res.json({ translatedText: response.data.translatedText });
-      } else {
-        throw new Error('Invalid response from LibreTranslate');
+
+      try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=${targetLang}&q=${encodeURIComponent(value)}`;
+        const response = await axios.get(url);
+        
+        if (response.data?.[0]?.[0]?.[0]) {
+          const translatedText = response.data[0][0][0];
+          translationCache.set(cacheKey, translatedText);
+          translatedObj[key] = translatedText;
+        } else {
+          console.warn(`Translation failed for key ${fullKey}, using original text`);
+          translatedObj[key] = value;
+        }
+        
+        // Add a small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`Translation error for key ${fullKey}:`, error.message);
+        translatedObj[key] = value; // Fallback to original if translation fails
       }
-    } catch (libreError) {
-      console.error('LibreTranslate error:', libreError.message);
-      return res.status(500).json({ error: 'Translation service unavailable' });
+    } else {
+      translatedObj[key] = value;
     }
-  } catch (error) {
-    console.error('Translation error:', error.message);
-    res.status(500).json({ error: 'An error occurred during translation' });
   }
+  
+  return translatedObj;
+};
+
+// This file has been simplified since we're using static translations for Korean and English only
+// We're keeping an empty file instead of deleting it to avoid disrupting any imports
+
+// Function is kept as a stub to avoid breaking any existing code
+export const translateText = async (req, res) => {
+  // No longer needed since we're using static translations for Korean and English only
+  res.status(400).json({ 
+    error: 'Translation API is disabled. Only static English and Korean translations are supported.'
+  });
 };

@@ -5,15 +5,21 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-// Import i18n for translation
+// Import i18n for English and Korean translations
 import './i18n';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <Suspense fallback={
-      <div className="flex-center" style={{ height: '100vh' }}>
-        <div className="loading-spinner" style={{ width: '40px', height: '40px' }}></div>
+      <div className="loading-container" style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <div className="loading-spinner" style={{ width: '40px', height: '40px' }} />
+        <p style={{ marginLeft: '12px' }}>Loading application...</p>
       </div>
     }>
       <App />

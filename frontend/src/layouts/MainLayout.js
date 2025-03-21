@@ -56,7 +56,6 @@ const MainLayout = ({ children, onSettingsClick }) => {
             alignItems: 'center'
           }}>
             <ThemeToggle />
-            
             <LanguageSelector />
             
             <button

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import MainLayout from './layouts/MainLayout';
 import SongInput from './components/SongInput';
 import Settings from './components/Settings';
@@ -21,6 +22,8 @@ import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
 
 const MainApp = () => {
+  const { t } = useTranslation();
+  
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -299,7 +302,7 @@ const MainApp = () => {
 
         {/* Image Generation Section */}
         {lyrics.length > 0 && (
-          <Card title="Background Image Generation">
+          <Card title={t('imageGeneration.title')}>
             <div style={{ display: 'grid', gap: '1rem' }}>
               <Button
                 onClick={async (e) => {
@@ -322,12 +325,12 @@ const MainApp = () => {
                 disabled={generatingImage || !albumArtUrl}
                 variant={generatingImage ? 'disabled' : 'primary'}
               >
-                {generatingImage ? 'Generating...' : 'Generate Background Image'}
+                {generatingImage ? t('imageGeneration.generating') : t('imageGeneration.generateButton')}
               </Button>
 
               {generatedPrompt && (
                 <p style={{ fontSize: '0.9em', color: '#666' }}>
-                  Generated Prompt: {generatedPrompt}
+                  {t('imageGeneration.prompt')} {generatedPrompt}
                 </p>
               )}
 
@@ -351,7 +354,7 @@ const MainApp = () => {
                     marginTop: theme.spacing.sm 
                   }}>
                     <p style={{ fontSize: '12px', color: '#666' }}>
-                      This image was generated using the song's lyrics and album art as inspiration.
+                      {t('imageGeneration.imageCredit')}
                     </p>
                     <Button
                       onClick={() => {
@@ -381,7 +384,7 @@ const MainApp = () => {
                       variant="secondary"
                       size="small"
                     >
-                      Download Background
+                      {t('imageGeneration.downloadButton')}
                     </Button>
                   </div>
                 </div>

@@ -10,6 +10,7 @@ import config from './config/config.js';
 import audioRoutes from './routes/audioRoutes.js';
 import lyricsRoutes from './routes/lyricsRoutes.js';
 import apiRoutes from './routes/apiRoutes.js';
+// Removed translation routes import since we're only using static translations now
 
 // Import utilities
 import { ensureDirectories } from './utils/fileUtils.js';
@@ -70,6 +71,13 @@ app.use('/album_art', express.static(config.albumArtDir, {
 app.use('/api', audioRoutes);
 app.use('/api', lyricsRoutes);
 app.use('/api', apiRoutes);
+// Removed translation routes since we're only using static translations now
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
 
 // Start the server
 app.listen(config.port, () => {

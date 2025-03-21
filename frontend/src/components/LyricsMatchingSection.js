@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import LyricsDisplay from './LyricsDisplay';
@@ -31,6 +32,8 @@ const LyricsMatchingSection = ({
   onLoadedMetadata,
   albumArtUrl
 }) => {
+  const { t } = useTranslation();
+
   // Only render the section if there's something to show
   if (!showMatchingButton && !matchingInProgress && !matchingComplete) {
     return null;
@@ -69,7 +72,7 @@ const LyricsMatchingSection = ({
   };
 
   return (
-    <Card title="Lyrics Matching">
+    <Card title={t('matching.title')}>
       <div style={{ display: 'grid', gap: theme.spacing.lg }}>
         {/* Matching Buttons */}
         {showMatchingButton && (
@@ -80,7 +83,7 @@ const LyricsMatchingSection = ({
               variant="primary"
               style={{ flex: '1 1 auto', minWidth: '200px' }}
             >
-              {matchingInProgress ? 'Matching...' : 'Match Lyrics with Audio'}
+              {matchingInProgress ? t('common.loading') : t('matching.startButton')}
             </Button>
 
             <Button
@@ -89,7 +92,7 @@ const LyricsMatchingSection = ({
               variant="warning"
               style={{ flex: '1 1 auto', minWidth: '200px' }}
             >
-              Force Rematch
+              {t('lyrics.genius.force')}
             </Button>
           </div>
         )}
@@ -103,7 +106,7 @@ const LyricsMatchingSection = ({
             display: 'grid',
             gap: theme.spacing.sm
           }}>
-            <p style={theme.typography.body}>Processing: {processingStatus}</p>
+            <p style={theme.typography.body}>{t('matching.progress')} {processingStatus}</p>
             {matchingProgress > 0 && (
               <div style={{
                 width: '100%',
@@ -151,7 +154,7 @@ const LyricsMatchingSection = ({
                     variant="secondary"
                     size="small"
                   >
-                    Download Album Art
+                    {t('common.download')}
                   </Button>
                 </div>
               )}
@@ -183,14 +186,14 @@ const LyricsMatchingSection = ({
                 variant="success"
                 size="large"
               >
-                Download Lyrics JSON
+                {t('lyrics.downloadJSON')}
               </Button>
               <p style={{ 
                 ...theme.typography.small,
                 color: theme.colors.text.secondary,
                 marginTop: theme.spacing.xs
               }}>
-                Downloads the edited lyrics timing as a JSON file
+                {t('matching.lineCount', { count: matchedLyrics.length })}
               </p>
             </div>
           </div>

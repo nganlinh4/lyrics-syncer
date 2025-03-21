@@ -58,6 +58,7 @@ pip install -r requirements.txt
 1. Start the backend server:
 ```bash
 cd backend
+./venv/Scripts/activate
 npm run dev
 ```
 

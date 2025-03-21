@@ -254,6 +254,25 @@ a:hover {
   100% { transform: rotate(360deg); }
 }
 
+/* Loading spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+.loading-spinner.light {
+  border-color: rgba(255, 255, 255, 0.1);
+  border-top-color: white;
+}
+
 /* Button hover effect */
 .button {
   position: relative;
@@ -396,4 +415,30 @@ a:hover {
   border-radius: 8px;
   text-align: center;
   box-shadow: var(--card-shadow);
+}
+
+/* Translating overlay styles */
+.translating-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(2px);
+}
+
+.translating-content {
+  background-color: var(--colors-background-paper);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadows-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
 }

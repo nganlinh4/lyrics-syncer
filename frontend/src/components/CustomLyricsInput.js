@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import theme from '../theme/theme';
 
 const CustomLyricsInput = ({ onCustomLyrics }) => {
+  const { t } = useTranslation();
   const [showInput, setShowInput] = useState(false);
   const [customText, setCustomText] = useState('');
 
@@ -21,14 +23,14 @@ const CustomLyricsInput = ({ onCustomLyrics }) => {
   };
 
   return (
-    <Card title="Custom Lyrics">
+    <Card title={t('customLyrics.title')}>
       <div style={{ display: 'grid', gap: theme.spacing.md }}>
         {!showInput ? (
           <Button
             onClick={() => setShowInput(true)}
             variant="secondary"
           >
-            Enter Custom Lyrics
+            {t('lyrics.customLyrics')}
           </Button>
         ) : (
           <div style={{ display: 'grid', gap: theme.spacing.md }}>
@@ -40,7 +42,7 @@ const CustomLyricsInput = ({ onCustomLyrics }) => {
               <textarea
                 value={customText}
                 onChange={(e) => setCustomText(e.target.value)}
-                placeholder="Paste your lyrics here (one line per lyric)"
+                placeholder={t('customLyrics.placeholder')}
                 style={{
                   width: '100%',
                   minHeight: '150px',
@@ -63,7 +65,7 @@ const CustomLyricsInput = ({ onCustomLyrics }) => {
                   onClick={() => setShowInput(false)}
                   variant="secondary"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 
                 <Button 
@@ -71,7 +73,7 @@ const CustomLyricsInput = ({ onCustomLyrics }) => {
                   disabled={!customText.trim()}
                   variant="primary"
                 >
-                  Submit Lyrics
+                  {t('customLyrics.submit')}
                 </Button>
               </div>
             </div>
@@ -80,7 +82,14 @@ const CustomLyricsInput = ({ onCustomLyrics }) => {
               ...theme.typography.small,
               color: theme.colors.text.secondary
             }}>
-              Enter each line of lyrics on a new line. The lyrics will be synchronized with the audio in the order they appear.
+              {t('customLyrics.instructions')}
+            </p>
+
+            <p style={{
+              ...theme.typography.small,
+              color: theme.colors.text.secondary
+            }}>
+              {t('customLyrics.charactersCount', { count: customText.length })}
             </p>
           </div>
         )}

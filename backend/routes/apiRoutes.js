@@ -7,7 +7,6 @@ import {
   generateImage,
   deleteCache 
 } from '../controllers/apiController.js';
-import { translateText } from '../controllers/translationController.js';
 
 const router = express.Router();
 
@@ -24,8 +23,5 @@ router.post('/generate_image', generateImage);
 
 // Cache management
 router.post('/delete_cache', deleteCache);
-
-// Translation endpoint
-router.post('/translate', translateText);
 
 export default router;

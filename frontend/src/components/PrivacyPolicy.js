@@ -1,8 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import theme from '../theme/theme';
 import Card from '../ui/Card';
 
 const PrivacyPolicy = () => {
+  const { t } = useTranslation();
+  
   return (
     <div style={{
       maxWidth: theme.layout.contentWidth,
@@ -18,19 +22,19 @@ const PrivacyPolicy = () => {
           textAlign: 'center',
           borderBottom: `2px solid ${theme.colors.border}`,
           paddingBottom: theme.spacing.md
-        }}>Privacy Policy</h1>
+        }}>{t('privacy.title')}</h1>
         
         <div style={{ display: 'grid', gap: theme.spacing.xl }}>
           <section>
-            <h2 style={{
-              ...theme.typography.h2,
-              color: theme.colors.text.primary,
-              marginBottom: theme.spacing.md
-            }}>Overview</h2>
             <p style={{
               ...theme.typography.body,
               lineHeight: 1.6
-            }}>This Privacy Policy explains how the Lyrics Syncer application handles data when you run it on your local machine.</p>
+            }}>{t('privacy.intro')}</p>
+            <p style={{ 
+              ...theme.typography.small,
+              color: theme.colors.text.secondary, 
+              marginTop: theme.spacing.md 
+            }}>{t('privacy.effective')}</p>
           </section>
 
           <section>
@@ -38,24 +42,12 @@ const PrivacyPolicy = () => {
               ...theme.typography.h2,
               color: theme.colors.text.primary,
               marginBottom: theme.spacing.md
-            }}>Local Operation</h2>
-            <p style={{
-              ...theme.typography.body,
-              lineHeight: 1.6
-            }}>Lyrics Syncer is a self-hosted application that runs entirely on your local machine. We do not operate any servers that collect or store your data.</p>
-          </section>
-
-          <section>
-            <h2 style={{
-              ...theme.typography.h2,
-              color: theme.colors.text.primary,
-              marginBottom: theme.spacing.md
-            }}>Data Collection</h2>
+            }}>{t('privacy.collection.title')}</h2>
             <p style={{
               ...theme.typography.body,
               lineHeight: 1.6,
               marginBottom: theme.spacing.sm
-            }}>The application does not collect or transmit any personal information. All data, including:</p>
+            }}>{t('privacy.collection.paragraph1')}</p>
             <ul style={{
               listStyle: 'none',
               padding: 0,
@@ -63,25 +55,43 @@ const PrivacyPolicy = () => {
               display: 'grid',
               gap: theme.spacing.sm
             }}>
-              {['Audio files', 'Lyrics', 'Album artwork', 'Generated images', 'API keys', 'Configuration settings'].map((item, index) => (
-                <li key={index} style={{
-                  ...theme.typography.body,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.sm,
-                  padding: theme.spacing.sm,
-                  backgroundColor: theme.colors.background.light,
-                  borderRadius: theme.borderRadius.sm
-                }}>
-                  <span style={{ color: theme.colors.primary }}>•</span>
-                  {item}
-                </li>
-              ))}
+              <li style={{
+                ...theme.typography.body,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                padding: theme.spacing.sm,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <span style={{ color: theme.colors.primary }}>•</span>
+                {t('privacy.collection.item1')}
+              </li>
+              <li style={{
+                ...theme.typography.body,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                padding: theme.spacing.sm,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <span style={{ color: theme.colors.primary }}>•</span>
+                {t('privacy.collection.item2')}
+              </li>
+              <li style={{
+                ...theme.typography.body,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                padding: theme.spacing.sm,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <span style={{ color: theme.colors.primary }}>•</span>
+                {t('privacy.collection.item3')}
+              </li>
             </ul>
-            <p style={{
-              ...theme.typography.body,
-              lineHeight: 1.6
-            }}>is stored locally on your machine and is under your complete control.</p>
           </section>
 
           <section>
@@ -89,12 +99,12 @@ const PrivacyPolicy = () => {
               ...theme.typography.h2,
               color: theme.colors.text.primary,
               marginBottom: theme.spacing.md
-            }}>Third-Party Services</h2>
+            }}>{t('privacy.usage.title')}</h2>
             <p style={{
               ...theme.typography.body,
               lineHeight: 1.6,
               marginBottom: theme.spacing.sm
-            }}>The application interacts with the following third-party services when you provide the respective API keys:</p>
+            }}>{t('privacy.usage.paragraph1')}</p>
             <ul style={{
               listStyle: 'none',
               padding: 0,
@@ -102,25 +112,43 @@ const PrivacyPolicy = () => {
               display: 'grid',
               gap: theme.spacing.sm
             }}>
-              {['YouTube Data API', 'Genius API', 'Google Gemini API'].map((service, index) => (
-                <li key={index} style={{
-                  ...theme.typography.body,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.sm,
-                  padding: theme.spacing.sm,
-                  backgroundColor: theme.colors.background.light,
-                  borderRadius: theme.borderRadius.sm
-                }}>
-                  <span style={{ color: theme.colors.primary }}>•</span>
-                  {service}
-                </li>
-              ))}
+              <li style={{
+                ...theme.typography.body,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                padding: theme.spacing.sm,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <span style={{ color: theme.colors.primary }}>•</span>
+                {t('privacy.usage.item1')}
+              </li>
+              <li style={{
+                ...theme.typography.body,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                padding: theme.spacing.sm,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <span style={{ color: theme.colors.primary }}>•</span>
+                {t('privacy.usage.item2')}
+              </li>
+              <li style={{
+                ...theme.typography.body,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                padding: theme.spacing.sm,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <span style={{ color: theme.colors.primary }}>•</span>
+                {t('privacy.usage.item3')}
+              </li>
             </ul>
-            <p style={{
-              ...theme.typography.body,
-              lineHeight: 1.6
-            }}>Please review the privacy policies of these services as they may collect usage data according to their terms.</p>
           </section>
 
           <section>
@@ -128,11 +156,11 @@ const PrivacyPolicy = () => {
               ...theme.typography.h2,
               color: theme.colors.text.primary,
               marginBottom: theme.spacing.md
-            }}>Data Storage</h2>
+            }}>{t('privacy.sharing.title')}</h2>
             <p style={{
               ...theme.typography.body,
               lineHeight: 1.6
-            }}>All data is stored in local directories within the application folder. You can delete this data at any time using the "Clear All Cache" function in the settings.</p>
+            }}>{t('privacy.sharing.paragraph1')}</p>
           </section>
 
           <section>
@@ -140,12 +168,57 @@ const PrivacyPolicy = () => {
               ...theme.typography.h2,
               color: theme.colors.text.primary,
               marginBottom: theme.spacing.md
-            }}>Updates</h2>
+            }}>{t('privacy.security.title')}</h2>
             <p style={{
               ...theme.typography.body,
               lineHeight: 1.6
-            }}>This privacy policy may be updated as the application evolves. Please review the project's GitHub repository for any changes.</p>
+            }}>{t('privacy.security.paragraph1')}</p>
           </section>
+
+          <section>
+            <h2 style={{
+              ...theme.typography.h2,
+              color: theme.colors.text.primary,
+              marginBottom: theme.spacing.md
+            }}>{t('privacy.changes.title')}</h2>
+            <p style={{
+              ...theme.typography.body,
+              lineHeight: 1.6
+            }}>{t('privacy.changes.paragraph1')}</p>
+          </section>
+
+          <section>
+            <h2 style={{
+              ...theme.typography.h2,
+              color: theme.colors.text.primary,
+              marginBottom: theme.spacing.md
+            }}>{t('privacy.contact.title')}</h2>
+            <p style={{
+              ...theme.typography.body,
+              lineHeight: 1.6
+            }}>{t('privacy.contact.paragraph1')}</p>
+          </section>
+
+          <div style={{ 
+            marginTop: theme.spacing.xl,
+            textAlign: 'center'
+          }}>
+            <Link 
+              to="/"
+              style={{
+                ...theme.typography.button,
+                color: theme.colors.primary,
+                textDecoration: 'none',
+                padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                borderRadius: theme.borderRadius.sm,
+                border: `1px solid ${theme.colors.primary}`,
+                display: 'inline-block',
+                transition: theme.transitions.fast
+              }}
+            >
+              {t('privacy.backToHome')}
+            </Link>
+          </div>
         </div>
       </Card>
     </div>

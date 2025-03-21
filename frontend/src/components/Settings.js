@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import ApiKeyInput from './ApiKeyInput';
@@ -20,6 +21,7 @@ const Settings = ({
   ImageModelSelector,
   PromptModelSelector
 }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
 
@@ -110,13 +112,13 @@ const Settings = ({
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <h2 style={{...theme.typography.h2, margin: 0}}>Settings</h2>
+          <h2 style={{...theme.typography.h2, margin: 0}}>{t('settings.title')}</h2>
           <Button
             onClick={onClose}
             variant="secondary"
             size="small"
           >
-            Close
+            {t('common.close')}
           </Button>
         </div>
 
@@ -129,7 +131,7 @@ const Settings = ({
           <div style={{ display: 'grid', gap: theme.spacing.lg }}>
             {/* API Keys Section */}
             <section>
-              <h3 style={theme.typography.h3}>API Keys</h3>
+              <h3 style={theme.typography.h3}>{t('settings.apiKeys')}</h3>
               <div style={{ display: 'grid', gap: theme.spacing.md }}>
                 {Object.entries(apiKeys).map(([type, { key, status }]) => (
                   <div key={type} style={{ 
@@ -151,13 +153,14 @@ const Settings = ({
 
             {/* Models Section */}
             <section>
-              <h3 style={theme.typography.h3}>Models</h3>
+              <h3 style={theme.typography.h3}>{t('settings.models')}</h3>
               <div style={{ display: 'grid', gap: theme.spacing.md }}>
                 <div style={{
                   padding: theme.spacing.md,
                   backgroundColor: theme.colors.background.light,
                   borderRadius: theme.borderRadius.sm
                 }}>
+                  <h4 style={theme.typography.h4}>{t('settings.chatModels')}</h4>
                   <ModelSelector
                     selectedModel={selectedModel}
                     onModelChange={onModelChange}
@@ -168,6 +171,7 @@ const Settings = ({
                   backgroundColor: theme.colors.background.light,
                   borderRadius: theme.borderRadius.sm
                 }}>
+                  <h4 style={theme.typography.h4}>{t('settings.promptModels')}</h4>
                   <PromptModelSelector
                     selectedModel={selectedPromptModel}
                     onModelChange={onPromptModelChange}
@@ -178,6 +182,7 @@ const Settings = ({
                   backgroundColor: theme.colors.background.light,
                   borderRadius: theme.borderRadius.sm
                 }}>
+                  <h4 style={theme.typography.h4}>{t('settings.imageModels')}</h4>
                   <ImageModelSelector
                     selectedModel={selectedImageModel}
                     onModelChange={onImageModelChange}
@@ -202,7 +207,7 @@ const Settings = ({
                       variant="error"
                       style={{ marginBottom: theme.spacing.md }}
                     >
-                      {loading ? 'Cleaning...' : 'Clear All Cache'}
+                      {loading ? t('common.loading') : 'Clear All Cache'}
                     </Button>
                     
                     <p style={{
