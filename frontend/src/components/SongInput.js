@@ -14,7 +14,6 @@ const SongInput = ({
   onDownload,
   onForceDownload,
   onFetchFromGenius,
-  showForceButton,
   geniusLoading
 }) => {
   const { t } = useTranslation();
@@ -94,15 +93,13 @@ const SongInput = ({
                 {loading ? t('common.loading') : t('audio.download')}
               </Button>
               
-              {showForceButton && (
-                <Button
-                  onClick={onForceDownload}
-                  disabled={loading}
-                  variant="warning"
-                >
-                  {t('audio.force')}
-                </Button>
-              )}
+              <Button
+                onClick={onForceDownload}
+                disabled={loading || !artist || !song}
+                variant="warning"
+              >
+                {t('audio.force')}
+              </Button>
             </div>
           </div>
         </section>

@@ -105,7 +105,6 @@ const MainApp = () => {
 
   // Computed values
   const canStartMatching = hasDownloaded && !needsRefetch && audioUrl && lyrics.length > 0;
-  const showForceButtons = !loading && hasDownloaded;
   const showMatchingButton = canStartMatching && !matchingInProgress;
 
   const handleDownload = async () => {
@@ -236,7 +235,6 @@ const MainApp = () => {
           onDownload={handleDownload}
           onForceDownload={handleForceDownload}
           onFetchFromGenius={fetchFromGenius}
-          showForceButton={showForceButtons}
         />
 
         {/* Audio Preview Section - show whenever there's content */}
