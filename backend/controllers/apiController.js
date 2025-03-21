@@ -62,9 +62,11 @@ export const matchLyrics = async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
+    // Define resultsPath here at the beginning of the function
+    const resultsPath = getGeminiResultsPath(artist, song, model, config.lyricsDir);
+    
     // Check for existing Gemini results, unless forceRematch is true
     if (!forceRematch) {
-      const resultsPath = getGeminiResultsPath(artist, song, model, config.lyricsDir);
       if (await fileExists(resultsPath)) {
         console.log(`Using cached Gemini results from ${resultsPath}`);
         const cachedResults = await fs.readFile(resultsPath, 'utf-8');
