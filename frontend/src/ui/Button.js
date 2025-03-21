@@ -1,96 +1,88 @@
-// filepath: c:\WORK_win\lyrics-syncer\frontend\src\ui\Button.js
 import React from 'react';
-import theme from '../theme/theme';
+import { useTheme } from '../theme/theme';
 
 const Button = ({
-  children,
-  onClick,
   variant = 'primary',
   size = 'medium',
   disabled = false,
-  fullWidth = false,
-  type = 'button',
+  children,
   className = '',
-  startIcon,
-  endIcon,
-  loading = false,
+  style = {},
   ...props
 }) => {
-  const getSizeStyles = () => {
-    switch (size) {
-      case 'small':
-        return {
-          padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-          fontSize: '0.875rem'
-        };
-      case 'large':
-        return {
-          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-          fontSize: '1rem'
-        };
-      default: // medium
-        return {
-          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-          fontSize: '0.875rem'
-        };
+  const theme = useTheme();
+
+  const sizeStyles = {
+    small: {
+      padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+      fontSize: theme.typography.small.fontSize,
+    },
+    medium: {
+      padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+      fontSize: theme.typography.button.fontSize,
+    },
+    large: {
+      padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+      fontSize: theme.typography.h3.fontSize,
+    },
+  };
+
+  const baseStyles = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+    fontWeight: theme.typography.button.fontWeight,
+    transition: theme.transitions.fast,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    border: 'none',
+    outline: 'none',
+    position: 'relative',
+    overflow: 'hidden',
+    ...sizeStyles[size],
+    opacity: disabled ? 0.6 : 1,
+    ...theme.components.button[variant],
+    ...style
+  };
+
+  const handleClick = (event) => {
+    if (!disabled) {
+      handleRippleEffect(event);
+      if (props.onClick) {
+        props.onClick(event);
+      }
     }
   };
 
-  const getVariantStyles = () => {
-    const variantStyles = theme.components.button[variant] || theme.components.button.primary;
-    return {
-      backgroundColor: disabled ? theme.colors.text.disabled : variantStyles.backgroundColor,
-      color: disabled ? theme.colors.background.main : variantStyles.color,
-      border: variantStyles.border || 'none',
-      '&:hover': !disabled && variantStyles['&:hover'],
-      '&:active': !disabled && {
-        transform: 'translateY(1px)'
-      },
-      opacity: disabled ? 0.7 : 1,
-      cursor: disabled ? 'not-allowed' : 'pointer'
-    };
+  const handleRippleEffect = (event) => {
+    if (disabled) return;
+
+    const button = event.currentTarget;
+    const ripple = document.createElement('span');
+    const rect = button.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = event.clientX - rect.left - size / 2;
+    const y = event.clientY - rect.top - size / 2;
+
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+    ripple.className = 'ripple';
+
+    button.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
   };
 
   return (
     <button
-      type={type}
-      onClick={!disabled && !loading ? onClick : undefined}
-      disabled={disabled || loading}
-      className={`button ${className}`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: theme.spacing.sm,
-        borderRadius: theme.borderRadius.sm,
-        fontWeight: theme.typography.button.fontWeight,
-        transition: theme.transitions.fast,
-        width: fullWidth ? '100%' : 'auto',
-        ...getSizeStyles(),
-        ...getVariantStyles(),
-      }}
       {...props}
+      className={`button ${variant} ${size} ${className}`}
+      disabled={disabled}
+      style={baseStyles}
+      onClick={handleClick}
     >
-      {startIcon && !loading && (
-        <span style={{ display: 'flex', alignItems: 'center' }}>
-          {startIcon}
-        </span>
-      )}
-      
-      {loading ? (
-        <>
-          <div className="loading-spinner" />
-          <span style={{ marginLeft: theme.spacing.sm }}>Loading...</span>
-        </>
-      ) : (
-        children
-      )}
-      
-      {endIcon && !loading && (
-        <span style={{ display: 'flex', alignItems: 'center' }}>
-          {endIcon}
-        </span>
-      )}
+      {children}
     </button>
   );
 };

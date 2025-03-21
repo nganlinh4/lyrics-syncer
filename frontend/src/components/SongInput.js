@@ -84,11 +84,16 @@ const SongInput = ({
               />
             </div>
 
-            <div style={{ display: 'flex', gap: theme.spacing.md }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr',
+              gap: theme.spacing.md 
+            }}>
               <Button
                 onClick={onDownload}
                 disabled={loading || !artist || !song}
                 variant="primary"
+                style={{ width: '100%' }}
               >
                 {loading ? t('common.loading') : t('audio.download')}
               </Button>
@@ -97,6 +102,7 @@ const SongInput = ({
                 onClick={onForceDownload}
                 disabled={loading || !artist || !song}
                 variant="warning"
+                style={{ width: '100%' }}
               >
                 {t('audio.force')}
               </Button>
@@ -160,11 +166,16 @@ const SongInput = ({
               </>
             )}
 
-            <div style={{ display: 'flex', gap: theme.spacing.md }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr',
+              gap: theme.spacing.md 
+            }}>
               <Button
                 onClick={() => onFetchFromGenius(sameAsYoutube ? artist : geniusArtist, sameAsYoutube ? song : geniusSong)}
                 disabled={geniusLoading || (sameAsYoutube ? (!artist || !song) : (!geniusArtist || !geniusSong))}
-                variant="secondary"
+                variant="primary"
+                style={{ width: '100%' }}
               >
                 {geniusLoading ? t('common.loading') : t('lyrics.genius.fetch')}
               </Button>
@@ -173,6 +184,7 @@ const SongInput = ({
                 onClick={() => onFetchFromGenius(sameAsYoutube ? artist : geniusArtist, sameAsYoutube ? song : geniusSong, true)}
                 disabled={geniusLoading || (sameAsYoutube ? (!artist || !song) : (!geniusArtist || !geniusSong))}
                 variant="warning"
+                style={{ width: '100%' }}
               >
                 {t('lyrics.genius.force')}
               </Button>

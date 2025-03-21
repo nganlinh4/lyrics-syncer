@@ -184,7 +184,8 @@ const LyricsMatchingSection = ({
               <Button
                 onClick={onDownloadJSON}
                 variant="success"
-                size="large"
+                size="small"
+                style={{ maxWidth: '200px' }}
               >
                 {t('lyrics.downloadJSON')}
               </Button>

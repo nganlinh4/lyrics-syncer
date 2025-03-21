@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import MainLayout from './layouts/MainLayout';
 import SongInput from './components/SongInput';
@@ -211,10 +211,15 @@ const MainApp = () => {
         PromptModelSelector={PromptModelSelector}
       />
 
-      <div style={{ display: 'grid', gap: theme.spacing.xl, maxWidth: '800px', margin: '0 auto', padding: theme.spacing.lg }}>
-        {/* Error Display */}
-        {apiError && <ErrorDisplay message={apiError} onClose={() => setError(null)} />}
-        {lyricsError && <ErrorDisplay message={lyricsError} onClose={() => setError(null)} />}
+      <div className="main-content">
+        {/* Error Display with improved visibility */}
+        {(apiError || lyricsError) && (
+          <Card className="error-display">
+            <div role="alert">
+              {apiError || lyricsError}
+            </div>
+          </Card>
+        )}
 
         {/* Song Input */}
         <SongInput
@@ -237,15 +242,58 @@ const MainApp = () => {
           onFetchFromGenius={fetchFromGenius}
         />
 
-        {/* Audio Preview Section - show whenever there's content */}
+        {/* Audio Preview Section with improved dark mode contrast */}
         {(audioUrl || lyrics.length > 0 || albumArtUrl) && !matchingComplete && !matchingInProgress && (
-          <AudioPreviewSection
+          <Card>
+            <AudioPreviewSection
+              audioUrl={audioUrl}
+              audioRef={audioRef}
+              containerRef={containerRef}
+              fileSize={fileSize}
+              albumArtUrl={albumArtUrl}
+              lyrics={lyrics}
+              onError={(e) => {
+                console.error("Audio player error:", e);
+                setError("Error loading audio. Please try again.");
+              }}
+              onLoadedMetadata={(e) => {
+                console.log("Audio metadata loaded, duration:", e.target.duration);
+              }}
+              handleAudioRef={handleAudioRef}
+            />
+          </Card>
+        )}
+
+        {/* Custom Lyrics Input with consistent styling */}
+        {!matchingInProgress && (
+          <CustomLyricsInput
+            onCustomLyrics={handleCustomLyrics}
+          />
+        )}
+
+        {/* Lyrics Matching Section with improved visual hierarchy */}
+        {(showMatchingButton || matchingInProgress || matchingComplete) && (
+          <LyricsMatchingSection
+            matchingInProgress={matchingInProgress}
+            showMatchingButton={showMatchingButton}
+            onAdvancedMatch={handleAdvancedMatch}
+            processingStatus={processingStatus}
+            matchingProgress={matchingProgress}
+            matchingComplete={matchingComplete}
+            matchedLyrics={matchedLyrics}
+            currentTime={currentTime}
+            onLyricClick={seekTo}
+            audioDuration={audioDuration}
+            onUpdateLyrics={handleUpdateLyrics}
+            onCustomLyrics={handleCustomLyrics}
+            onDownloadJSON={handleDownloadJSON}
+            artist={artist}
+            song={song}
             audioUrl={audioUrl}
-            audioRef={audioRef}
-            containerRef={containerRef}
-            fileSize={fileSize}
-            albumArtUrl={albumArtUrl}
             lyrics={lyrics}
+            selectedModel={selectedModel}
+            audioRef={audioRef}
+            handleAudioRef={handleAudioRef}
             onError={(e) => {
               console.error("Audio player error:", e);
               console.log("Failed to load audio URL:", audioUrl);
@@ -254,54 +302,15 @@ const MainApp = () => {
             onLoadedMetadata={(e) => {
               console.log("Audio metadata loaded, duration:", e.target.duration);
             }}
-            handleAudioRef={handleAudioRef}
+            albumArtUrl={albumArtUrl}
+            className={matchingInProgress ? 'processing' : ''}
           />
         )}
 
-        {/* Custom Lyrics Input */}
-        {!matchingInProgress && (
-          <CustomLyricsInput
-            onCustomLyrics={handleCustomLyrics}
-          />
-        )}
-
-        {/* Lyrics Matching Section */}
-        <LyricsMatchingSection
-          matchingInProgress={matchingInProgress}
-          showMatchingButton={showMatchingButton}
-          onAdvancedMatch={handleAdvancedMatch}
-          processingStatus={processingStatus}
-          matchingProgress={matchingProgress}
-          matchingComplete={matchingComplete}
-          matchedLyrics={matchedLyrics}
-          currentTime={currentTime}
-          onLyricClick={seekTo}
-          audioDuration={audioDuration}
-          onUpdateLyrics={handleUpdateLyrics}
-          onCustomLyrics={handleCustomLyrics}
-          onDownloadJSON={handleDownloadJSON}
-          artist={artist}
-          song={song}
-          audioUrl={audioUrl}
-          lyrics={lyrics}
-          selectedModel={selectedModel}
-          audioRef={audioRef}
-          handleAudioRef={handleAudioRef}
-          onError={(e) => {
-            console.error("Audio player error:", e);
-            console.log("Failed to load audio URL:", audioUrl);
-            setError("Error loading audio. Please try again.");
-          }}
-          onLoadedMetadata={(e) => {
-            console.log("Audio metadata loaded, duration:", e.target.duration);
-          }}
-          albumArtUrl={albumArtUrl}
-        />
-
-        {/* Image Generation Section */}
+        {/* Image Generation Section with consistent spacing and improved contrast */}
         {lyrics.length > 0 && (
-          <Card title={t('imageGeneration.title')}>
-            <div style={{ display: 'grid', gap: '1rem' }}>
+          <Card>
+            <div className="image-generation">
               <Button
                 onClick={async (e) => {
                   e.preventDefault();
@@ -322,42 +331,31 @@ const MainApp = () => {
                 }}
                 disabled={generatingImage || !albumArtUrl}
                 variant={generatingImage ? 'disabled' : 'primary'}
+                className="generate-button"
               >
                 {generatingImage ? t('imageGeneration.generating') : t('imageGeneration.generateButton')}
               </Button>
 
               {generatedPrompt && (
-                <p style={{ fontSize: '0.9em', color: '#666' }}>
+                <p className="prompt-text">
                   {t('imageGeneration.prompt')} {generatedPrompt}
                 </p>
               )}
 
               {generatedImage && (
-                <div>
+                <div className="generated-image-container">
                   <img
                     src={`data:${generatedImage.mime_type};base64,${generatedImage.data}`}
                     alt="Generated background"
-                    style={{
-                      width: '100%',
-                      maxWidth: '1920px',
-                      height: 'auto',
-                      borderRadius: '4px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}
+                    className="generated-image"
                   />
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: theme.spacing.sm 
-                  }}>
-                    <p style={{ fontSize: '12px', color: '#666' }}>
+                  <div className="image-actions">
+                    <small className="image-credit">
                       {t('imageGeneration.imageCredit')}
-                    </p>
+                    </small>
                     <Button
                       onClick={() => {
                         try {
-                          // For base64 images, we can convert directly to blob
                           const byteString = atob(generatedImage.data);
                           const mimeType = generatedImage.mime_type || 'image/png';
                           const ab = new ArrayBuffer(byteString.length);
@@ -367,35 +365,26 @@ const MainApp = () => {
                           }
                           const blob = new Blob([ab], { type: mimeType });
                           const url = URL.createObjectURL(blob);
-                          const link = document.createElement('a');
-                          link.href = url;
-                          link.download = `${artist}_${song}_background.png`;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                          URL.revokeObjectURL(url); // Clean up the URL object
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `generated_background_${artist}_${song}.png`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
                         } catch (error) {
                           console.error('Error downloading image:', error);
-                          setError('Failed to download the background image. Please try again.');
+                          setError(t('errors.downloadFailed'));
                         }
                       }}
-                      variant="secondary"
+                      variant="primary"
                       size="small"
                     >
-                      {t('imageGeneration.downloadButton')}
+                      {t('common.download')}
                     </Button>
                   </div>
                 </div>
               )}
-            </div>
-          </Card>
-        )}
-
-        {/* Error Display */}
-        {(apiError || lyricsError) && (
-          <Card>
-            <div style={{ color: '#f44336' }}>
-              {apiError || lyricsError}
             </div>
           </Card>
         )}
@@ -404,16 +393,33 @@ const MainApp = () => {
   );
 };
 
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <MainApp />,
+    },
+    {
+      path: "/privacy",
+      element: <PrivacyPolicy />,
+    },
+    {
+      path: "/terms",
+      element: <TermsOfService />,
+    },
+  ],
+  {
+    future: {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true
+    }
+  }
+);
+
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<MainApp />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<TermsOfService />} />
-        </Routes>
-      </Router>
+      <RouterProvider router={router} />
     </ThemeProvider>
   );
 }

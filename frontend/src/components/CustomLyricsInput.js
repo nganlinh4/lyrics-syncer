@@ -24,76 +24,70 @@ const CustomLyricsInput = ({ onCustomLyrics }) => {
 
   return (
     <Card title={t('customLyrics.title')}>
-      <div style={{ display: 'grid', gap: theme.spacing.md }}>
-        {!showInput ? (
-          <Button
-            onClick={() => setShowInput(true)}
-            variant="secondary"
-          >
-            {t('lyrics.customLyrics')}
-          </Button>
-        ) : (
-          <div style={{ display: 'grid', gap: theme.spacing.md }}>
-            <div style={{
-              backgroundColor: theme.colors.background.light,
-              padding: theme.spacing.md,
-              borderRadius: theme.borderRadius.sm
-            }}>
-              <textarea
-                value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
-                placeholder={t('customLyrics.placeholder')}
-                style={{
-                  width: '100%',
-                  minHeight: '150px',
-                  padding: theme.spacing.sm,
-                  marginBottom: theme.spacing.sm,
-                  borderRadius: theme.borderRadius.sm,
-                  border: `1px solid ${theme.colors.border}`,
-                  fontSize: theme.typography.body.fontSize,
-                  resize: 'vertical',
-                  backgroundColor: theme.colors.background.main
-                }}
-              />
-              
-              <div style={{
-                display: 'flex',
-                gap: theme.spacing.sm,
-                justifyContent: 'flex-end'
-              }}>
-                <Button 
-                  onClick={() => setShowInput(false)}
-                  variant="secondary"
-                >
-                  {t('common.cancel')}
-                </Button>
-                
-                <Button 
-                  onClick={handleSubmit}
-                  disabled={!customText.trim()}
-                  variant="primary"
-                >
-                  {t('customLyrics.submit')}
-                </Button>
-              </div>
-            </div>
-
-            <p style={{
-              ...theme.typography.small,
-              color: theme.colors.text.secondary
-            }}>
-              {t('customLyrics.instructions')}
-            </p>
-
-            <p style={{
-              ...theme.typography.small,
-              color: theme.colors.text.secondary
-            }}>
-              {t('customLyrics.charactersCount', { count: customText.length })}
-            </p>
+      {showInput ? (
+        <>
+          <textarea
+            value={customText}
+            onChange={(e) => setCustomText(e.target.value)}
+            placeholder={t('customLyrics.placeholder')}
+            style={{
+              width: '100%',
+              minHeight: '150px',
+              padding: theme.spacing.sm,
+              marginBottom: theme.spacing.md,
+              borderRadius: theme.borderRadius.sm,
+              border: `1px solid ${theme.colors.border}`,
+              fontSize: theme.typography.body.fontSize,
+              resize: 'vertical',
+              backgroundColor: theme.colors.background.main
+            }}
+          />
+          
+          <div style={{
+            display: 'flex',
+            gap: theme.spacing.sm,
+            justifyContent: 'flex-end',
+            marginBottom: theme.spacing.md
+          }}>
+            <Button 
+              onClick={() => setShowInput(false)}
+              variant="secondary"
+            >
+              {t('common.cancel')}
+            </Button>
+            
+            <Button 
+              onClick={handleSubmit}
+              disabled={!customText.trim()}
+              variant="primary"
+            >
+              {t('customLyrics.submit')}
+            </Button>
           </div>
-        )}
-      </div>
+
+          <p style={{
+            ...theme.typography.small,
+            color: theme.colors.text.secondary,
+            marginBottom: theme.spacing.xs
+          }}>
+            {t('customLyrics.instructions')}
+          </p>
+
+          <p style={{
+            ...theme.typography.small,
+            color: theme.colors.text.secondary
+          }}>
+            {t('customLyrics.charactersCount', { count: customText.length })}
+          </p>
+        </>
+      ) : (
+        <Button
+          onClick={() => setShowInput(true)}
+          variant="secondary"
+        >
+          {t('lyrics.customLyrics')}
+        </Button>
+      )}
     </Card>
   );
 };

@@ -99,26 +99,25 @@ const baseTheme = {
   }
 };
 
-// Light theme colors
+// Light theme colors and component styles
 const lightTheme = {
   colors: {
-    primary: '#2196F3',
-    secondary: '#757575',
-    success: '#4CAF50',
-    warning: '#FFC107',
-    error: '#E91E63',
-    info: '#03A9F4',
+    primary: 'var(--primary-color)',
+    secondary: 'var(--text-secondary)',
+    success: 'var(--success-color)',
+    warning: 'var(--warning-color)',
+    error: 'var(--error-color)',
+    info: 'var(--info-color)',
     background: {
-      main: 'var(--background-main, #FFFFFF)',
-      light: 'var(--background-light, #F5F5F5)',
-      paper: 'var(--background-paper, #FFFFFF)'
+      main: 'var(--background-main)',
+      light: 'var(--background-light)',
+      paper: 'var(--background-paper)'
     },
     text: {
-      primary: 'var(--text-primary, #212121)',
-      secondary: 'var(--text-secondary, #757575)',
-      disabled: '#9E9E9E'
+      primary: 'var(--text-primary)',
+      secondary: 'var(--text-secondary)'
     },
-    border: 'var(--border-color, #E0E0E0)'
+    border: 'var(--border-color)'
   },
   shadows: {
     sm: 'var(--card-shadow, 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24))',
@@ -129,32 +128,34 @@ const lightTheme = {
   components: {
     button: {
       primary: {
-        backgroundColor: 'var(--primary-color, #2196F3)',
+        backgroundColor: 'var(--primary-color)',
         color: '#FFFFFF',
         '&:hover': {
-          backgroundColor: '#1976D2'
+          backgroundColor: 'var(--primary-color)',
+          filter: 'brightness(110%)'
         },
         '&:disabled': {
-          backgroundColor: '#BDBDBD'
+          backgroundColor: 'var(--text-secondary)',
+          opacity: 0.6
         }
       },
       secondary: {
-        backgroundColor: 'var(--background-light, #F5F5F5)',
-        color: 'var(--text-primary, #212121)',
-        border: '1px solid var(--border-color, #E0E0E0)',
+        backgroundColor: 'transparent',
+        color: 'var(--text-primary)',
+        border: '1px solid var(--border-color)',
         '&:hover': {
-          backgroundColor: '#E0E0E0'
+          backgroundColor: 'var(--hover-overlay)'
         }
       },
       success: {
-        backgroundColor: 'var(--success-color, #4CAF50)',
+        backgroundColor: 'var(--success-color)',
         color: '#FFFFFF',
         '&:hover': {
           backgroundColor: '#388E3C'
         }
       },
       error: {
-        backgroundColor: 'var(--error-color, #f44336)',
+        backgroundColor: 'var(--error-color)',
         color: '#FFFFFF',
         '&:hover': {
           backgroundColor: '#d32f2f'
@@ -169,127 +170,78 @@ const lightTheme = {
       }
     },
     card: {
-      backgroundColor: 'var(--background-paper, #FFFFFF)',
+      backgroundColor: 'var(--background-paper)',
       borderRadius: '8px',
-      boxShadow: 'var(--card-shadow, 0 2px 4px rgba(0,0,0,0.1))',
-      padding: '16px',
+      boxShadow: 'var(--card-shadow)',
+      border: '1px solid var(--border-color)',
       transition: 'all 0.3s ease'
     },
     input: {
       base: {
-        padding: '8px 12px',
+        backgroundColor: 'var(--background-paper)',
+        color: 'var(--text-primary)',
+        border: '1px solid var(--border-color)',
         borderRadius: '4px',
-        border: '1px solid var(--border-color, #E0E0E0)',
-        fontSize: '1rem',
-        lineHeight: '1.5',
-        transition: 'all 0.15s ease',
-        backgroundColor: 'var(--background-paper, #FFFFFF)',
+        padding: '8px 12px',
+        '&:hover': {
+          borderColor: 'var(--primary-color)',
+          backgroundColor: 'var(--hover-overlay)'
+        },
         '&:focus': {
-          borderColor: 'var(--primary-color, #2196F3)',
-          boxShadow: '0 0 0 3px rgba(33,150,243,0.1)'
+          borderColor: 'var(--primary-color)',
+          boxShadow: '0 0 0 2px var(--primary-color-light)'
         },
         '&:disabled': {
-          backgroundColor: 'var(--background-light, #F5F5F5)',
-          cursor: 'not-allowed'
+          backgroundColor: 'var(--background-light)',
+          cursor: 'not-allowed',
+          opacity: 0.7
+        }
+      }
+    },
+    dropdown: {
+      backgroundColor: 'var(--background-paper)',
+      border: '1px solid var(--border-color)',
+      boxShadow: 'var(--card-shadow)',
+      '& option': {
+        padding: '8px 12px',
+        '&:hover': {
+          backgroundColor: 'var(--hover-overlay)'
         }
       }
     }
   }
 };
 
-// Dark theme colors
+// Dark theme overrides
 const darkTheme = {
   colors: {
-    primary: '#64b5f6',
-    secondary: '#a0a0a0',
-    success: '#66bb6a',
-    warning: '#FFC107',
-    error: '#ef5350',
-    info: '#29b6f6',
-    background: {
-      main: 'var(--background-main, #121212)',
-      light: 'var(--background-light, #1e1e1e)',
-      paper: 'var(--background-paper, #242424)'
-    },
-    text: {
-      primary: 'var(--text-primary, #e0e0e0)',
-      secondary: 'var(--text-secondary, #a0a0a0)',
-      disabled: '#777777'
-    },
-    border: 'var(--border-color, #333333)'
-  },
-  shadows: {
-    sm: 'var(--card-shadow, 0 1px 3px rgba(0,0,0,0.24), 0 1px 2px rgba(0,0,0,0.36))',
-    md: '0 3px 6px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.22)',
-    lg: '0 10px 20px rgba(0,0,0,0.25), 0 3px 6px rgba(0,0,0,0.20)',
-    xl: '0 15px 25px rgba(0,0,0,0.25), 0 5px 10px rgba(0,0,0,0.15)'
+    ...lightTheme.colors
   },
   components: {
+    ...lightTheme.components,
     button: {
-      primary: {
-        backgroundColor: 'var(--primary-color, #64b5f6)',
-        color: '#121212',
-        '&:hover': {
-          backgroundColor: '#42a5f5'
-        },
-        '&:disabled': {
-          backgroundColor: '#555555'
-        }
-      },
+      ...lightTheme.components.button,
       secondary: {
-        backgroundColor: 'var(--background-light, #1e1e1e)',
-        color: 'var(--text-primary, #e0e0e0)',
-        border: '1px solid var(--border-color, #333333)',
+        ...lightTheme.components.button.secondary,
         '&:hover': {
-          backgroundColor: '#333333'
-        }
-      },
-      success: {
-        backgroundColor: 'var(--success-color, #66bb6a)',
-        color: '#121212',
-        '&:hover': {
-          backgroundColor: '#4caf50'
-        }
-      },
-      error: {
-        backgroundColor: 'var(--error-color, #ef5350)',
-        color: '#121212',
-        '&:hover': {
-          backgroundColor: '#e53935'
-        }
-      },
-      warning: {
-        backgroundColor: '#FFC107',
-        color: '#121212',
-        '&:hover': {
-          backgroundColor: '#FFA000'
+          backgroundColor: 'var(--hover-overlay)'
         }
       }
     },
     card: {
-      backgroundColor: 'var(--background-paper, #242424)',
-      borderRadius: '8px',
-      boxShadow: 'var(--card-shadow, 0 2px 4px rgba(0,0,0,0.2))',
-      padding: '16px',
-      transition: 'all 0.3s ease'
+      ...lightTheme.components.card,
+      boxShadow: 'var(--card-shadow)'
     },
     input: {
       base: {
-        padding: '8px 12px',
-        borderRadius: '4px',
-        border: '1px solid var(--border-color, #333333)',
-        fontSize: '1rem',
-        lineHeight: '1.5',
-        transition: 'all 0.15s ease',
-        backgroundColor: 'var(--background-paper, #242424)',
-        color: 'var(--text-primary, #e0e0e0)',
-        '&:focus': {
-          borderColor: 'var(--primary-color, #64b5f6)',
-          boxShadow: '0 0 0 3px rgba(100,181,246,0.2)'
+        ...lightTheme.components.input.base,
+        '&:hover': {
+          borderColor: 'var(--primary-color)',
+          backgroundColor: 'var(--hover-overlay)'
         },
-        '&:disabled': {
-          backgroundColor: 'var(--background-light, #1e1e1e)',
-          cursor: 'not-allowed'
+        '&:focus': {
+          borderColor: 'var(--primary-color)',
+          boxShadow: '0 0 0 2px var(--primary-color-light)'
         }
       }
     }

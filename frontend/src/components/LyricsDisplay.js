@@ -407,33 +407,38 @@ const LyricsDisplay = ({
         display: 'flex', 
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: theme.spacing.md,
         marginBottom: theme.spacing.md
       }}>
         <h3 style={theme.typography.h3}>{t('lyrics.synchronizedLyrics')}</h3>
         
         {allowEditing && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: theme.spacing.sm,
+            flexShrink: 0
+          }}>
             <label 
               style={{ 
-                marginRight: '15px',
                 display: 'flex',
                 alignItems: 'center',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontSize: theme.typography.small.fontSize,
+                color: theme.colors.text.secondary,
+                whiteSpace: 'nowrap'
               }}
             >
               <input
                 type="checkbox"
                 checked={isSticky}
                 onChange={(e) => setIsSticky(e.target.checked)}
-                style={{ marginRight: '5px' }}
+                style={{ marginRight: theme.spacing.xs }}
               />
-              <span style={{ 
-                fontSize: '14px',
-                color: '#666'
-              }}>
-                {t('lyrics.stickyTimingsToggle')}
-              </span>
+              {t('lyrics.stickyTimingsToggle')}
             </label>
+
             <Button
               onClick={handleUndo}
               disabled={history.length === 0}
@@ -442,6 +447,7 @@ const LyricsDisplay = ({
             >
               {t('common.undo')}
             </Button>
+
             <Button
               onClick={handleReset}
               disabled={originalLyrics.length === 0 || isAtOriginalState}
@@ -464,6 +470,7 @@ const LyricsDisplay = ({
             height: '50px',
             borderRadius: theme.borderRadius.sm,
             border: `1px solid ${theme.colors.border}`,
+            backgroundColor: theme.colors.background.light,
             cursor: 'pointer'
           }}
         />
@@ -477,7 +484,8 @@ const LyricsDisplay = ({
           overflowY: 'auto',
           border: `1px solid ${theme.colors.border}`,
           borderRadius: theme.borderRadius.sm,
-          padding: theme.spacing.sm
+          padding: theme.spacing.sm,
+          backgroundColor: theme.colors.background.main
         }}
       >
         {lyrics.map((lyric, index) => {
@@ -490,11 +498,13 @@ const LyricsDisplay = ({
               data-lyric-index={index}
               style={{
                 padding: theme.spacing.md,
-                backgroundColor: isCurrentLyric ? '#E3F2FD' : theme.colors.background.main,
+                backgroundColor: isCurrentLyric 
+                  ? theme.colors.primary + '20' // 12% opacity
+                  : theme.colors.background.light,
                 marginBottom: '5px',
                 borderRadius: theme.borderRadius.sm,
                 cursor: 'pointer',
-                borderLeft: `4px solid ${isCurrentLyric ? '#2196F3' : '#ddd'}`,
+                borderLeft: `4px solid ${isCurrentLyric ? theme.colors.primary : theme.colors.border}`,
                 transition: theme.transitions.fast,
                 transform: isCurrentLyric ? 'scale(1.02)' : 'scale(1)',
                 boxShadow: isCurrentLyric ? theme.shadows.sm : 'none'
@@ -528,23 +538,28 @@ const LyricsDisplay = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: theme.spacing.sm,
-                      backgroundColor: '#f0f7ff',
+                      backgroundColor: theme.colors.background.main,
                       padding: theme.spacing.sm,
-                      borderRadius: theme.borderRadius.sm
+                      borderRadius: theme.borderRadius.sm,
+                      border: `1px solid ${theme.colors.border}`
                     }}
                   >
                     {/* Start Time */}
                     <span
                       style={{
-                        color: isDragging && dragInfo.current.field === 'start' ? '#e91e63' : '#1976d2',
+                        color: isDragging && dragInfo.current.field === 'start' 
+                          ? theme.colors.error
+                          : theme.colors.primary,
                         fontWeight: '500',
                         cursor: allowEditing ? 'grab' : 'default',
                         padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
                         borderRadius: theme.borderRadius.sm,
                         border: isDragging && dragInfo.current.field === 'start' 
-                          ? '1px solid #e91e63' : '1px solid transparent',
+                          ? `1px solid ${theme.colors.error}` 
+                          : '1px solid transparent',
                         backgroundColor: isDragging && dragInfo.current.field === 'start'
-                          ? 'rgba(233, 30, 99, 0.1)' : 'transparent',
+                          ? theme.colors.error + '10'
+                          : 'transparent',
                         userSelect: 'none'
                       }}
                       onMouseDown={(e) => handleMouseDown(e, index, 'start')}
@@ -557,15 +572,19 @@ const LyricsDisplay = ({
                     {/* End Time */}
                     <span
                       style={{
-                        color: isDragging && dragInfo.current.field === 'end' ? '#e91e63' : '#1976d2',
+                        color: isDragging && dragInfo.current.field === 'end'
+                          ? theme.colors.error
+                          : theme.colors.primary,
                         fontWeight: '500',
                         cursor: allowEditing ? 'grab' : 'default',
                         padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
                         borderRadius: theme.borderRadius.sm,
                         border: isDragging && dragInfo.current.field === 'end'
-                          ? '1px solid #e91e63' : '1px solid transparent',
-                        backgroundColor: isDragging && dragInfo.current.field === 'end' 
-                          ? 'rgba(233, 30, 99, 0.1)' : 'transparent',
+                          ? `1px solid ${theme.colors.error}`
+                          : '1px solid transparent',
+                        backgroundColor: isDragging && dragInfo.current.field === 'end'
+                          ? theme.colors.error + '10'
+                          : 'transparent',
                         userSelect: 'none'
                       }}
                       onMouseDown={(e) => handleMouseDown(e, index, 'end')}
@@ -579,7 +598,7 @@ const LyricsDisplay = ({
               {isCurrentLyric && (
                 <div style={{
                   height: '3px',
-                  backgroundColor: '#2196F3',
+                  backgroundColor: theme.colors.primary,
                   marginTop: '6px',
                   width: `${Math.min(100, Math.max(0, ((currentTime - lyric.start) / (lyric.end - lyric.start)) * 100))}%`,
                   transition: 'width 0.2s linear',
