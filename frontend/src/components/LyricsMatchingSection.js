@@ -193,8 +193,14 @@ const LyricsMatchingSection = ({
         {/* Lyrics Display and Editing */}
         {matchingComplete && matchedLyrics.length > 0 && (
           <div style={{ display: 'grid', gap: theme.spacing.lg }}>
-            {/* Album Art and Audio Player */}
-            <div style={{ display: 'grid', gap: theme.spacing.md }}>
+            {/* Top row: Album Art and Original Lyrics side-by-side */}
+            <div style={{ 
+              display: 'grid',
+              gridTemplateColumns: albumArtUrl ? '300px 1fr' : '1fr',
+              gap: theme.spacing.lg,
+              alignItems: 'start'
+            }}>
+              {/* Left column: Album Art */}
               {albumArtUrl && (
                 <div style={{ 
                   display: 'flex',
@@ -205,8 +211,9 @@ const LyricsMatchingSection = ({
                   <img 
                     src={albumArtUrl} 
                     alt="Album Art"
-                    key={albumArtUrl} // Add key prop to force re-render when URL changes
+                    key={albumArtUrl}
                     style={{ 
+                      width: '100%',
                       maxWidth: '300px',
                       maxHeight: '300px',
                       objectFit: 'contain',
@@ -249,7 +256,62 @@ const LyricsMatchingSection = ({
                 </div>
               )}
               
-              {audioUrl && (
+              {/* Right column: Original Lyrics Display */}
+              {lyrics && lyrics.length > 0 && (
+                <div style={{
+                  maxHeight: '350px',
+                  overflowY: 'auto',
+                  backgroundColor: theme.colors.background.light,
+                  padding: theme.spacing.md,
+                  borderRadius: theme.borderRadius.md,
+                  boxShadow: theme.shadows.sm
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: theme.spacing.sm
+                  }}>
+                    <h3 style={{
+                      ...theme.typography.h3
+                    }}>
+                      {t('lyrics.fromGenius')}
+                    </h3>
+                    <div style={{
+                      display: 'flex',
+                      gap: theme.spacing.sm
+                    }}>
+                      {onCustomLyrics && (
+                        <Button
+                          onClick={() => onCustomLyrics(lyrics)}
+                          variant="secondary"
+                          size="small"
+                        >
+                          {t('common.edit')}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {lyrics.map((line, index) => (
+                    <p 
+                      key={index}
+                      style={{
+                        margin: `${theme.spacing.xs} 0`,
+                        fontSize: theme.typography.body.fontSize,
+                        lineHeight: 1.5,
+                        whiteSpace: 'pre-wrap'
+                      }}
+                    >
+                      {line || '\u00A0'}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Middle row: Audio Player */}
+            {audioUrl && (
+              <div>
                 <AudioPlayer
                   audioUrl={audioUrl}
                   audioRef={audioRef}
@@ -257,35 +319,38 @@ const LyricsMatchingSection = ({
                   onError={onError}
                   onLoadedMetadata={onLoadedMetadata}
                 />
-              )}
-            </div>
-
-            <LyricsDisplay
-              matchedLyrics={matchedLyrics}
-              currentTime={currentTime}
-              onLyricClick={onLyricClick}
-              duration={audioDuration || 180}
-              onUpdateLyrics={onUpdateLyrics}
-              allowEditing={matchingComplete}
-              onCustomLyrics={onCustomLyrics}
-            />
-
+              </div>
+            )}
+            
+            {/* Bottom row: Synchronized Lyrics */}
             <div>
-              <Button
-                onClick={onDownloadJSON}
-                variant="success"
-                size="small"
-                style={{ maxWidth: '200px' }}
-              >
-                {t('lyrics.downloadJSON')}
-              </Button>
-              <p style={{ 
-                ...theme.typography.small,
-                color: theme.colors.text.secondary,
-                marginTop: theme.spacing.xs
-              }}>
-                {t('matching.lineCount', { count: matchedLyrics.length })}
-              </p>
+              <LyricsDisplay
+                matchedLyrics={matchedLyrics}
+                currentTime={currentTime}
+                onLyricClick={onLyricClick}
+                duration={audioDuration || 180}
+                onUpdateLyrics={onUpdateLyrics}
+                allowEditing={matchingComplete}
+                onCustomLyrics={onCustomLyrics}
+              />
+              
+              <div style={{ marginTop: theme.spacing.md }}>
+                <Button
+                  onClick={onDownloadJSON}
+                  variant="success"
+                  size="small"
+                  style={{ maxWidth: '200px' }}
+                >
+                  {t('lyrics.downloadJSON')}
+                </Button>
+                <p style={{ 
+                  ...theme.typography.small,
+                  color: theme.colors.text.secondary,
+                  marginTop: theme.spacing.xs
+                }}>
+                  {t('matching.lineCount', { count: matchedLyrics.length })}
+                </p>
+              </div>
             </div>
           </div>
         )}
