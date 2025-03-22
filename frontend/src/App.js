@@ -6,7 +6,7 @@ import SongInput from './components/SongInput';
 import Settings from './components/Settings';
 import AudioPreviewSection from './components/AudioPreviewSection';
 import LyricsMatchingSection from './components/LyricsMatchingSection';
-import CustomLyricsInput from './components/CustomLyricsInput';
+import LyricsEditor from './components/LyricsEditor';  // Import the new component
 import ModelSelector from './components/ModelSelector';
 import ImageModelSelector from './components/ImageModelSelector';
 import PromptModelSelector from './components/PromptModelSelector';
@@ -43,6 +43,7 @@ const MainApp = () => {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [albumArtUrl, setAlbumArtUrl] = useState('');
   const [customAlbumArt, setCustomAlbumArt] = useState('');
+  const [isEditingLyrics, setIsEditingLyrics] = useState(false);
 
   // Custom hooks
   const {
@@ -89,6 +90,7 @@ const MainApp = () => {
     setError,
     setLyrics,
     handleCustomLyrics,
+    saveCustomLyrics,  // Extract saveCustomLyrics from the hook
     generatedPrompt,
     generatedImage,
     generateImagePrompt,
@@ -262,7 +264,7 @@ const MainApp = () => {
         />
 
         {/* Audio Preview Section with improved dark mode contrast */}
-        {(audioUrl || lyrics.length > 0 || albumArtUrl) && !matchingComplete && !matchingInProgress && (
+        {(audioUrl || lyrics.length > 0 || albumArtUrl) && !matchingComplete && !matchingInProgress && !isEditingLyrics && (
           <Card>
             <AudioPreviewSection
               audioUrl={audioUrl}
@@ -277,15 +279,32 @@ const MainApp = () => {
               artist={artist}
               song={song}
               onAlbumArtChange={handleAlbumArtChange}
+              onCustomLyrics={() => setIsEditingLyrics(true)}
             />
           </Card>
         )}
 
-        {/* Custom Lyrics Input with consistent styling */}
-        {!matchingInProgress && (
-          <CustomLyricsInput
-            onCustomLyrics={handleCustomLyrics}
-          />
+        {/* Lyrics Editor (replaces CustomLyricsInput) */}
+        {!matchingInProgress && isEditingLyrics && (
+          <Card>
+            <LyricsEditor
+              initialLyrics={lyrics}
+              artist={artist}
+              song={song}
+              onSave={async (lyricsArray, artist, song) => {
+                try {
+                  await saveCustomLyrics(lyricsArray, artist, song);
+                  
+                  // Update state
+                  setLyrics(lyricsArray);
+                  setIsEditingLyrics(false);
+                } catch (error) {
+                  setError(error.message);
+                }
+              }}
+              onCancel={() => setIsEditingLyrics(false)}
+            />
+          </Card>
         )}
 
         {/* Lyrics Matching Section with improved visual hierarchy */}

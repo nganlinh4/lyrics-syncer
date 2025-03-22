@@ -17,7 +17,8 @@ const AudioPreviewSection = ({
   lyrics = [],
   artist,
   song,
-  onAlbumArtChange
+  onAlbumArtChange,
+  onCustomLyrics
 }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef(null);
@@ -187,12 +188,30 @@ const AudioPreviewSection = ({
                 borderRadius: theme.borderRadius.md,
                 boxShadow: theme.shadows.sm
               }}>
-                <h3 style={{
-                  ...theme.typography.h3,
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   marginBottom: theme.spacing.sm
                 }}>
-                  {t('lyrics.fromGenius')}
-                </h3>
+                  <h3 style={{
+                    ...theme.typography.h3
+                  }}>
+                    {t('lyrics.fromGenius')}
+                  </h3>
+                  <div style={{
+                    display: 'flex',
+                    gap: theme.spacing.sm
+                  }}>
+                    <Button
+                      onClick={() => onCustomLyrics?.(lyrics)}
+                      variant="secondary"
+                      size="small"
+                    >
+                      {t('common.edit')}
+                    </Button>
+                  </div>
+                </div>
                 {lyrics.map((line, index) => (
                   <p 
                     key={index}

@@ -209,3 +209,61 @@ export const autoMatchLyrics = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/**
+ * Save custom lyrics
+ */
+export const saveCustomLyrics = async (req, res) => {
+  try {
+    const { artist, song, lyrics } = req.body;
+    
+    if (!artist || !song || !lyrics) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    // Generate filename in the same format as other lyrics files
+    const songName = getSongName(artist, song);
+    const lyricsFilePath = path.join(config.lyricsDir, `${songName}.txt`);
+    const metadataFilePath = path.join(config.lyricsDir, `${songName}_metadata.json`);
+
+    // Create lyrics directory if it doesn't exist
+    await fs.mkdir(config.lyricsDir, { recursive: true });
+
+    // Convert lyrics array to a string
+    const lyricsText = Array.isArray(lyrics) ? lyrics.join('\n') : lyrics;
+
+    // Save lyrics to file
+    await fs.writeFile(lyricsFilePath, lyricsText, 'utf-8');
+    console.log(`Saved custom lyrics to: ${lyricsFilePath}`);
+
+    // Update metadata file if it exists
+    if (await fileExists(metadataFilePath)) {
+      try {
+        const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
+        
+        // Update metadata
+        metadata.customLyrics = true;
+        metadata.lastModified = new Date().toISOString();
+        
+        await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
+        console.log(`Updated metadata file at: ${metadataFilePath}`);
+      } catch (metadataError) {
+        console.error(`Error updating metadata file: ${metadataError.message}`);
+        // Continue anyway, as the lyrics upload was successful
+      }
+    } else {
+      // Create new metadata file
+      const metadata = {
+        customLyrics: true,
+        lastModified: new Date().toISOString()
+      };
+      await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
+    }
+
+    // Return success
+    res.json({ success: true, lyrics: lyricsText });
+  } catch (error) {
+    console.error('Error in saveCustomLyrics:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

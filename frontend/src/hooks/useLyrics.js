@@ -210,6 +210,41 @@ const useLyrics = () => {
     setMatchedLyrics([]);
   }, []);
 
+  const saveCustomLyrics = useCallback(async (customLyrics, artist, song) => {
+    try {
+      setError(null);
+      
+      if (!artist || !song) {
+        throw new Error('Artist and song are required to save custom lyrics');
+      }
+      
+      const response = await fetch(`${API_URL}/api/save_custom_lyrics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          artist,
+          song,
+          lyrics: customLyrics
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save custom lyrics');
+      }
+
+      // Update local state
+      setLyrics(customLyrics);
+      setIsCustomLyrics(true);
+      
+      return true;
+    } catch (err) {
+      console.error('Custom lyrics save error:', err);
+      setError(`Failed to save lyrics: ${err.message}`);
+      throw err;
+    }
+  }, [API_URL]);
+
   const generateImagePrompt = useCallback(async () => {
     try {
       setError(null);
@@ -361,6 +396,7 @@ const useLyrics = () => {
     handleUpdateLyrics,
     handleDownloadJSON,
     handleCustomLyrics,
+    saveCustomLyrics,
     generateImagePrompt,
     generateImage,
     fetchFromGenius
