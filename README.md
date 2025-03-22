@@ -23,7 +23,12 @@ A web application for synchronizing lyrics with audio files, built with React an
 
 ## Configuration
 
-1. Create `backend/config.json` with your API keys:
+1. Copy the example config file to create your own config:
+```bash
+cp backend/config.example.json backend/config.json
+```
+
+2. Add your API keys to `backend/config.json`:
 ```json
 {
     "youtubeApiKey": "YOUR_YOUTUBE_API_KEY",
@@ -31,6 +36,8 @@ A web application for synchronizing lyrics with audio files, built with React an
     "geminiApiKey": "YOUR_GEMINI_API_KEY"
 }
 ```
+
+> **Note:** The `config.json` file is ignored by Git to prevent accidentally committing your API keys to the repository.
 
 ## Setup
 
