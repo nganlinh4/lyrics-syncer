@@ -1,0 +1,289 @@
+{
+  "app": {
+    "title": "Lyrics Syncer",
+    "tagline": "Sync your lyrics with audio effortlessly"
+  },
+  "nav": {
+    "settings": "Settings",
+    "github": "GitHub"
+  },
+  "settings": {
+    "title": "Settings",
+    "apiKeys": "API Keys",
+    "models": {
+      "title": "Models",
+      "chat": {
+        "title": "Chat Models",
+        "lyricsMatching": "Lyrics Matching Model:",
+        "geminiPro": "Gemini 2.0 Pro Experimental"
+      },
+      "prompt": {
+        "title": "Prompt Models",
+        "promptGeneration": "Prompt Generation Model:",
+        "geminiFlash": "Gemini 2.0 Flash Lite",
+        "geminiPro": "Gemini 2.0 Pro Experimental"
+      },
+      "image": {
+        "title": "Image Models",
+        "imageGeneration": "Image Generation Model:",
+        "geminiFlash": "Gemini 2.0 Flash Experimental"
+      }
+    },
+    "imageModels": "Image Models",
+    "promptModels": "Prompt Models",
+    "chatModels": "Chat Models",
+    "geniusApiKey": "Genius API Key:",
+    "youtubeApiKey": "Youtube API Key:",
+    "geminiApiKey": "Gemini API Key:",
+    "save": "Save",
+    "saved": "Saved",
+    "modelDescription": {
+      "geminiPro": "The most powerful model for lyric timing but not always the best.",
+      "geminiFlashLite": "Fast prompt generation with good context understanding",
+      "geminiFlashExp": "Image generation optimized for abstract visualizations"
+    },
+    "apiKeyInstructions": {
+      "genius": {
+        "title": "Get Genius API Key",
+        "step1": "1. Login to Genius",
+        "step2": "2. Click 'New API Client'",
+        "step3": "3. Enter app details",
+        "step4": "4. Get Client Access Token"
+      },
+      "youtube": {
+        "title": "Get Youtube API Key",
+        "step1": "1. Go to Google Cloud Console",
+        "step2": "2. Create or select a project",
+        "step3": "3. Enable 'YouTube Data API v3'",
+        "step4": "4. Go to credentials",
+        "step5": "5. Generate API key"
+      },
+      "gemini": {
+        "title": "Get Gemini API Key",
+        "step1": "1. Login to Google AI Studio",
+        "step2": "2. Click 'Get API Key'",
+        "step3": "3. Create a new key or select existing",
+        "step4": "4. Copy your API key",
+        "step5": "5. Paste it into the field above"
+      }
+    },
+    "apiKeyPlaceholder": "Enter your API key here",
+    "googleApiKey": "Google API Key",
+    "openaiApiKey": "OpenAI API Key",
+    "stabilityApiKey": "Stability API Key",
+    "howToGet": "How to get API Keys",
+    "getApiKey": "Get API Key",
+    "applyChanges": "Apply Changes",
+    "cache": {
+      "title": "Cache Management",
+      "clearAll": "Clear All Cache",
+      "description": "This will delete all cached audio files, lyrics, and debug information."
+    }
+  },
+  "common": {
+    "search": "Search",
+    "download": "Download",
+    "generate": "Generate",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "noResults": "No results found",
+    "preview": "Preview",
+    "edit": "Edit",
+    "delete": "Delete",
+    "apply": "Apply",
+    "reset": "Reset",
+    "start": "Start",
+    "stop": "Stop",
+    "update": "Update",
+    "continue": "Continue",
+    "back": "Back",
+    "next": "Next",
+    "downloadAlbumArt": "Download Album Art",
+    "uploadAlbumArt": "Upload Custom Album Art",
+    "changeAlbumArt": "Change Album Art",
+    "saved": "Saved",
+    "view": "View",
+    "hide": "Hide",
+    "undo": "Undo",
+    "retry": "Retry"
+  },
+  "audio": {
+    "source": "YouTube Audio Source",
+    "download": "Download Audio",
+    "force": "Force Refetch Audio",
+    "artist": "Artist",
+    "song": "Song",
+    "player": "Audio Player",
+    "currentTime": "Current Time",
+    "duration": "Duration",
+    "fileSize": "File Size"
+  },
+  "lyrics": {
+    "title": "Lyrics",
+    "customLyrics": "Enter Custom Lyrics",
+    "enterCustomLyrics": "Enter your custom lyrics here",
+    "pasteInstructions": "Paste your lyrics here (each line will be treated as a single lyric line)",
+    "processLyrics": "Process Lyrics",
+    "matchingProgress": "Matching Progress",
+    "downloadJSON": "Download JSON",
+    "startMatching": "Start Lyrics Matching",
+    "matchingInProgress": "Lyrics matching in progress...",
+    "matchingComplete": "Lyrics matching complete!",
+    "lineByLine": "Line-by-Line Lyrics",
+    "updateTiming": "Update Timing",
+    "timingInstructions": "Drag timing values left or right to adjust (left/right). Changing an earlier timing will automatically update later timings. Use the undo button to revert your last change or the reset button to go back to the original Gemini results.",
+    "stickyTimingsToggle": "Enable sticky timings to control whether one timing adjustment affects all subsequent timings.",
+    "genius": {
+      "source": "Genius Lyrics Source",
+      "useSame": "Use same as YouTube",
+      "fetch": "Get Lyrics from Genius",
+      "force": "Force Refetch Lyrics"
+    },
+    "synchronizedLyrics": "Synchronized Lyrics",
+    "fromGenius": "Lyrics from Genius"
+  },
+  "customLyrics": {
+    "title": "Custom Lyrics",
+    "instructions": "Enter one lyric line per line. Empty lines will be ignored.",
+    "placeholder": "Paste your lyrics here...",
+    "submit": "Submit Lyrics",
+    "charactersCount": "Characters count: {{count}}"
+  },
+  "imageGeneration": {
+    "title": "Background Image Generation",
+    "generateButton": "Generate Background Image",
+    "generating": "Generating...",
+    "prompt": "Generated prompt:",
+    "downloadButton": "Download Background",
+    "imageCredit": "This image was generated inspired by the song's lyrics and album art.",
+    "models": {
+      "gemini2Flash": "Gemini 2.0 Flash Experimental",
+      "description": "Image generation optimized for abstract visualizations"
+    }
+  },
+  "matching": {
+    "title": "Lyrics Matching",
+    "startButton": "Start Advanced Matching",
+    "progress": "Progress:",
+    "processing": "Processing...",
+    "complete": "Matching Complete!",
+    "downloading": "Downloading lyrics data...",
+    "analysisBegin": "Starting audio analysis...",
+    "analyzing": "Analyzing audio...",
+    "matchingBegin": "Starting lyrics matching...",
+    "optimizing": "Optimizing timings...",
+    "finalizing": "Finalizing results...",
+    "languageDetected": "Language detected: {{language}}",
+    "lineCount": "{{count}} lyric lines matched"
+  },
+  "theme": {
+    "light": "Light Mode",
+    "dark": "Dark Mode"
+  },
+  "language": {
+    "title": "Language",
+    "search": "Search languages...",
+    "translating": "Translating interface, please wait...",
+    "toggleToEnglish": "Switch to English",
+    "toggleToKorean": "Switch to Korean"
+  },
+  "footer": {
+    "copyright": "© {{year}} Lyrics Syncer. All rights reserved.",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
+  },
+  "errors": {
+    "translation": "Translation failed. Please try again.",
+    "generic": "An error occurred. Please try again.",
+    "audioDownload": "Failed to download audio",
+    "lyricsDownload": "Failed to download lyrics",
+    "processingError": "A processing error occurred",
+    "apiError": "API error: {{message}}",
+    "cacheDelete": "Failed to delete cache",
+    "matchingFailed": "Lyrics matching failed",
+    "invalidResponse": "Invalid response received from server",
+    "geniusFetchFailed": "Failed to fetch lyrics from Genius",
+    "noLyricsToDownload": "No lyrics to download",
+    "invalidImage": "Invalid image file. Please upload a PNG or JPG file.",
+    "uploadFailed": "Failed to upload image. Please try again.",
+    "artistSongRequired": "Please enter both artist and song name before changing album art"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "intro": "We respect and protect your privacy.",
+    "effective": "Effective date: March 21, 2025",
+    "collection": {
+      "title": "Information We Collect",
+      "paragraph1": "We may collect the following information when you use our service:",
+      "item1": "Basic usage data",
+      "item2": "Lyrics and audio content",
+      "item3": "API keys (if provided)"
+    },
+    "usage": {
+      "title": "How We Use Information",
+      "paragraph1": "We use your information to:",
+      "item1": "Provide and improve our services",
+      "item2": "Personalize user experience",
+      "item3": "Develop new features and services"
+    },
+    "sharing": {
+      "title": "Information Sharing",
+      "paragraph1": "We do not share your personal information with third parties."
+    },
+    "security": {
+      "title": "Security",
+      "paragraph1": "We take appropriate technical measures to protect your personal information."
+    },
+    "changes": {
+      "title": "Changes to This Policy",
+      "paragraph1": "This privacy policy may change, and we will post updates on this page."
+    },
+    "contact": {
+      "title": "Contact Us",
+      "paragraph1": "If you have any questions, please contact us via email."
+    },
+    "backToHome": "Back to Home"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "intro": "Thank you for using Lyrics Syncer ('Service').",
+    "effective": "Effective date: March 21, 2025",
+    "acceptance": {
+      "title": "Acceptance of Terms",
+      "paragraph1": "By accessing or using the Lyrics Syncer service, you agree to be bound by these Terms of Service"
+    },
+    "account": {
+      "title": "Account",
+      "paragraph1": "You may need API keys to use certain features of the Service."
+    },
+    "content": {
+      "title": "Content and Conduct",
+      "paragraph1": "You are responsible for all content that you upload to the Service.",
+      "paragraph2": "Do not upload illegal or harmful content."
+    },
+    "intellectual": {
+      "title": "Intellectual Property",
+      "paragraph1": "The Service is the property of us and our licensors.",
+      "paragraph2": "You retain rights to content you create."
+    },
+    "termination": {
+      "title": "Termination",
+      "paragraph1": "We reserve the right to terminate the Service at any time without cause."
+    },
+    "disclaimer": {
+      "title": "Disclaimer",
+      "paragraph1": "The Service is provided 'as is' without any warranties."
+    },
+    "limitation": {
+      "title": "Limitation of Liability",
+      "paragraph1": "We are not liable for any damages arising from your use of the Service."
+    },
+    "changes": {
+      "title": "Changes to Terms",
+      "paragraph1": "We reserve the right to modify these terms at any time."
+    },
+    "backToHome": "Back to Home"
+  }
+}

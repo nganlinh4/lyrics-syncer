@@ -81,3 +81,5 @@ venv/
 /backend/models/
 *.pt
 *.pth
+
+!/frontend/public/locales/**/*.json

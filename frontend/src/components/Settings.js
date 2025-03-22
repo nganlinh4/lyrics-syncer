@@ -153,14 +153,14 @@ const Settings = ({
 
             {/* Models Section */}
             <section>
-              <h3 style={theme.typography.h3}>{t('settings.models')}</h3>
+              <h3 style={theme.typography.h3}>{t('settings.models.title')}</h3>
               <div style={{ display: 'grid', gap: theme.spacing.md }}>
                 <div style={{
                   padding: theme.spacing.md,
                   backgroundColor: theme.colors.background.light,
                   borderRadius: theme.borderRadius.sm
                 }}>
-                  <h4 style={theme.typography.h4}>{t('settings.chatModels')}</h4>
+                  <h4 style={theme.typography.h4}>{t('settings.models.chat.title')}</h4>
                   <ModelSelector
                     selectedModel={selectedModel}
                     onModelChange={onModelChange}
@@ -171,7 +171,7 @@ const Settings = ({
                   backgroundColor: theme.colors.background.light,
                   borderRadius: theme.borderRadius.sm
                 }}>
-                  <h4 style={theme.typography.h4}>{t('settings.promptModels')}</h4>
+                  <h4 style={theme.typography.h4}>{t('settings.models.prompt.title')}</h4>
                   <PromptModelSelector
                     selectedModel={selectedPromptModel}
                     onModelChange={onPromptModelChange}
@@ -182,7 +182,7 @@ const Settings = ({
                   backgroundColor: theme.colors.background.light,
                   borderRadius: theme.borderRadius.sm
                 }}>
-                  <h4 style={theme.typography.h4}>{t('settings.imageModels')}</h4>
+                  <h4 style={theme.typography.h4}>{t('settings.models.image.title')}</h4>
                   <ImageModelSelector
                     selectedModel={selectedImageModel}
                     onModelChange={onImageModelChange}
