@@ -157,10 +157,28 @@ export const forceLyrics = async (req, res) => {
     }
 
     req.body.force = true;
-    return getLyrics(req, res);
+    
+    // Get fresh data from Genius API
+    const result = await getLyrics(req, res);
+    
+    // Generate a timestamp to force browser to refresh the image
+    if (!res.headersSent) {
+      const albumArtUrl = result?.albumArtUrl;
+      if (albumArtUrl) {
+        const timestamp = new Date().getTime();
+        const refreshedUrl = `${albumArtUrl}?t=${timestamp}`;
+        res.json({ ...result, albumArtUrl: refreshedUrl });
+        return;
+      }
+    }
+    
+    // If we've reached this point, getLyrics already sent a response
+    return;
   } catch (error) {
     console.error("Error in /api/force_lyrics:", error);
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
   }
 };
 
