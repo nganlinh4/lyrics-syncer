@@ -1,0 +1,5 @@
+{
+  "youtubeApiKey": "YOUR_YOUTUBE_API_KEY_HERE",
+  "geniusApiKey": "YOUR_GENIUS_API_KEY_HERE",
+  "geminiApiKey": "YOUR_GEMINI_API_KEY_HERE"
+}
