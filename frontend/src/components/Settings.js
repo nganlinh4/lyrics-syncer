@@ -81,18 +81,25 @@ const Settings = ({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: theme.colors.backdrop,
+      backgroundColor: 'var(--backdrop-overlay)',
+      backdropFilter: 'blur(4px)',
+      WebkitBackdropFilter: 'blur(4px)', // For Safari support
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'start',
       padding: theme.spacing.xl,
       overflowY: 'auto',
-      zIndex: 1000
+      zIndex: 1000,
+      transition: theme.transitions.medium
     }}>
       <Card style={{ 
         width: '100%', 
         maxWidth: '800px',
-        marginBottom: theme.spacing.xl
+        marginBottom: theme.spacing.xl,
+        opacity: 1,
+        transform: 'translateY(0)',
+        transition: 'opacity 0.3s ease, transform 0.3s ease',
+        animation: 'settings-modal-in 0.3s ease'
       }}>
         <div style={{
           display: 'flex',
