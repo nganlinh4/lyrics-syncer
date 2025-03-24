@@ -81,188 +81,167 @@ const Settings = ({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: theme.colors.backdrop,
       display: 'flex',
-      alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1000,
+      alignItems: 'start',
+      padding: theme.spacing.xl,
+      overflowY: 'auto',
+      zIndex: 1000
     }}>
-      <div style={{
-        backgroundColor: theme.colors.background.main,
-        borderRadius: theme.borderRadius.md,
-        boxShadow: theme.shadows.lg,
-        width: '90%',
-        maxWidth: '600px',
-        maxHeight: '90vh',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative'
+      <Card style={{ 
+        width: '100%', 
+        maxWidth: '800px',
+        marginBottom: theme.spacing.xl
       }}>
-        {/* Sticky Header */}
         <div style={{
-          padding: theme.spacing.md,
-          borderBottom: `1px solid ${theme.colors.border}`,
-          backgroundColor: theme.colors.background.main,
-          borderTopLeftRadius: theme.borderRadius.md,
-          borderTopRightRadius: theme.borderRadius.md,
-          position: 'sticky',
-          top: 0,
-          zIndex: 1,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          marginBottom: theme.spacing.lg
         }}>
-          <h2 style={{...theme.typography.h2, margin: 0}}>{t('settings.title')}</h2>
-          <Button
-            onClick={onClose}
-            variant="secondary"
-            size="small"
-          >
+          <h2 style={theme.typography.h2}>{t('settings.title')}</h2>
+          <Button onClick={onClose} variant="secondary">
             {t('common.close')}
           </Button>
         </div>
 
-        {/* Scrollable Content */}
-        <div style={{
-          padding: theme.spacing.lg,
-          overflow: 'auto',
-          flexGrow: 1
-        }}>
-          <div style={{ display: 'grid', gap: theme.spacing.lg }}>
-            {/* API Keys Section */}
-            <section>
-              <h3 style={theme.typography.h3}>{t('settings.apiKeys')}</h3>
-              <div style={{ display: 'grid', gap: theme.spacing.md }}>
-                {Object.entries(apiKeys).map(([type, { key, status }]) => (
-                  <div key={type} style={{ 
-                    padding: theme.spacing.md,
-                    backgroundColor: theme.colors.background.light,
-                    borderRadius: theme.borderRadius.sm
-                  }}>
-                    <ApiKeyInput
-                      type={type}
-                      value={key}
-                      status={status}
-                      onChange={(value) => onApiKeyChange(type, value)}
-                      onSave={onSaveApiKey}
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
+        <div style={{ display: 'grid', gap: theme.spacing.xl }}>
+          {/* API Keys Section */}
+          <section>
+            <h3 style={theme.typography.h3}>{t('settings.apiKeys')}</h3>
+            <div style={{ display: 'grid', gap: theme.spacing.md }}>
+              <ApiKeyInput
+                type="genius"
+                label={t('settings.geniusApiKey')}
+                value={apiKeys.genius || ''}
+                onChange={onApiKeyChange}
+                onSave={onSaveApiKey}
+              />
+              <ApiKeyInput
+                type="youtube"
+                label={t('settings.youtubeApiKey')}
+                value={apiKeys.youtube || ''}
+                onChange={onApiKeyChange}
+                onSave={onSaveApiKey}
+              />
+              <ApiKeyInput
+                type="gemini"
+                label={t('settings.geminiApiKey')}
+                value={apiKeys.gemini || ''}
+                onChange={onApiKeyChange}
+                onSave={onSaveApiKey}
+              />
+            </div>
+          </section>
 
-            {/* Models Section */}
-            <section>
-              <h3 style={theme.typography.h3}>{t('settings.models.title')}</h3>
-              <div style={{ display: 'grid', gap: theme.spacing.md }}>
-                <div style={{
-                  padding: theme.spacing.md,
-                  backgroundColor: theme.colors.background.light,
-                  borderRadius: theme.borderRadius.sm
-                }}>
-                  <h4 style={theme.typography.h4}>{t('settings.models.chat.title')}</h4>
-                  <ModelSelector
-                    selectedModel={selectedModel}
-                    onModelChange={onModelChange}
-                  />
-                </div>
-                <div style={{
-                  padding: theme.spacing.md,
-                  backgroundColor: theme.colors.background.light,
-                  borderRadius: theme.borderRadius.sm
-                }}>
-                  <h4 style={theme.typography.h4}>{t('settings.models.prompt.title')}</h4>
-                  <PromptModelSelector
-                    selectedModel={selectedPromptModel}
-                    onModelChange={onPromptModelChange}
-                  />
-                </div>
-                <div style={{
-                  padding: theme.spacing.md,
-                  backgroundColor: theme.colors.background.light,
-                  borderRadius: theme.borderRadius.sm
-                }}>
-                  <h4 style={theme.typography.h4}>{t('settings.models.image.title')}</h4>
-                  <ImageModelSelector
-                    selectedModel={selectedImageModel}
-                    onModelChange={onImageModelChange}
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Cache Management Section */}
-            <section>
-              <h3 style={theme.typography.h3}>{t('settings.cache.title')}</h3>
-              <div style={{ 
+          {/* Models Section */}
+          <section>
+            <h3 style={theme.typography.h3}>{t('settings.models.title')}</h3>
+            <div style={{ display: 'grid', gap: theme.spacing.lg }}>
+              {/* Lyrics Model */}
+              <div style={{
                 padding: theme.spacing.md,
                 backgroundColor: theme.colors.background.light,
                 borderRadius: theme.borderRadius.sm
               }}>
-                <div style={{ display: 'grid', gap: theme.spacing.md }}>
-                  <div>
-                    <Button
-                      onClick={handleDeleteCache}
-                      disabled={loading}
-                      variant="error"
-                      style={{ marginBottom: theme.spacing.md }}
-                    >
-                      {loading ? t('common.loading') : t('settings.cache.clearAll')}
-                    </Button>
-                    
-                    <p style={{
-                      ...theme.typography.small,
-                      color: theme.colors.text.secondary
-                    }}>
-                      {t('settings.cache.description')}
-                    </p>
-                  </div>
-
-                  {results && (
-                    <div style={{
-                      backgroundColor: theme.colors.background.main,
-                      borderRadius: theme.borderRadius.sm,
-                      padding: theme.spacing.md
-                    }}>
-                      {results.map((result, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: theme.spacing.sm,
-                            marginBottom: index < results.length - 1 ? theme.spacing.sm : 0
-                          }}
-                        >
-                          <span style={{
-                            color: getStatusColor(result.status),
-                            fontSize: theme.typography.body.fontSize,
-                            fontWeight: 'bold'
-                          }}>
-                            {getStatusIcon(result.status)}
-                          </span>
-                          <span style={{
-                            ...theme.typography.body,
-                            color: theme.colors.text.primary
-                          }}>
-                            {result.folder}:
-                          </span>
-                          <span style={{
-                            ...theme.typography.small,
-                            color: theme.colors.text.secondary
-                          }}>
-                            {result.message}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ModelSelector
+                  selectedModel={selectedModel}
+                  onModelChange={onModelChange}
+                />
               </div>
-            </section>
-          </div>
+
+              {/* Prompt Model */}
+              <div style={{
+                padding: theme.spacing.md,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <PromptModelSelector
+                  selectedModel={selectedPromptModel}
+                  onModelChange={onPromptModelChange}
+                />
+              </div>
+
+              {/* Image Model */}
+              <div style={{
+                padding: theme.spacing.md,
+                backgroundColor: theme.colors.background.light,
+                borderRadius: theme.borderRadius.sm
+              }}>
+                <ImageModelSelector
+                  selectedModel={selectedImageModel}
+                  onModelChange={onImageModelChange}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Cache Management Section */}
+          <section>
+            <h3 style={theme.typography.h3}>{t('settings.cache.title')}</h3>
+            <div style={{ 
+              padding: theme.spacing.md,
+              backgroundColor: theme.colors.background.light,
+              borderRadius: theme.borderRadius.sm
+            }}>
+              <div style={{ display: 'grid', gap: theme.spacing.md }}>
+                <div>
+                  <Button
+                    onClick={handleDeleteCache}
+                    disabled={loading}
+                    variant="error"
+                    style={{ marginBottom: theme.spacing.md }}
+                  >
+                    {loading ? t('common.loading') : t('settings.cache.clearAll')}
+                  </Button>
+                  
+                  <p style={{
+                    ...theme.typography.small,
+                    color: theme.colors.text.secondary
+                  }}>
+                    {t('settings.cache.description')}
+                  </p>
+                </div>
+
+                {results && (
+                  <div style={{
+                    backgroundColor: theme.colors.background.main,
+                    borderRadius: theme.borderRadius.sm,
+                    padding: theme.spacing.md
+                  }}>
+                    {results.map((result, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: theme.spacing.sm,
+                          marginBottom: index < results.length - 1 ? theme.spacing.sm : 0
+                        }}
+                      >
+                        <span style={{
+                          color: getStatusColor(result.status),
+                          fontSize: theme.typography.body.fontSize,
+                          fontWeight: 'bold'
+                        }}>
+                          {getStatusIcon(result.status)}
+                        </span>
+                        <span style={{
+                          ...theme.typography.body,
+                          color: theme.colors.text.primary
+                        }}>
+                          {result.folder}: {result.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

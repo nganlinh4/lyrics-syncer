@@ -156,7 +156,7 @@ const LyricsMatchingSection = ({
               variant="warning"
               style={{ flex: '1 1 auto', minWidth: '200px' }}
             >
-              {t('lyrics.genius.force')}
+              {t('lyrics.genius.forceRematch')}
             </Button>
           </div>
         )}

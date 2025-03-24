@@ -12,21 +12,22 @@
     "apiKeys": "API Keys",
     "models": {
       "title": "Models",
-      "chat": {
-        "title": "Chat Models",
+      "lyrics": {
+        "title": "Lyrics Processing Models",
         "lyricsMatching": "Lyrics Matching Model:",
-        "geminiPro": "Gemini 2.0 Pro Experimental"
+        "geminiPro": "Gemini Pro Advanced",
+        "geminiFlashThinking": "Gemini Flash Thinking"
       },
       "prompt": {
         "title": "Prompt Models",
         "promptGeneration": "Prompt Generation Model:",
-        "geminiFlash": "Gemini 2.0 Flash Lite",
-        "geminiPro": "Gemini 2.0 Pro Experimental"
+        "geminiFlash": "Gemini Flash Lite",
+        "geminiPro": "Gemini Pro"
       },
       "image": {
         "title": "Image Models",
         "imageGeneration": "Image Generation Model:",
-        "geminiFlash": "Gemini 2.0 Flash Experimental"
+        "geminiFlash": "Gemini Flash Experimental"
       }
     },
     "imageModels": "Image Models",
@@ -39,6 +40,7 @@
     "saved": "Saved",
     "modelDescription": {
       "geminiPro": "The most powerful model for lyric timing but not always the best.",
+      "geminiFlashThinking": "Advanced thinking model for complex lyrics analysis",
       "geminiFlashLite": "Fast prompt generation with good context understanding",
       "geminiFlashExp": "Image generation optimized for abstract visualizations"
     },
@@ -139,7 +141,8 @@
       "source": "Genius Lyrics Source",
       "useSame": "Use same as YouTube",
       "fetch": "Get Lyrics from Genius",
-      "force": "Force Refetch Lyrics"
+      "force": "Force Refetch Lyrics",
+      "forceRematch": "Force Rematch Lyrics"
     },
     "synchronizedLyrics": "Synchronized Lyrics",
     "fromGenius": "Lyrics from Genius"

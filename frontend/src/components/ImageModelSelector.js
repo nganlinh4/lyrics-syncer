@@ -18,20 +18,27 @@ const ImageModelSelector = ({ selectedModel, onModelChange }) => {
       display: 'grid',
       gap: theme.spacing.sm
     }}>
-      <label
-        htmlFor="imageModelSelect"
-        style={{
-          ...theme.typography.body,
-          fontWeight: '500'
-        }}
-      >
-        {t('settings.models.image.imageGeneration')}
-      </label>
-      
+      <h3 style={{
+        ...theme.typography.h3,
+        marginBottom: theme.spacing.md
+      }}>
+        {t('settings.models.image.title')}
+      </h3>
+
       <div style={{
         display: 'grid',
         gap: theme.spacing.sm
       }}>
+        <label
+          htmlFor="imageModelSelect"
+          style={{
+            ...theme.typography.body,
+            fontWeight: '500'
+          }}
+        >
+          {t('settings.models.image.imageGeneration')}
+        </label>
+
         <select
           id="imageModelSelect"
           value={selectedModel}

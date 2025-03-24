@@ -20,7 +20,7 @@ const StatusIndicator = ({ status }) => {
       error: {
         color: theme.colors.error,
         icon: '!',
-        textKey: 'common.error'
+        textKey: 'errors.generic'
       }
     };
     return statuses[status] || statuses.unsaved;
@@ -38,20 +38,8 @@ const StatusIndicator = ({ status }) => {
       color: statusStyle.color,
       transition: theme.transitions.fast
     }}>
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '16px',
-        height: '16px',
-        borderRadius: '50%',
-        border: `2px solid ${statusStyle.color}`,
-        fontSize: '12px',
-        lineHeight: 1
-      }}>
-        {statusStyle.icon}
-      </span>
-      {t(statusStyle.textKey)}
+      <span>{statusStyle.icon}</span>
+      <span>{t(statusStyle.textKey)}</span>
     </span>
   );
 };

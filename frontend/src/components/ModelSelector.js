@@ -2,16 +2,16 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import theme from '../theme/theme';
 
-const AVAILABLE_MODELS = [
+const MODELS = [
   {
     id: 'gemini-2.0-pro-exp-02-05',
-    nameKey: 'settings.models.chat.geminiPro',
+    nameKey: 'settings.models.lyrics.geminiPro',
     descriptionKey: 'settings.modelDescription.geminiPro'
   },
   {
     id: 'gemini-2.0-flash-thinking-exp-01-21',
-    nameKey: 'settings.models.chat.geminiFlash',
-    descriptionKey: 'settings.modelDescription.geminiFlashLite'
+    nameKey: 'settings.models.lyrics.geminiFlashThinking',
+    descriptionKey: 'settings.modelDescription.geminiFlashThinking'
   }
 ];
 
@@ -23,20 +23,27 @@ const ModelSelector = ({ selectedModel, onModelChange }) => {
       display: 'grid',
       gap: theme.spacing.sm
     }}>
-      <label
-        htmlFor="modelSelect"
-        style={{
-          ...theme.typography.body,
-          fontWeight: '500'
-        }}
-      >
-        {t('settings.models.chat.lyricsMatching')}
-      </label>
+      <h3 style={{
+        ...theme.typography.h3,
+        marginBottom: theme.spacing.md
+      }}>
+        {t('settings.models.lyrics.title')}
+      </h3>
       
       <div style={{
         display: 'grid',
         gap: theme.spacing.sm
       }}>
+        <label
+          htmlFor="modelSelect"
+          style={{
+            ...theme.typography.body,
+            fontWeight: '500'
+          }}
+        >
+          {t('settings.models.lyrics.lyricsMatching')}
+        </label>
+
         <select
           id="modelSelect"
           value={selectedModel}
@@ -52,7 +59,7 @@ const ModelSelector = ({ selectedModel, onModelChange }) => {
             transition: theme.transitions.fast
           }}
         >
-          {AVAILABLE_MODELS.map(model => (
+          {MODELS.map(model => (
             <option key={model.id} value={model.id}>
               {t(model.nameKey)}
             </option>
@@ -64,7 +71,7 @@ const ModelSelector = ({ selectedModel, onModelChange }) => {
           color: theme.colors.text.secondary,
           marginTop: theme.spacing.xs
         }}>
-          {t(AVAILABLE_MODELS.find(m => m.id === selectedModel)?.descriptionKey)}
+          {t(MODELS.find(m => m.id === selectedModel)?.descriptionKey)}
         </p>
       </div>
     </div>

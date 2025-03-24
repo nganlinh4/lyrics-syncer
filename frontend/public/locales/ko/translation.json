@@ -12,21 +12,22 @@
     "apiKeys": "API 키",
     "models": {
       "title": "모델",
-      "chat": {
-        "title": "챗 모델",
+      "lyrics": {
+        "title": "가사 처리 모델",
         "lyricsMatching": "가사 매칭 모델:",
-        "geminiPro": "Gemini 2.0 Pro 실험용"
+        "geminiPro": "Gemini Pro 고급",
+        "geminiFlashThinking": "Gemini Flash 싱킹"
       },
       "prompt": {
         "title": "프롬프트 모델",
         "promptGeneration": "프롬프트 생성 모델:",
-        "geminiFlash": "Gemini 2.0 Flash Lite",
-        "geminiPro": "Gemini 2.0 Pro 실험용"
+        "geminiFlash": "Gemini Flash 라이트",
+        "geminiPro": "Gemini Pro"
       },
       "image": {
         "title": "이미지 모델",
         "imageGeneration": "이미지 생성 모델:",
-        "geminiFlash": "Gemini 2.0 Flash 실험용"
+        "geminiFlash": "Gemini Flash 실험"
       }
     },
     "imageModels": "이미지 모델",
@@ -38,7 +39,8 @@
     "save": "저장",
     "saved": "저장됨",
     "modelDescription": {
-      "geminiPro": "가사 타이밍을 위한 최강의 모델입니다. 하지만 항상 최선은 아닙니다.",
+      "geminiPro": "가장 강력한 가사 타이밍 모델이지만 항상 최선은 아님",
+      "geminiFlashThinking": "복잡한 가사 분석을 위한 고급 싱킹 모델",
       "geminiFlashLite": "빠른 프롬프트 생성과 좋은 문맥 이해력",
       "geminiFlashExp": "추상적 시각화에 최적화된 이미지 생성"
     },
@@ -103,7 +105,9 @@
     "view": "보기",
     "hide": "숨기기",
     "undo": "실행 취소",
-    "retry": "다시 시도"
+    "retry": "다시 시도",
+    "unsaved": "저장되지 않음",
+    "changeAlbumArt": "앨범 아트 변경"
   },
   "audio": {
     "source": "유튜브 오디오 소스",
@@ -135,7 +139,8 @@
       "source": "지니어스 가사 소스",
       "useSame": "유튜브와 동일하게 사용",
       "fetch": "지니어스에서 가사 가져오기",
-      "force": "가사 강제 다시 가져오기"
+      "force": "가사 강제 다시 가져오기",
+      "forceRematch": "가사 강제 다시 매칭"
     },
     "synchronizedLyrics": "동기화된 가사",
     "fromGenius": "지니어스 가사"
@@ -172,7 +177,8 @@
     "optimizing": "타이밍 최적화 중...",
     "finalizing": "결과 완성 중...",
     "languageDetected": "감지된 언어: {{language}}",
-    "lineCount": "{{count}}개 가사 줄 매칭됨"
+    "lineCount": "{{count}}개 가사 줄 매칭됨",
+    "initializing": "매칭 프로세스 초기화 중..."
   },
   "theme": {
     "light": "라이트 모드",
@@ -278,5 +284,12 @@
       "paragraph1": "당사는 언제든지 본 약관을 변경할 권리가 있습니다."
     },
     "backToHome": "홈으로 돌아가기"
+  },
+  "cache": {
+    "results": {
+      "audio": "오디오: {{count}}개 파일 삭제됨",
+      "lyrics": "가사: {{count}}개 파일 삭제됨",
+      "debug": "디버그: {{count}}개 파일 삭제됨"
+    }
   }
 }

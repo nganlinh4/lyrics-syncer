@@ -23,20 +23,27 @@ const PromptModelSelector = ({ selectedModel, onModelChange }) => {
       display: 'grid',
       gap: theme.spacing.sm
     }}>
-      <label
-        htmlFor="promptModelSelect"
-        style={{
-          ...theme.typography.body,
-          fontWeight: '500'
-        }}
-      >
-        {t('settings.models.prompt.promptGeneration')}
-      </label>
-      
+      <h3 style={{
+        ...theme.typography.h3,
+        marginBottom: theme.spacing.md
+      }}>
+        {t('settings.models.prompt.title')}
+      </h3>
+
       <div style={{
         display: 'grid',
         gap: theme.spacing.sm
       }}>
+        <label
+          htmlFor="promptModelSelect"
+          style={{
+            ...theme.typography.body,
+            fontWeight: '500'
+          }}
+        >
+          {t('settings.models.prompt.promptGeneration')}
+        </label>
+
         <select
           id="promptModelSelect"
           value={selectedModel}
