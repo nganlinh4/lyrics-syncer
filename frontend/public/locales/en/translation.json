@@ -15,7 +15,7 @@
       "lyrics": {
         "title": "Lyrics Processing Models",
         "lyricsMatching": "Lyrics Matching Model:",
-        "geminiPro": "Gemini Pro Advanced",
+        "geminiPro": "Gemini Pro",
         "geminiFlashThinking": "Gemini Flash Thinking"
       },
       "prompt": {

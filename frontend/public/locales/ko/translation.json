@@ -15,7 +15,7 @@
       "lyrics": {
         "title": "가사 처리 모델",
         "lyricsMatching": "가사 매칭 모델:",
-        "geminiPro": "Gemini Pro 고급",
+        "geminiPro": "Gemini Pro",
         "geminiFlashThinking": "Gemini Flash 싱킹"
       },
       "prompt": {

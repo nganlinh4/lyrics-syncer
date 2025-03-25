@@ -9,7 +9,7 @@ const PROMPT_MODELS = [
     descriptionKey: 'settings.modelDescription.geminiFlashLite'
   },
   {
-    id: 'gemini-2.0-pro-exp-02-05',
+    id: 'gemini-2.5-pro-exp-03-25',
     nameKey: 'settings.models.prompt.geminiPro',
     descriptionKey: 'settings.modelDescription.geminiPro'
   }

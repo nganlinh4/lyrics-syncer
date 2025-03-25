@@ -30,7 +30,7 @@ const MainApp = () => {
   // Model state
   const [selectedModel, setSelectedModel] = useState(() => {
     const savedModel = localStorage.getItem('selectedModel');
-    const defaultModel = 'gemini-2.0-pro-exp-02-05';
+    const defaultModel = 'gemini-2.5-pro-exp-03-25';
     return savedModel || defaultModel;
   });
 

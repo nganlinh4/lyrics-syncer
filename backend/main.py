@@ -362,7 +362,7 @@ def generate_prompt_with_gemini(lyrics, model_name, song_name):
         # Validate model name
         VALID_PROMPT_MODELS = [
             'gemini-2.0-flash-lite',
-            'gemini-2.0-pro-exp-02-05'
+            'gemini-2.5-pro-exp-03-25'
         ]
         
         if model_name not in VALID_PROMPT_MODELS:
