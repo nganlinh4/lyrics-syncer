@@ -140,7 +140,7 @@
     "genius": {
       "source": "Genius Lyrics Source",
       "useSame": "Use same as YouTube",
-      "fetch": "Get Lyrics from Genius",
+      "fetch": "Get Lyrics + Album Art from Genius",
       "force": "Force Refetch Lyrics",
       "forceRematch": "Force Rematch Lyrics"
     },
