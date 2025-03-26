@@ -30,6 +30,7 @@ node_modules/
 *.jpeg
 *.png
 *.gif
+!/readme_assests/**/*.png
 
 # Generated files
 /lyrics/
