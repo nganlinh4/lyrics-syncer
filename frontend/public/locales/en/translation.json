@@ -50,7 +50,8 @@
         "step1": "1. Login to Genius",
         "step2": "2. Click 'New API Client'",
         "step3": "3. Enter app details",
-        "step4": "4. Get Client Access Token"
+        "step4": "4. Get Client Access Token",
+        "step5": "5. Copy and paste the token"
       },
       "youtube": {
         "title": "Get Youtube API Key",
@@ -82,6 +83,14 @@
       "description": "This will delete all cached audio files, lyrics, and debug information."
     }
   },
+  "cache": {
+    "results": {
+      "audio": "Audio: {{count}} files deleted",
+      "lyrics": "Lyrics: {{count}} files deleted",
+      "debug": "Debug: {{count}} files deleted"
+    },
+    "folderNotExist": "Folder does not exist"
+  },
   "common": {
     "search": "Search",
     "download": "Download",
@@ -106,6 +115,7 @@
     "uploadAlbumArt": "Upload Custom Album Art",
     "changeAlbumArt": "Change Album Art",
     "saved": "Saved",
+    "unsaved": "Unsaved",
     "view": "View",
     "hide": "Hide",
     "undo": "Undo",
@@ -179,7 +189,8 @@
     "optimizing": "Optimizing timings...",
     "finalizing": "Finalizing results...",
     "languageDetected": "Language detected: {{language}}",
-    "lineCount": "{{count}} lyric lines matched"
+    "lineCount": "{{count}} lyric lines matched",
+    "initializing": "Initializing matching process..."
   },
   "theme": {
     "light": "Light Mode",

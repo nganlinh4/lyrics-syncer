@@ -238,7 +238,9 @@ const Settings = ({
                           ...theme.typography.body,
                           color: theme.colors.text.primary
                         }}>
-                          {result.folder}: {result.message}
+                          {result.translationKey 
+                            ? t(result.translationKey, { count: result.count }) 
+                            : `${result.folder}: ${result.message}`}
                         </span>
                       </div>
                     ))}

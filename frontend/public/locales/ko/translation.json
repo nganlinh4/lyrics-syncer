@@ -50,7 +50,8 @@
         "step1": "1. Genius에 로그인",
         "step2": "2. 'New API Client' 클릭",
         "step3": "3. 앱 세부사항 입력",
-        "step4": "4. Client Access Token 얻기"
+        "step4": "4. Client Access Token 얻기",
+        "step5": "5. 토큰을 복사하여 붙여넣기"
       },
       "youtube": {
         "title": "Youtube API 키 얻기",
@@ -64,7 +65,9 @@
         "title": "Gemini API 키 얻기",
         "step1": "1. Google AI Studio에 로그인",
         "step2": "2. 'API 키 얻기' 클릭",
-        "step3": "3. 새 키 생성 또는 기존 키 선택"
+        "step3": "3. 새 키 생성 또는 기존 키 선택",
+        "step4": "4. API 키 복사",
+        "step5": "5. 위 필드에 키 붙여넣기"
       }
     },
     "apiKeyPlaceholder": "여기에 API 키를 입력하세요",
@@ -79,6 +82,14 @@
       "clearAll": "모든 캐시 지우기",
       "description": "이것은 모든 캐시된 오디오 파일, 가사 및 디버그 정보를 삭제합니다."
     }
+  },
+  "cache": {
+    "results": {
+      "audio": "오디오: {{count}}개 파일 삭제됨",
+      "lyrics": "가사: {{count}}개 파일 삭제됨",
+      "debug": "디버그: {{count}}개 파일 삭제됨"
+    },
+    "folderNotExist": "폴더가 존재하지 않습니다"
   },
   "common": {
     "search": "검색",
@@ -101,6 +112,7 @@
     "back": "뒤로",
     "next": "다음",
     "downloadAlbumArt": "앨범 아트 다운로드",
+    "uploadAlbumArt": "사용자 정의 앨범 아트 업로드",
     "saved": "저장됨",
     "view": "보기",
     "hide": "숨기기",
@@ -207,7 +219,10 @@
     "matchingFailed": "가사 매칭에 실패했습니다",
     "invalidResponse": "서버로부터 잘못된 응답을 받았습니다",
     "geniusFetchFailed": "지니어스에서 가사를 가져오는데 실패했습니다",
-    "noLyricsToDownload": "다운로드할 가사가 없습니다"
+    "noLyricsToDownload": "다운로드할 가사가 없습니다",
+    "invalidImage": "유효하지 않은 이미지 파일입니다. PNG 또는 JPG 파일을 업로드해주세요.",
+    "uploadFailed": "이미지 업로드에 실패했습니다. 다시 시도해주세요.",
+    "artistSongRequired": "앨범 아트를 변경하기 전에 아티스트와 노래 이름을 모두 입력해주세요"
   },
   "privacy": {
     "title": "개인정보 보호정책",
@@ -284,12 +299,5 @@
       "paragraph1": "당사는 언제든지 본 약관을 변경할 권리가 있습니다."
     },
     "backToHome": "홈으로 돌아가기"
-  },
-  "cache": {
-    "results": {
-      "audio": "오디오: {{count}}개 파일 삭제됨",
-      "lyrics": "가사: {{count}}개 파일 삭제됨",
-      "debug": "디버그: {{count}}개 파일 삭제됨"
-    }
   }
 }

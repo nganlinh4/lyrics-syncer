@@ -429,12 +429,27 @@ export const deleteCache = async (req, res) => {
             }
           }
           
-          results.push({ folder: folder.name, status: 'success', message: `Deleted ${files.length} files` });
+          // Return a translation key and file count instead of the hardcoded message
+          results.push({ 
+            folder: folder.name, 
+            status: 'success', 
+            translationKey: 'cache.results.' + folder.name,
+            count: files.length
+          });
         } else {
-          results.push({ folder: folder.name, status: 'warning', message: 'Folder does not exist' });
+          results.push({ 
+            folder: folder.name, 
+            status: 'warning', 
+            translationKey: 'cache.folderNotExist'
+          });
         }
       } catch (error) {
-        results.push({ folder: folder.name, status: 'error', message: error.message });
+        results.push({ 
+          folder: folder.name, 
+          status: 'error', 
+          translationKey: 'errors.generic',
+          errorMessage: error.message
+        });
       }
     }
     
