@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import ThemeProvider from './theme/ThemeProvider';
 import MainLayout from './layouts/MainLayout';
 import SongInput from './components/SongInput';
 import Settings from './components/Settings';
@@ -14,9 +15,6 @@ import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import Card from './ui/Card';
 import Button from './ui/Button';
-import ErrorDisplay from './ui/ErrorDisplay';
-import theme from './theme/theme';
-import ThemeProvider from './theme/ThemeProvider';
 import useApiKeys from './hooks/useApiKeys';
 import useAudioControl from './hooks/useAudioControl';
 import useLyrics from './hooks/useLyrics';
@@ -42,7 +40,6 @@ const MainApp = () => {
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [albumArtUrl, setAlbumArtUrl] = useState('');
-  const [customAlbumArt, setCustomAlbumArt] = useState('');
   const [isEditingLyrics, setIsEditingLyrics] = useState(false);
 
   // Custom hooks
@@ -82,8 +79,6 @@ const MainApp = () => {
     setMatchingComplete,
     isCustomLyrics,
     matchingProgress,
-    languageDetected,
-    handlePreviewLyrics,
     handleAdvancedMatch,
     handleUpdateLyrics,
     handleDownloadJSON,
@@ -104,7 +99,7 @@ const MainApp = () => {
     if (!isCustomLyrics) setHasDownloaded(false);
     setMatchingComplete(false);
     setMatchedLyrics([]);
-  }, [song, artist, setMatchedLyrics, setMatchingComplete]);
+  }, [isCustomLyrics, song, artist, setMatchedLyrics, setMatchingComplete]);
 
   // Computed values
   const canStartMatching = hasDownloaded && !needsRefetch && audioUrl && lyrics.length > 0;
@@ -187,7 +182,6 @@ const MainApp = () => {
   };
 
   const handleAlbumArtChange = (newUrl) => {
-    setCustomAlbumArt(newUrl);
     setAlbumArtUrl(newUrl);
   };
 

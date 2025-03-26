@@ -44,7 +44,7 @@ const LyricsDisplay = ({
       // Check if current state matches original state
       setIsAtOriginalState(JSON.stringify(matchedLyrics) === JSON.stringify(originalLyrics));
     }
-  }, [matchedLyrics]);
+  }, [matchedLyrics, originalLyrics]);
 
   // Track whether current lyrics match original lyrics
   useEffect(() => {
