@@ -1,5 +1,14 @@
 # Lyrics Syncer
 
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+    <img src="readme_assests/Screenshot%202025-03-26%20104703.png" alt="Screenshot 1" width="300"/>
+    <img src="readme_assests/Screenshot%202025-03-26%20104723.png" alt="Screenshot 2" width="300"/>
+    <img src="readme_assests/Screenshot%202025-03-26%20104744.png" alt="Screenshot 3" width="300"/>
+    <img src="readme_assests/Screenshot%202025-03-26%20104759.png" alt="Screenshot 4" width="300"/>
+    <img src="readme_assests/Screenshot%202025-03-26%20104807.png" alt="Screenshot 5" width="300"/>
+    <img src="readme_assests/Screenshot%202025-03-26%20104822.png" alt="Screenshot 6" width="300"/>
+</div>
+
 A web application for synchronizing lyrics with audio files, built with React and Node.js.
 
 ## Features
