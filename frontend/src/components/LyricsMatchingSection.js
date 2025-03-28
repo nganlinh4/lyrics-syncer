@@ -145,7 +145,7 @@ const LyricsMatchingSection = ({
               disabled={matchingInProgress}
               onClick={() => onAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel)}
               variant="primary"
-              style={{ flex: '1 1 auto', minWidth: '200px' }}
+              style={{ flex: '1 1 50%', minWidth: '200px', maxWidth: 'calc(50% - 8px)' }}
             >
               {matchingInProgress ? t('common.loading') : t('matching.startButton')}
             </Button>
@@ -154,7 +154,7 @@ const LyricsMatchingSection = ({
               disabled={matchingInProgress}
               onClick={() => onAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel, true)}
               variant="warning"
-              style={{ flex: '1 1 auto', minWidth: '200px' }}
+              style={{ flex: '1 1 50%', minWidth: '200px', maxWidth: 'calc(50% - 8px)' }}
             >
               {t('lyrics.genius.forceRematch')}
             </Button>
