@@ -111,9 +111,9 @@
       "continue": "Tiếp tục",
       "back": "Quay lại",
       "next": "Tiếp theo",
-      "downloadAlbumArt": "Tải xuống Ảnh bìa Album",
+      "downloadAlbumArt": "Tải xuống bìa",
       "uploadAlbumArt": "Tải lên Ảnh bìa Album Tùy chỉnh",
-      "changeAlbumArt": "Thay đổi Ảnh bìa Album",
+      "changeAlbumArt": "Thay đổi bìa",
       "changeAudio": "Thay đổi Âm thanh",
       "uploadAudio": "Tải lên Âm thanh Tùy chỉnh",
       "saved": "Đã lưu",
@@ -148,7 +148,7 @@
       "lineByLine": "Lời bài hát Từng dòng",
       "updateTiming": "Cập nhật Thời gian",
       "timingInstructions": "Kéo các giá trị thời gian sang trái hoặc phải để điều chỉnh (trái/phải). Thay đổi thời gian của một dòng trước sẽ tự động cập nhật các dòng sau. Sử dụng nút hoàn tác để quay lại thay đổi cuối cùng hoặc nút đặt lại để trở về kết quả gốc của Gemini.",
-      "stickyTimingsToggle": "Chỉnh một thời điểm ảnh hưởng đến tất cả thời điểm tiếp theo.",
+      "stickyTimingsToggle": "Chỉnh thời điểm ảnh hưởng tất cả thời điểm sau.",
       "genius": {
         "source": "Nguồn Lời bài hát Genius",
         "useSame": "Sử dụng giống YouTube",
@@ -156,7 +156,7 @@
         "force": "Buộc Tải lại Lời bài hát + Ảnh bìa Album",
         "forceRematch": "Buộc Khớp lại Lời bài hát"
       },
-      "synchronizedLyrics": "Lời bài hát Đã đồng bộ",
+      "synchronizedLyrics": "Lời đã đồng bộ",
       "fromGenius": "Lời bài hát từ Genius"
     },
     "customLyrics": {
