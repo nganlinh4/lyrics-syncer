@@ -263,7 +263,7 @@ const MainApp = () => {
         />
 
         {/* Audio Preview Section with improved dark mode contrast */}
-        {(audioUrl || lyrics.length > 0 || albumArtUrl) && !matchingComplete && !matchingInProgress && !isEditingLyrics && (
+        {(audioUrl || lyrics.length > 0 || albumArtUrl) && !matchingComplete && !isEditingLyrics && (
           <Card>
             <AudioPreviewSection
               audioUrl={audioUrl}
