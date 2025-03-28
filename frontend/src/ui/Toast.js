@@ -2,6 +2,207 @@ import React, { useState, useEffect, createContext, useContext, useCallback } fr
 import ReactDOM from 'react-dom';
 import theme from '../theme/theme';
 
+// Create a style element to inject animations into the document
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideInLeft {
+      from {
+        transform: translateX(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideInTop {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideInBottom {
+      from {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+
+    @keyframes slideOutLeft {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(-100%);
+        opacity: 0;
+      }
+    }
+
+    @keyframes slideOutTop {
+      from {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+    }
+
+    @keyframes slideOutBottom {
+      from {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+    }
+
+    .toast-enter-top-right, .toast-enter-top-left,
+    .toast-enter-bottom-right, .toast-enter-bottom-left {
+      animation-duration: 0.4s;
+      animation-fill-mode: both;
+    }
+
+    .toast-exit-top-right, .toast-exit-top-left,
+    .toast-exit-bottom-right, .toast-exit-bottom-left {
+      animation-duration: 0.3s;
+      animation-fill-mode: both;
+    }
+
+    .toast-enter-top-right {
+      animation-name: slideInRight;
+    }
+    
+    .toast-enter-top-left {
+      animation-name: slideInLeft;
+    }
+    
+    .toast-enter-bottom-right {
+      animation-name: slideInRight;
+    }
+    
+    .toast-enter-bottom-left {
+      animation-name: slideInLeft;
+    }
+    
+    .toast-exit-top-right {
+      animation-name: slideOutRight;
+    }
+    
+    .toast-exit-top-left {
+      animation-name: slideOutLeft;
+    }
+    
+    .toast-exit-bottom-right {
+      animation-name: slideOutRight;
+    }
+    
+    .toast-exit-bottom-left {
+      animation-name: slideOutLeft;
+    }
+    
+    .toast-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      animation: bounceIn 0.5s;
+    }
+    
+    @keyframes bounceIn {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.2);
+      }
+      70% {
+        transform: scale(0.9);
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    
+    .toast-action-button {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .toast-action-button::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      border-radius: 100%;
+      transform: scale(1, 1) translate(-50%);
+      transform-origin: 50% 50%;
+    }
+    
+    .toast-action-button:focus:not(:active)::after {
+      animation: ripple 1s ease-out;
+    }
+    
+    @keyframes ripple {
+      0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+      }
+      20% {
+        transform: scale(25, 25);
+        opacity: 0.5;
+      }
+      100% {
+        opacity: 0;
+        transform: scale(40, 40);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 const ToastContext = createContext();
 
 export const ToastProvider = ({ children }) => {
@@ -119,6 +320,17 @@ const Toast = ({
   total
 }) => {
   const [isExiting, setIsExiting] = useState(false);
+  const [position, setPosition] = useState(() => {
+    // Determine the position from the closest ToastContainer
+    const container = document.querySelector('.toast-container');
+    if (container) {
+      if (container.style.top && container.style.right) return 'top-right';
+      if (container.style.top && container.style.left) return 'top-left';
+      if (container.style.bottom && container.style.right) return 'bottom-right';
+      if (container.style.bottom && container.style.left) return 'bottom-left';
+    }
+    return 'top-right'; // Default position
+  });
 
   useEffect(() => {
     if (!duration) return;
@@ -162,7 +374,7 @@ const Toast = ({
 
   return (
     <div
-      className={`toast ${isExiting ? 'toast-exit' : ''}`}
+      className={`toast ${isExiting ? `toast-exit-${position}` : `toast-enter-${position}`}`}
       style={{
         padding: theme.spacing.md,
         borderRadius: theme.borderRadius.md,
@@ -174,8 +386,8 @@ const Toast = ({
         maxWidth: '400px',
         transform: `translateY(${index * 5}px)`,
         zIndex: total - index,
-        opacity: isExiting ? 0 : 1,
-        transition: 'all 0.3s ease'
+        animationDelay: `${index * 0.05}s`, // Staggered animation
+        animationFillMode: 'both'
       }}
       role="alert"
       aria-live={type === 'error' ? 'assertive' : 'polite'}
@@ -208,7 +420,12 @@ const Toast = ({
             border: 'none',
             color: 'inherit',
             cursor: 'pointer',
-            padding: theme.spacing.xs
+            padding: theme.spacing.xs,
+            transition: 'transform 0.2s ease',
+            transform: 'scale(1)',
+            ':hover': {
+              transform: 'scale(1.2)'
+            }
           }}
           aria-label="Close notification"
         >
@@ -231,6 +448,7 @@ const Toast = ({
             <button
               key={actionIndex}
               onClick={action.onClick}
+              className="toast-action-button"
               style={{
                 padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
                 backgroundColor: action.primary ? typeStyles.color : 'transparent',
@@ -238,7 +456,12 @@ const Toast = ({
                 border: `1px solid ${typeStyles.color}`,
                 borderRadius: theme.borderRadius.sm,
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                transform: 'translateY(0)',
+                ':hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                }
               }}
               aria-label={action.ariaLabel || action.text}
             >

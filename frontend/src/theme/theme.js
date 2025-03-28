@@ -62,6 +62,15 @@ const baseTheme = {
     slow: 'all 0.5s ease'
   },
   
+  animations: {
+    fadeIn: '@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }',
+    fadeInUp: '@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }',
+    fadeInDown: '@keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }',
+    pulse: '@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }',
+    slideIn: '@keyframes slideIn { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }',
+    bounceIn: '@keyframes bounceIn { 0% { transform: scale(0.8); opacity: 0; } 70% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }'
+  },
+  
   breakpoints: {
     xs: '320px',
     sm: '600px',

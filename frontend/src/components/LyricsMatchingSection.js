@@ -6,6 +6,88 @@ import LyricsDisplay from './LyricsDisplay';
 import AudioPlayer from './AudioPlayer';
 import theme from '../theme/theme';
 
+// Define animations in a style element
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeInStagger {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes slideInFromRight {
+      0% {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    @keyframes pulseGlow {
+      0% {
+        box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(66, 133, 244, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
+      }
+    }
+    
+    .matching-buttons-container {
+      animation: fadeInStagger 0.5s ease-out forwards;
+    }
+    
+    .matching-progress-container {
+      animation: fadeInStagger 0.6s ease-out forwards;
+    }
+    
+    .album-art-container {
+      animation: fadeInStagger 0.7s ease-out forwards;
+    }
+    
+    .lyrics-original-container {
+      animation: slideInFromRight 0.7s ease-out forwards;
+    }
+    
+    .audio-player-container {
+      animation: fadeInStagger 0.8s ease-out forwards;
+    }
+    
+    .synchronized-lyrics-container {
+      animation: fadeInStagger 0.9s ease-out forwards;
+    }
+    
+    .album-art-image {
+      transition: all 0.3s ease;
+    }
+    
+    .album-art-image:hover {
+      transform: scale(1.03);
+      box-shadow: ${theme.shadows.lg};
+    }
+    
+    .download-json-button {
+      animation: pulseGlow 2s infinite;
+    }
+    
+    .progress-bar-animation {
+      transition: width 0.5s ease-in-out;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 const LyricsMatchingSection = ({
   matchingInProgress,
   showMatchingButton,
@@ -140,7 +222,7 @@ const LyricsMatchingSection = ({
       <div style={{ display: 'grid', gap: theme.spacing.lg }}>
         {/* Matching Buttons */}
         {showMatchingButton && (
-          <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap' }} className="matching-buttons-container">
             <Button
               disabled={matchingInProgress}
               onClick={() => onAdvancedMatch(artist, song, audioUrl, lyrics, selectedModel)}
@@ -169,7 +251,7 @@ const LyricsMatchingSection = ({
             borderRadius: theme.borderRadius.sm,
             display: 'grid',
             gap: theme.spacing.sm
-          }}>
+          }} className="matching-progress-container">
             <p style={theme.typography.body}>{t('matching.progress')} {processingStatus}</p>
             {matchingProgress > 0 && (
               <div style={{
@@ -183,7 +265,8 @@ const LyricsMatchingSection = ({
                   width: `${matchingProgress}%`,
                   height: '100%',
                   backgroundColor: theme.colors.success,
-                  transition: theme.transitions.medium
+                  transition: theme.transitions.medium,
+                  className: 'progress-bar-animation'
                 }}/>
               </div>
             )}
@@ -199,7 +282,7 @@ const LyricsMatchingSection = ({
               gridTemplateColumns: albumArtUrl ? '300px 1fr' : '1fr',
               gap: theme.spacing.lg,
               alignItems: 'start'
-            }}>
+            }} className="album-art-container">
               {/* Left column: Album Art */}
               {albumArtUrl && (
                 <div style={{ 
@@ -207,7 +290,7 @@ const LyricsMatchingSection = ({
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: theme.spacing.md
-                }}>
+                }} className="album-art-image">
                   <img 
                     src={albumArtUrl} 
                     alt="Album Art"
@@ -265,7 +348,7 @@ const LyricsMatchingSection = ({
                   padding: theme.spacing.md,
                   borderRadius: theme.borderRadius.md,
                   boxShadow: theme.shadows.sm
-                }}>
+                }} className="lyrics-original-container">
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -311,7 +394,7 @@ const LyricsMatchingSection = ({
             
             {/* Middle row: Audio Player */}
             {audioUrl && (
-              <div>
+              <div className="audio-player-container">
                 <AudioPlayer
                   audioUrl={audioUrl}
                   audioRef={audioRef}
@@ -323,7 +406,7 @@ const LyricsMatchingSection = ({
             )}
             
             {/* Bottom row: Synchronized Lyrics */}
-            <div>
+            <div className="synchronized-lyrics-container">
               <LyricsDisplay
                 matchedLyrics={matchedLyrics}
                 currentTime={currentTime}
@@ -340,6 +423,7 @@ const LyricsMatchingSection = ({
                   variant="success"
                   size="small"
                   style={{ maxWidth: '200px' }}
+                  className="download-json-button"
                 >
                   {t('lyrics.downloadJSON')}
                 </Button>
