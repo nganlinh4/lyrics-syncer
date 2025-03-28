@@ -6,13 +6,17 @@ import {
   generateImagePrompt, 
   generateImage,
   deleteCache,
-  uploadAlbumArt
+  uploadAlbumArt,
+  uploadAudio
 } from '../controllers/apiController.js';
 
 const router = express.Router();
 
 // API key management
 router.post('/save_api_key', saveApiKey);
+
+// Audio upload route
+router.post('/upload_audio', uploadAudio);
 
 // Album art upload endpoint
 router.post('/upload_album_art', uploadAlbumArt);

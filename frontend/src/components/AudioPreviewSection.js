@@ -18,10 +18,12 @@ const AudioPreviewSection = ({
   artist,
   song,
   onAlbumArtChange,
-  onCustomLyrics
+  onCustomLyrics,
+  onAudioChange
 }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef(null);
+  const audioInputRef = useRef(null);
   const hasContent = audioUrl || albumArtUrl || lyrics.length > 0;
   if (!hasContent) return null;
 
@@ -107,6 +109,63 @@ const AudioPreviewSection = ({
       reader.readAsDataURL(file);
     } catch (error) {
       console.error("Failed to process album art:", error);
+      onError(new Error(t('errors.uploadFailed')));
+    }
+  };
+
+  const handleAudioFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('audio/')) {
+      onError(new Error(t('errors.invalidAudio')));
+      return;
+    }
+
+    if (!artist || !song) {
+      onError(new Error(t('errors.artistSongRequired')));
+      return;
+    }
+
+    try {
+      // Read file as base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64Data = reader.result;
+
+          // Upload the file to the server
+          const API_URL = 'http://localhost:3001';
+          const response = await fetch(`${API_URL}/api/upload_audio`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              artist,
+              song,
+              audioData: base64Data
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to upload audio');
+          }
+
+          // Get the server URL for the saved file
+          const data = await response.json();
+          
+          // Update the audio URL to point to the saved file
+          if (onAudioChange) {
+            onAudioChange(data.audioUrl);
+          }
+        } catch (uploadError) {
+          console.error("Failed to upload audio to server:", uploadError);
+          onError(new Error(t('errors.audioUploadFailed')));
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Failed to process audio:", error);
       onError(new Error(t('errors.uploadFailed')));
     }
   };
@@ -243,15 +302,34 @@ const AudioPreviewSection = ({
               />
             </div>
 
-            {fileSize > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: theme.spacing.md,
+              marginTop: theme.spacing.xs
+            }}>
               <p style={{
                 ...theme.typography.small,
-                color: theme.colors.text.secondary,
-                marginTop: theme.spacing.xs
+                color: theme.colors.text.secondary
               }}>
                 {t('audio.fileSize')}: {Math.round(fileSize / 1024)} KB
               </p>
-            )}
+              
+              <input
+                type="file"
+                ref={audioInputRef}
+                onChange={handleAudioFileChange}
+                accept="audio/*"
+                style={{ display: 'none' }}
+              />
+              <Button
+                onClick={() => audioInputRef.current?.click()}
+                variant="secondary"
+                size="small"
+              >
+                {t('common.changeAudio')}
+              </Button>
+            </div>
           </>
         )}
       </div>

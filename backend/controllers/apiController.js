@@ -4,7 +4,7 @@ import * as fsSync from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import config from '../config/config.js';
-import { fileExists, getGeminiResultsPath } from '../utils/fileUtils.js';
+import { fileExists, getGeminiResultsPath, getSongName } from '../utils/fileUtils.js';
 
 /**
  * Handles requests to save API keys
@@ -520,6 +520,68 @@ export const uploadAlbumArt = async (req, res) => {
     res.json({ albumArtUrl: serverUrl });
   } catch (error) {
     console.error('Error in uploadAlbumArt:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Upload custom audio file
+ */
+export const uploadAudio = async (req, res) => {
+  try {
+    const { artist, song, audioData } = req.body;
+    
+    if (!artist || !song || !audioData) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    // Generate filename in the same format as other audio files
+    const songName = getSongName(artist, song);
+    const filePath = path.join(config.audioDir, `${songName}.mp3`);
+
+    // Create audio directory if it doesn't exist
+    await fs.mkdir(config.audioDir, { recursive: true });
+
+    // Check if the file already exists and delete it if it does
+    if (await fileExists(filePath)) {
+      console.log(`Replacing existing audio at: ${filePath}`);
+      try {
+        await fs.unlink(filePath);
+      } catch (unlinkError) {
+        console.error(`Error deleting existing audio: ${unlinkError.message}`);
+        // Continue anyway, as we'll overwrite the file
+      }
+    }
+
+    // Convert base64 to buffer and save
+    const buffer = Buffer.from(audioData.replace(/^data:audio\/\w+;base64,/, ''), 'base64');
+    await fs.writeFile(filePath, buffer);
+    console.log(`Saved new audio to: ${filePath}`);
+
+    // Also update metadata file if it exists
+    const metadataFilePath = path.join(config.lyricsDir, `${songName}_metadata.json`);
+    if (await fileExists(metadataFilePath)) {
+      try {
+        const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
+        
+        // Update metadata to indicate custom audio
+        metadata.customAudio = true;
+        metadata.lastModified = new Date().toISOString();
+        
+        await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
+        console.log(`Updated metadata file at: ${metadataFilePath}`);
+      } catch (metadataError) {
+        console.error(`Error updating metadata file: ${metadataError.message}`);
+        // Continue anyway, as the audio upload was successful
+      }
+    }
+
+    // Add a timestamp parameter to force browser to refresh the audio cache
+    const timestamp = new Date().getTime();
+    const serverUrl = `http://localhost:${config.port}/audio/${songName}.mp3?t=${timestamp}`;
+    res.json({ audioUrl: serverUrl });
+  } catch (error) {
+    console.error('Error in uploadAudio:', error);
     res.status(500).json({ error: error.message });
   }
 };

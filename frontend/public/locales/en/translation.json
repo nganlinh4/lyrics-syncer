@@ -114,6 +114,8 @@
     "downloadAlbumArt": "Download Album Art",
     "uploadAlbumArt": "Upload Custom Album Art",
     "changeAlbumArt": "Change Album Art",
+    "changeAudio": "Change Audio",
+    "uploadAudio": "Upload Custom Audio",
     "saved": "Saved",
     "unsaved": "Unsaved",
     "view": "View",

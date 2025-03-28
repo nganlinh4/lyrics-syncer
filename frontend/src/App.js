@@ -185,6 +185,11 @@ const MainApp = () => {
     setAlbumArtUrl(newUrl);
   };
 
+  const handleAudioChange = (newUrl) => {
+    setAudioUrl(newUrl);
+    setNeedsRefetch(false);
+  };
+
   const onLoadedMetadata = (e) => {
     console.log("Audio metadata loaded, duration:", e.target.duration);
   };
@@ -273,6 +278,7 @@ const MainApp = () => {
               artist={artist}
               song={song}
               onAlbumArtChange={handleAlbumArtChange}
+              onAudioChange={handleAudioChange}
               onCustomLyrics={() => setIsEditingLyrics(true)}
             />
           </Card>
