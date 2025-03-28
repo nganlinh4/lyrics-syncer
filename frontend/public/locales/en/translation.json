@@ -148,7 +148,7 @@
     "lineByLine": "Line-by-Line Lyrics",
     "updateTiming": "Update Timing",
     "timingInstructions": "Drag timing values left or right to adjust (left/right). Changing an earlier timing will automatically update later timings. Use the undo button to revert your last change or the reset button to go back to the original Gemini results.",
-    "stickyTimingsToggle": "Enable sticky timings to control whether one timing adjustment affects all subsequent timings.",
+    "stickyTimingsToggle": "Timing adjustment affects all subsequent timings.",
     "genius": {
       "source": "Genius Lyrics Source",
       "useSame": "Use same as YouTube",

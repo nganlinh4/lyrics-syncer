@@ -148,7 +148,7 @@
       "lineByLine": "Lời bài hát Từng dòng",
       "updateTiming": "Cập nhật Thời gian",
       "timingInstructions": "Kéo các giá trị thời gian sang trái hoặc phải để điều chỉnh (trái/phải). Thay đổi thời gian của một dòng trước sẽ tự động cập nhật các dòng sau. Sử dụng nút hoàn tác để quay lại thay đổi cuối cùng hoặc nút đặt lại để trở về kết quả gốc của Gemini.",
-      "stickyTimingsToggle": "Bật chế độ thời gian liên kết để kiểm soát việc điều chỉnh một thời điểm có ảnh hưởng đến tất cả các thời điểm tiếp theo hay không.",
+      "stickyTimingsToggle": "Chỉnh một thời điểm ảnh hưởng đến tất cả thời điểm tiếp theo.",
       "genius": {
         "source": "Nguồn Lời bài hát Genius",
         "useSame": "Sử dụng giống YouTube",
