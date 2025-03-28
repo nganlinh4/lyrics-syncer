@@ -153,7 +153,7 @@
       "source": "Genius Lyrics Source",
       "useSame": "Use same as YouTube",
       "fetch": "Get Lyrics + Album Art from Genius",
-      "force": "Force Refetch Lyrics",
+      "force": "Force Refetch Lyrics + Album Art",
       "forceRematch": "Force Rematch Lyrics"
     },
     "synchronizedLyrics": "Synchronized Lyrics",

@@ -1,0 +1,305 @@
+{
+    "app": {
+      "title": "Đồng bộ Lời bài hát",
+      "tagline": "Đồng bộ lời bài hát với âm thanh một cách dễ dàng"
+    },
+    "nav": {
+      "settings": "Cài đặt",
+      "github": "GitHub"
+    },
+    "settings": {
+      "title": "Cài đặt",
+      "apiKeys": "Khóa API",
+      "models": {
+        "title": "Mô hình",
+        "lyrics": {
+          "title": "Mô hình Xử lý Lời bài hát",
+          "lyricsMatching": "Mô hình Khớp Lời bài hát:",
+          "geminiPro": "Gemini Pro",
+          "geminiFlashThinking": "Gemini Flash Thinking"
+        },
+        "prompt": {
+          "title": "Mô hình Prompt",
+          "promptGeneration": "Mô hình Tạo Prompt:",
+          "geminiFlash": "Gemini Flash Lite",
+          "geminiPro": "Gemini Pro"
+        },
+        "image": {
+          "title": "Mô hình Hình ảnh",
+          "imageGeneration": "Mô hình Tạo Hình ảnh:",
+          "geminiFlash": "Gemini Flash Experimental"
+        }
+      },
+      "imageModels": "Mô hình Hình ảnh",
+      "promptModels": "Mô hình Prompt",
+      "chatModels": "Mô hình Trò chuyện",
+      "geniusApiKey": "Khóa API Genius:",
+      "youtubeApiKey": "Khóa API Youtube:",
+      "geminiApiKey": "Khóa API Gemini:",
+      "save": "Lưu",
+      "saved": "Đã lưu",
+      "modelDescription": {
+        "geminiPro": "Mô hình mạnh mẽ nhất cho việc định thời gian lời bài hát nhưng không phải lúc nào cũng tốt nhất.",
+        "geminiFlashThinking": "Mô hình tư duy nâng cao để phân tích lời bài hát phức tạp",
+        "geminiFlashLite": "Tạo prompt nhanh chóng với khả năng hiểu ngữ cảnh tốt",
+        "geminiFlashExp": "Tạo hình ảnh được tối ưu hóa cho các hình ảnh trực quan trừu tượng"
+      },
+      "apiKeyInstructions": {
+        "genius": {
+          "title": "Lấy Khóa API Genius",
+          "step1": "1. Đăng nhập vào Genius",
+          "step2": "2. Nhấp vào 'New API Client'",
+          "step3": "3. Nhập chi tiết ứng dụng",
+          "step4": "4. Lấy Client Access Token",
+          "step5": "5. Sao chép và dán token"
+        },
+        "youtube": {
+          "title": "Lấy Khóa API Youtube",
+          "step1": "1. Truy cập Google Cloud Console",
+          "step2": "2. Tạo hoặc chọn một dự án",
+          "step3": "3. Bật 'YouTube Data API v3'",
+          "step4": "4. Đi tới mục credentials (thông tin xác thực)",
+          "step5": "5. Tạo khóa API"
+        },
+        "gemini": {
+          "title": "Lấy Khóa API Gemini",
+          "step1": "1. Đăng nhập vào Google AI Studio",
+          "step2": "2. Nhấp vào 'Get API Key'",
+          "step3": "3. Tạo khóa mới hoặc chọn khóa hiện có",
+          "step4": "4. Sao chép khóa API của bạn",
+          "step5": "5. Dán vào trường ở trên"
+        }
+      },
+      "apiKeyPlaceholder": "Nhập khóa API của bạn tại đây",
+      "googleApiKey": "Khóa API Google",
+      "openaiApiKey": "Khóa API OpenAI",
+      "stabilityApiKey": "Khóa API Stability",
+      "howToGet": "Cách lấy Khóa API",
+      "getApiKey": "Lấy Khóa API",
+      "applyChanges": "Áp dụng Thay đổi",
+      "cache": {
+        "title": "Quản lý Bộ nhớ đệm",
+        "clearAll": "Xóa Toàn bộ Bộ nhớ đệm",
+        "description": "Thao tác này sẽ xóa tất cả các tệp âm thanh, lời bài hát và thông tin gỡ lỗi đã lưu trong bộ nhớ đệm."
+      }
+    },
+    "cache": {
+      "results": {
+        "audio": "Âm thanh: Đã xóa {{count}} tệp",
+        "lyrics": "Lời bài hát: Đã xóa {{count}} tệp",
+        "debug": "Gỡ lỗi: Đã xóa {{count}} tệp"
+      },
+      "folderNotExist": "Thư mục không tồn tại"
+    },
+    "common": {
+      "search": "Tìm kiếm",
+      "download": "Tải xuống",
+      "generate": "Tạo",
+      "loading": "Đang tải...",
+      "save": "Lưu",
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "noResults": "Không tìm thấy kết quả",
+      "preview": "Xem trước",
+      "edit": "Chỉnh sửa",
+      "delete": "Xóa",
+      "apply": "Áp dụng",
+      "reset": "Đặt lại",
+      "start": "Bắt đầu",
+      "stop": "Dừng",
+      "update": "Cập nhật",
+      "continue": "Tiếp tục",
+      "back": "Quay lại",
+      "next": "Tiếp theo",
+      "downloadAlbumArt": "Tải xuống Ảnh bìa Album",
+      "uploadAlbumArt": "Tải lên Ảnh bìa Album Tùy chỉnh",
+      "changeAlbumArt": "Thay đổi Ảnh bìa Album",
+      "changeAudio": "Thay đổi Âm thanh",
+      "uploadAudio": "Tải lên Âm thanh Tùy chỉnh",
+      "saved": "Đã lưu",
+      "unsaved": "Chưa lưu",
+      "view": "Xem",
+      "hide": "Ẩn",
+      "undo": "Hoàn tác",
+      "retry": "Thử lại"
+    },
+    "audio": {
+      "source": "Nguồn Âm thanh YouTube",
+      "download": "Tải xuống Âm thanh",
+      "force": "Buộc Tải lại Âm thanh",
+      "artist": "Nghệ sĩ",
+      "song": "Bài hát",
+      "player": "Trình phát Âm thanh",
+      "currentTime": "Thời gian Hiện tại",
+      "duration": "Thời lượng",
+      "fileSize": "Kích thước Tệp"
+    },
+    "lyrics": {
+      "title": "Lời bài hát",
+      "customLyrics": "Nhập Lời bài hát Tùy chỉnh",
+      "enterCustomLyrics": "Nhập lời bài hát tùy chỉnh của bạn tại đây",
+      "pasteInstructions": "Dán lời bài hát của bạn vào đây (mỗi dòng sẽ được coi là một dòng lời bài hát)",
+      "processLyrics": "Xử lý Lời bài hát",
+      "matchingProgress": "Tiến trình Khớp lời",
+      "downloadJSON": "Tải xuống JSON",
+      "startMatching": "Bắt đầu Khớp Lời bài hát",
+      "matchingInProgress": "Đang tiến hành khớp lời bài hát...",
+      "matchingComplete": "Khớp lời bài hát hoàn tất!",
+      "lineByLine": "Lời bài hát Từng dòng",
+      "updateTiming": "Cập nhật Thời gian",
+      "timingInstructions": "Kéo các giá trị thời gian sang trái hoặc phải để điều chỉnh (trái/phải). Thay đổi thời gian của một dòng trước sẽ tự động cập nhật các dòng sau. Sử dụng nút hoàn tác để quay lại thay đổi cuối cùng hoặc nút đặt lại để trở về kết quả gốc của Gemini.",
+      "stickyTimingsToggle": "Bật chế độ thời gian liên kết để kiểm soát việc điều chỉnh một thời điểm có ảnh hưởng đến tất cả các thời điểm tiếp theo hay không.",
+      "genius": {
+        "source": "Nguồn Lời bài hát Genius",
+        "useSame": "Sử dụng giống YouTube",
+        "fetch": "Lấy Lời bài hát + Ảnh bìa Album từ Genius",
+        "force": "Buộc Tải lại Lời bài hát + Ảnh bìa Album",
+        "forceRematch": "Buộc Khớp lại Lời bài hát"
+      },
+      "synchronizedLyrics": "Lời bài hát Đã đồng bộ",
+      "fromGenius": "Lời bài hát từ Genius"
+    },
+    "customLyrics": {
+      "title": "Lời bài hát Tùy chỉnh",
+      "instructions": "Nhập mỗi dòng lời bài hát trên một dòng. Các dòng trống sẽ bị bỏ qua.",
+      "placeholder": "Dán lời bài hát của bạn vào đây...",
+      "submit": "Gửi Lời bài hát",
+      "charactersCount": "Số ký tự: {{count}}"
+    },
+    "imageGeneration": {
+      "title": "Tạo Hình nền",
+      "generateButton": "Tạo Hình nền",
+      "generating": "Đang tạo...",
+      "prompt": "Prompt đã tạo:",
+      "downloadButton": "Tải xuống Hình nền",
+      "imageCredit": "Hình ảnh này được tạo ra lấy cảm hứng từ lời bài hát và ảnh bìa album.",
+      "models": {
+        "gemini2Flash": "Gemini 2.0 Flash Experimental",
+        "description": "Tạo hình ảnh được tối ưu hóa cho các hình ảnh trực quan trừu tượng"
+      }
+    },
+    "matching": {
+      "title": "Khớp Lời bài hát",
+      "startButton": "Bắt đầu Khớp Nâng cao",
+      "progress": "Tiến trình:",
+      "processing": "Đang xử lý...",
+      "complete": "Khớp hoàn tất!",
+      "downloading": "Đang tải xuống dữ liệu lời bài hát...",
+      "analysisBegin": "Bắt đầu phân tích âm thanh...",
+      "analyzing": "Đang phân tích âm thanh...",
+      "matchingBegin": "Bắt đầu khớp lời bài hát...",
+      "optimizing": "Đang tối ưu hóa thời gian...",
+      "finalizing": "Đang hoàn thiện kết quả...",
+      "languageDetected": "Ngôn ngữ được phát hiện: {{language}}",
+      "lineCount": "Đã khớp {{count}} dòng lời bài hát",
+      "initializing": "Đang khởi tạo quá trình khớp..."
+    },
+    "theme": {
+      "light": "Chế độ Sáng",
+      "dark": "Chế độ Tối"
+    },
+    "language": {
+      "title": "Ngôn ngữ",
+      "search": "Tìm kiếm ngôn ngữ...",
+      "translating": "Đang dịch giao diện, vui lòng đợi...",
+      "toggleToEnglish": "Chuyển sang Tiếng Anh",
+      "toggleToKorean": "Chuyển sang Tiếng Hàn"
+    },
+    "footer": {
+      "copyright": "© {{year}} Đồng bộ Lời bài hát. Bảo lưu mọi quyền.",
+      "privacyPolicy": "Chính sách Bảo mật",
+      "termsOfService": "Điều khoản Dịch vụ"
+    },
+    "errors": {
+      "translation": "Dịch thất bại. Vui lòng thử lại.",
+      "generic": "Đã xảy ra lỗi. Vui lòng thử lại.",
+      "audioDownload": "Tải xuống âm thanh thất bại",
+      "lyricsDownload": "Tải xuống lời bài hát thất bại",
+      "processingError": "Đã xảy ra lỗi xử lý",
+      "apiError": "Lỗi API: {{message}}",
+      "cacheDelete": "Xóa bộ nhớ đệm thất bại",
+      "matchingFailed": "Khớp lời bài hát thất bại",
+      "invalidResponse": "Nhận được phản hồi không hợp lệ từ máy chủ",
+      "geniusFetchFailed": "Lấy lời bài hát từ Genius thất bại",
+      "noLyricsToDownload": "Không có lời bài hát để tải xuống",
+      "invalidImage": "Tệp hình ảnh không hợp lệ. Vui lòng tải lên tệp PNG hoặc JPG.",
+      "uploadFailed": "Tải lên hình ảnh thất bại. Vui lòng thử lại.",
+      "artistSongRequired": "Vui lòng nhập cả tên nghệ sĩ và tên bài hát trước khi thay đổi ảnh bìa album"
+    },
+    "privacy": {
+      "title": "Chính sách Bảo mật",
+      "intro": "Chúng tôi tôn trọng và bảo vệ quyền riêng tư của bạn.",
+      "effective": "Ngày hiệu lực: 21 tháng 3 năm 2025",
+      "collection": {
+        "title": "Thông tin Chúng tôi Thu thập",
+        "paragraph1": "Chúng tôi có thể thu thập các thông tin sau khi bạn sử dụng dịch vụ của chúng tôi:",
+        "item1": "Dữ liệu sử dụng cơ bản",
+        "item2": "Nội dung lời bài hát và âm thanh",
+        "item3": "Khóa API (nếu được cung cấp)"
+      },
+      "usage": {
+        "title": "Cách Chúng tôi Sử dụng Thông tin",
+        "paragraph1": "Chúng tôi sử dụng thông tin của bạn để:",
+        "item1": "Cung cấp và cải thiện dịch vụ của chúng tôi",
+        "item2": "Cá nhân hóa trải nghiệm người dùng",
+        "item3": "Phát triển các tính năng và dịch vụ mới"
+      },
+      "sharing": {
+        "title": "Chia sẻ Thông tin",
+        "paragraph1": "Chúng tôi không chia sẻ thông tin cá nhân của bạn với bên thứ ba."
+      },
+      "security": {
+        "title": "Bảo mật",
+        "paragraph1": "Chúng tôi thực hiện các biện pháp kỹ thuật phù hợp để bảo vệ thông tin cá nhân của bạn."
+      },
+      "changes": {
+        "title": "Thay đổi đối với Chính sách này",
+        "paragraph1": "Chính sách bảo mật này có thể thay đổi và chúng tôi sẽ đăng các cập nhật trên trang này."
+      },
+      "contact": {
+        "title": "Liên hệ Chúng tôi",
+        "paragraph1": "Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email."
+      },
+      "backToHome": "Quay lại Trang chủ"
+    },
+    "terms": {
+      "title": "Điều khoản Dịch vụ",
+      "intro": "Cảm ơn bạn đã sử dụng Đồng bộ Lời bài hát ('Dịch vụ').",
+      "effective": "Ngày hiệu lực: 21 tháng 3 năm 2025",
+      "acceptance": {
+        "title": "Chấp nhận Điều khoản",
+        "paragraph1": "Bằng cách truy cập hoặc sử dụng dịch vụ Đồng bộ Lời bài hát, bạn đồng ý bị ràng buộc bởi các Điều khoản Dịch vụ này"
+      },
+      "account": {
+        "title": "Tài khoản",
+        "paragraph1": "Bạn có thể cần khóa API để sử dụng một số tính năng nhất định của Dịch vụ."
+      },
+      "content": {
+        "title": "Nội dung và Hành vi",
+        "paragraph1": "Bạn chịu trách nhiệm về tất cả nội dung mà bạn tải lên Dịch vụ.",
+        "paragraph2": "Không tải lên nội dung bất hợp pháp hoặc có hại."
+      },
+      "intellectual": {
+        "title": "Sở hữu Trí tuệ",
+        "paragraph1": "Dịch vụ là tài sản của chúng tôi và các bên cấp phép của chúng tôi.",
+        "paragraph2": "Bạn giữ quyền đối với nội dung bạn tạo ra."
+      },
+      "termination": {
+        "title": "Chấm dứt",
+        "paragraph1": "Chúng tôi có quyền chấm dứt Dịch vụ bất kỳ lúc nào mà không cần lý do."
+      },
+      "disclaimer": {
+        "title": "Tuyên bố Miễn trừ Trách nhiệm",
+        "paragraph1": "Dịch vụ được cung cấp 'nguyên trạng' mà không có bất kỳ bảo đảm nào."
+      },
+      "limitation": {
+        "title": "Giới hạn Trách nhiệm pháp lý",
+        "paragraph1": "Chúng tôi không chịu trách nhiệm pháp lý đối với bất kỳ thiệt hại nào phát sinh từ việc bạn sử dụng Dịch vụ."
+      },
+      "changes": {
+        "title": "Thay đổi đối với Điều khoản",
+        "paragraph1": "Chúng tôi có quyền sửa đổi các điều khoản này bất kỳ lúc nào."
+      },
+      "backToHome": "Quay lại Trang chủ"
+    }
+  }
