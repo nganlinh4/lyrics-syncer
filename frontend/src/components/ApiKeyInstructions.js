@@ -10,7 +10,7 @@ const API_INSTRUCTIONS = {
     link: "https://genius.com/api-clients"
   },
   gemini: {
-    link: "https://makersuite.google.com/app/apikey"
+    link: "https://aistudio.google.com/app/apikey"
   }
 };
 
