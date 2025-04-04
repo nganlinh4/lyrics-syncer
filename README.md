@@ -47,6 +47,25 @@ cp backend/config.example.json backend/config.json
 ## Setup
 
 1. Clone the repository
+
+2. Install all dependencies at once:
+```bash
+npm run install-all
+```
+
+3. Install Python dependencies:
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+Alternatively, you can install dependencies separately:
+
+1. Install root dependencies:
+```bash
+npm install
+```
+
 2. Install frontend dependencies:
 ```bash
 cd frontend
@@ -66,6 +85,16 @@ pip install -r requirements.txt
 ```
 
 ## Running the Application
+
+### Option 1: Run everything with a single command
+
+```bash
+npm run dev
+```
+
+This will start both the backend (with Python environment activated) and frontend concurrently.
+
+### Option 2: Run services separately
 
 1. Start the backend server:
 ```bash

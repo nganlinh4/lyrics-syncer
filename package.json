@@ -1,0 +1,22 @@
+{
+  "name": "lyrics-syncer",
+  "version": "1.0.0",
+  "description": "A web application for synchronizing lyrics with audio files",
+  "main": "index.js",
+  "scripts": {
+    "frontend": "cd frontend && .\\start-frontend.bat",
+    "backend": "cd backend && .\\start-backend.bat",
+    "dev": "concurrently \"cd backend && .\\start-backend.bat\" \"cd frontend && .\\start-frontend.bat\"",
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../backend && .\\venv\\Scripts\\python.exe -m pip install -r requirements.txt"
+  },
+  "keywords": [
+    "lyrics",
+    "audio",
+    "synchronization"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

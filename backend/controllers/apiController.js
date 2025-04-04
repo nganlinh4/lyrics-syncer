@@ -6,6 +6,9 @@ import { spawn } from 'child_process';
 import config from '../config/config.js';
 import { fileExists, getGeminiResultsPath, getSongName } from '../utils/fileUtils.js';
 
+// Get Python executable path from environment variable or use default
+const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || 'python';
+
 /**
  * Handles requests to save API keys
  */
@@ -22,7 +25,7 @@ export const saveApiKey = async (req, res) => {
     }
 
     let appConfig = {};
-    
+
     if (await fileExists(config.configFilePath)) {
       const configData = await fs.readFile(config.configFilePath, 'utf-8');
       appConfig = JSON.parse(configData);
@@ -57,14 +60,14 @@ export const saveApiKey = async (req, res) => {
 export const matchLyrics = async (req, res) => {
   try {
     const { artist, song, audioPath, lyrics, model, forceRematch } = req.body;
-    
+
     if (!audioPath || !lyrics) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
     // Define resultsPath here at the beginning of the function
     const resultsPath = getGeminiResultsPath(artist, song, model, config.lyricsDir);
-    
+
     // Check for existing Gemini results, unless forceRematch is true
     if (!forceRematch) {
       if (await fileExists(resultsPath)) {
@@ -76,11 +79,11 @@ export const matchLyrics = async (req, res) => {
 
     // Clean the audio path by removing query parameters
     const cleanAudioPath = audioPath.split('?')[0];
-    
+
     // Ensure the audio file exists
     const absoluteAudioPath = path.join(config.audioDir, path.basename(cleanAudioPath));
     if (!fsSync.existsSync(absoluteAudioPath)) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: `Audio file not found: ${cleanAudioPath}`,
         status: 'error'
       });
@@ -103,8 +106,8 @@ export const matchLyrics = async (req, res) => {
       '--song', song,
       '--model', model
     ];
-    
-    const pythonProcess = spawn('python', pythonArgs);
+
+    const pythonProcess = spawn(PYTHON_EXECUTABLE, pythonArgs);
 
     let stdoutData = '';
     let stderrData = '';
@@ -122,7 +125,7 @@ export const matchLyrics = async (req, res) => {
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
         console.error('Python process error:', stderrData);
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: stderrData || 'Failed to process lyrics',
           status: 'error'
         });
@@ -131,7 +134,7 @@ export const matchLyrics = async (req, res) => {
       (async () => {
         try {
           const result = JSON.parse(stdoutData);
-          
+
           // Generate streaming response format
           const streamedResult = {
             type: 'result',
@@ -139,17 +142,17 @@ export const matchLyrics = async (req, res) => {
             language: result.detected_language || 'en',
             status: result.status || 'success'
           };
-          
+
           // Save original Gemini results to file only if not forceRematch
           if (!forceRematch) {
             await fs.writeFile(resultsPath, JSON.stringify(result, null, 2), 'utf-8');
           }
-          
+
           // Return the reformatted result for the frontend
           res.json(streamedResult);
         } catch (error) {
           console.error('Error parsing Python output:', error);
-          res.status(500).json({ 
+          res.status(500).json({
             type: 'error',
             error: 'Failed to parse matching results',
             status: 'error'
@@ -159,7 +162,7 @@ export const matchLyrics = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in /api/match_lyrics:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message,
       status: 'error'
     });
@@ -172,7 +175,7 @@ export const matchLyrics = async (req, res) => {
 export const forceMatchLyrics = async (req, res) => {
   try {
     const { artist, song, audioPath, lyrics, model } = req.body;
-    
+
     // Delete existing Gemini results if they exist
     const resultsPath = getGeminiResultsPath(artist, song, model, config.lyricsDir);
     if (await fileExists(resultsPath)) {
@@ -193,7 +196,7 @@ export const forceMatchLyrics = async (req, res) => {
 export const generateImagePrompt = async (req, res) => {
   try {
     const { lyrics, albumArtUrl, albumArtData, model } = req.body;
-    
+
     if (!lyrics) {
       return res.status(400).json({ error: 'Missing lyrics' });
     }
@@ -223,12 +226,12 @@ export const generateImagePrompt = async (req, res) => {
         const fileName = decodeURIComponent(path.basename(urlPath));
         // The album art is likely in the album_art directory
         artPath = path.join(path.dirname(config.lyricsDir), 'album_art', fileName);
-        
+
         // Verify that the file exists
         if (!await fileExists(artPath)) {
-          return res.status(404).json({ 
-            error: `Album art file not found at ${artPath}`, 
-            status: 'error' 
+          return res.status(404).json({
+            error: `Album art file not found at ${artPath}`,
+            status: 'error'
           });
         }
       } else {
@@ -255,8 +258,8 @@ export const generateImagePrompt = async (req, res) => {
       hasAlbumArt: !!artPath
     });
 
-    const pythonProcess = spawn('python', pythonArgs);
-    
+    const pythonProcess = spawn(PYTHON_EXECUTABLE, pythonArgs);
+
     let stdoutData = '';
     let stderrData = '';
 
@@ -273,7 +276,7 @@ export const generateImagePrompt = async (req, res) => {
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
         console.error('Python process error:', stderrData);
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: stderrData || 'Failed to generate prompt',
           status: 'error'
         });
@@ -284,7 +287,7 @@ export const generateImagePrompt = async (req, res) => {
         res.json(result);
       } catch (error) {
         console.error('Error parsing Python output:', error);
-        res.status(500).json({ 
+        res.status(500).json({
           error: 'Failed to parse prompt generation results',
           status: 'error'
         });
@@ -302,17 +305,17 @@ export const generateImagePrompt = async (req, res) => {
 export const generateImage = async (req, res) => {
   try {
     const { prompt, albumArt, albumArtUrl, albumArtData, model } = req.body;
-    
+
     // Handle different ways album art can be provided
     let artPath;
-    
+
     if (albumArtData) {
       // Create data URL for base64 image data
       artPath = `data:${albumArtData.mimeType};base64,${albumArtData.data}`;
     } else {
       // Use either albumArt or albumArtUrl (for backward compatibility)
       const artUrl = albumArt || albumArtUrl;
-      
+
       if (!prompt || !artUrl) {
         return res.status(400).json({ error: 'Missing prompt or album art URL' });
       }
@@ -326,12 +329,12 @@ export const generateImage = async (req, res) => {
         const fileName = decodeURIComponent(path.basename(urlPath));
         // The album art is likely in the album_art directory
         artPath = path.join(path.dirname(config.lyricsDir), 'album_art', fileName);
-        
+
         // Verify that the file exists
         if (!await fileExists(artPath)) {
-          return res.status(404).json({ 
-            error: `Album art file not found at ${artPath}`, 
-            status: 'error' 
+          return res.status(404).json({
+            error: `Album art file not found at ${artPath}`,
+            status: 'error'
           });
         }
       }
@@ -360,8 +363,8 @@ export const generateImage = async (req, res) => {
       '--model', model
     ];
 
-    const pythonProcess = spawn('python', pythonArgs);
-    
+    const pythonProcess = spawn(PYTHON_EXECUTABLE, pythonArgs);
+
     let stdoutData = '';
     let stderrData = '';
 
@@ -378,7 +381,7 @@ export const generateImage = async (req, res) => {
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
         console.error('Python process error:', stderrData);
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: stderrData || 'Failed to generate image',
           status: 'error'
         });
@@ -389,7 +392,7 @@ export const generateImage = async (req, res) => {
         res.json(result);
       } catch (error) {
         console.error('Error parsing Python output:', error);
-        res.status(500).json({ 
+        res.status(500).json({
           error: 'Failed to parse image generation results',
           status: 'error'
         });
@@ -411,14 +414,14 @@ export const deleteCache = async (req, res) => {
       { path: config.lyricsDir, name: 'lyrics' },
       { path: config.debugDir, name: 'debug' }
     ];
-    
+
     const results = [];
-    
+
     for (const folder of foldersToClean) {
       try {
         if (await fileExists(folder.path)) {
           const files = await fs.readdir(folder.path);
-          
+
           // Delete each file in the folder
           for (const file of files) {
             const filePath = path.join(folder.path, file);
@@ -428,31 +431,31 @@ export const deleteCache = async (req, res) => {
               await fs.unlink(filePath);
             }
           }
-          
+
           // Return a translation key and file count instead of the hardcoded message
-          results.push({ 
-            folder: folder.name, 
-            status: 'success', 
+          results.push({
+            folder: folder.name,
+            status: 'success',
             translationKey: 'cache.results.' + folder.name,
             count: files.length
           });
         } else {
-          results.push({ 
-            folder: folder.name, 
-            status: 'warning', 
+          results.push({
+            folder: folder.name,
+            status: 'warning',
             translationKey: 'cache.folderNotExist'
           });
         }
       } catch (error) {
-        results.push({ 
-          folder: folder.name, 
-          status: 'error', 
+        results.push({
+          folder: folder.name,
+          status: 'error',
           translationKey: 'errors.generic',
           errorMessage: error.message
         });
       }
     }
-    
+
     res.json({ success: true, results });
   } catch (error) {
     console.error("Error in /api/delete_cache:", error);
@@ -466,7 +469,7 @@ export const deleteCache = async (req, res) => {
 export const uploadAlbumArt = async (req, res) => {
   try {
     const { artist, song, imageData } = req.body;
-    
+
     if (!artist || !song || !imageData) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
@@ -499,13 +502,13 @@ export const uploadAlbumArt = async (req, res) => {
     if (await fileExists(metadataFilePath)) {
       try {
         const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
-        
+
         // Update albumArtUrl in metadata
         const serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${filename}`;
         metadata.albumArtUrl = serverAlbumArtUrl;
         metadata.originalAlbumArtUrl = 'custom_upload';
         metadata.lastModified = new Date().toISOString();
-        
+
         await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
         console.log(`Updated metadata file at: ${metadataFilePath}`);
       } catch (metadataError) {
@@ -530,7 +533,7 @@ export const uploadAlbumArt = async (req, res) => {
 export const uploadAudio = async (req, res) => {
   try {
     const { artist, song, audioData } = req.body;
-    
+
     if (!artist || !song || !audioData) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
@@ -563,11 +566,11 @@ export const uploadAudio = async (req, res) => {
     if (await fileExists(metadataFilePath)) {
       try {
         const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
-        
+
         // Update metadata to indicate custom audio
         metadata.customAudio = true;
         metadata.lastModified = new Date().toISOString();
-        
+
         await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
         console.log(`Updated metadata file at: ${metadataFilePath}`);
       } catch (metadataError) {

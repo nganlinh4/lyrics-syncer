@@ -1,6 +1,3 @@
-numpy
 Pillow
-diffusers
-transformers
-accelerate
-safetensors
+requests
+google-generativeai
