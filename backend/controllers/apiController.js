@@ -114,19 +114,21 @@ export const matchLyrics = async (req, res) => {
 
     pythonProcess.stdout.on('data', (data) => {
       stdoutData += data.toString();
-      console.log('Python stdout:', data.toString());
+      // Don't log the full stdout as it may contain large amounts of data
+      console.log('Python stdout received');
     });
 
     pythonProcess.stderr.on('data', (data) => {
       stderrData += data.toString();
-      console.error('Python stderr:', data.toString());
+      // Don't log the full stderr as it may contain large amounts of data
+      console.error('Python stderr received');
     });
 
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
-        console.error('Python process error:', stderrData);
+        console.error('Python process error occurred');
         return res.status(500).json({
-          error: stderrData || 'Failed to process lyrics',
+          error: 'Failed to process lyrics',
           status: 'error'
         });
       }
@@ -265,19 +267,21 @@ export const generateImagePrompt = async (req, res) => {
 
     pythonProcess.stdout.on('data', (data) => {
       stdoutData += data.toString();
-      console.log('Python stdout:', data.toString());
+      // Don't log the full stdout as it may contain large amounts of data
+      console.log('Python stdout received');
     });
 
     pythonProcess.stderr.on('data', (data) => {
       stderrData += data.toString();
-      console.error('Python stderr:', data.toString());
+      // Don't log the full stderr as it may contain large amounts of data
+      console.error('Python stderr received');
     });
 
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
-        console.error('Python process error:', stderrData);
+        console.error('Python process error occurred');
         return res.status(500).json({
-          error: stderrData || 'Failed to generate prompt',
+          error: 'Failed to generate prompt',
           status: 'error'
         });
       }
@@ -370,19 +374,21 @@ export const generateImage = async (req, res) => {
 
     pythonProcess.stdout.on('data', (data) => {
       stdoutData += data.toString();
-      console.log('Python stdout:', data.toString());
+      // Don't log the full stdout as it may contain base64 image data
+      console.log('Python stdout received');
     });
 
     pythonProcess.stderr.on('data', (data) => {
       stderrData += data.toString();
-      console.error('Python stderr:', data.toString());
+      // Don't log the full stderr as it may contain large amounts of data
+      console.error('Python stderr received');
     });
 
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
-        console.error('Python process error:', stderrData);
+        console.error('Python process error occurred');
         return res.status(500).json({
-          error: stderrData || 'Failed to generate image',
+          error: 'Failed to generate image',
           status: 'error'
         });
       }

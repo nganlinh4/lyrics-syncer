@@ -91,7 +91,7 @@ def generate_prompt_with_gemini(lyrics, model_name, song_name):
             'gemini-2.0-flash-lite',
             'gemini-2.5-pro-exp-03-25'
         ]
-        
+
         if model_name not in VALID_PROMPT_MODELS:
             raise ValueError(f"Invalid prompt generation model. Must be one of: {', '.join(VALID_PROMPT_MODELS)}")
 
@@ -124,7 +124,7 @@ generate one prompt to put in a image generator to describe the atmosphere/objec
         }
 
         print(json.dumps(result), file=sys.stdout)
-        
+
         return result
 
     except Exception as e:
@@ -181,12 +181,12 @@ def generate_image_with_gemini(prompt, album_art_url, model_name):
                             break
                 if image_part:
                     break
-        
+
         if not image_part:
             raise ValueError("No image was generated in the response")
-            
+
         image_bytes = image_part.inline_data.data
-        print("Successfully extracted and encoded image data", file=sys.stderr)
+        # Don't print debug info about the image data to avoid cluttering the terminal
         return {
             "data": base64.b64encode(image_bytes).decode('utf-8'),
             "mime_type": image_part.inline_data.mime_type

@@ -73,7 +73,7 @@ def main():
         if args.mode == "match":
             if not args.audio or not args.lyrics:
                 raise ValueError("Both audio and lyrics parameters are required for matching mode")
-                
+
             lyrics = json.loads(args.lyrics)
             audio_path = os.path.abspath(args.audio)
             model = args.model
@@ -85,7 +85,7 @@ def main():
                 raise ValueError("Model parameter is required")
 
             print(f"Using model: {model}", file=sys.stderr)
-            
+
             match_lyrics(audio_path, lyrics, model)
 
         elif args.mode == "generate_prompt":
@@ -98,7 +98,7 @@ def main():
 
             print(f"Using model: {model}", file=sys.stderr)
             generate_prompt_with_gemini(lyrics, model, song_name)
-            
+
         elif args.mode == "generate_image":
             if not args.prompt or not args.album_art:
                 raise ValueError("Both prompt and album_art parameters are required for image generation")
@@ -109,7 +109,23 @@ def main():
 
             print(f"Using model: {model}", file=sys.stderr)
             image_result = generate_image_with_gemini(prompt, album_art, model)
-            print(json.dumps({"status": "success", **image_result}))
+            # Don't print the full base64 image data to avoid cluttering the terminal
+            # Instead, print a placeholder and include the actual data in the JSON
+            data_length = len(image_result["data"]) if "data" in image_result else 0
+            print(f"Generated image data (length: {data_length} bytes)", file=sys.stderr)
+
+            result = {
+                "status": "success",
+                "data": image_result["data"],
+                "mime_type": image_result["mime_type"]
+            }
+            # Use sys.stdout.buffer to write binary data without printing to console
+            if hasattr(sys.stdout, 'buffer'):
+                sys.stdout.buffer.write(json.dumps(result).encode('utf-8'))
+                sys.stdout.buffer.write(b'\n')
+                sys.stdout.buffer.flush()
+            else:
+                print(json.dumps(result))
 
     except Exception as e:
         error_result = {
