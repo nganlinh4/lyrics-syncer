@@ -418,7 +418,8 @@ export const deleteCache = async (req, res) => {
     const foldersToClean = [
       { path: config.audioDir, name: 'audio' },
       { path: config.lyricsDir, name: 'lyrics' },
-      { path: config.debugDir, name: 'debug' }
+      { path: config.debugDir, name: 'debug' },
+      { path: config.albumArtDir, name: 'album_art' }
     ];
 
     const results = [];

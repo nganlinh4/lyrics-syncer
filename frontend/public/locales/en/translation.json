@@ -80,14 +80,15 @@
     "cache": {
       "title": "Cache Management",
       "clearAll": "Clear All Cache",
-      "description": "This will delete all cached audio files, lyrics, and debug information."
+      "description": "This will delete all cached audio files, lyrics, album art, and debug information."
     }
   },
   "cache": {
     "results": {
       "audio": "Audio: {{count}} files deleted",
       "lyrics": "Lyrics: {{count}} files deleted",
-      "debug": "Debug: {{count}} files deleted"
+      "debug": "Debug: {{count}} files deleted",
+      "album_art": "Album Art: {{count}} files deleted"
     },
     "folderNotExist": "Folder does not exist"
   },

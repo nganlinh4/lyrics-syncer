@@ -80,14 +80,15 @@
     "cache": {
       "title": "캐시 관리",
       "clearAll": "모든 캐시 지우기",
-      "description": "이것은 모든 캐시된 오디오 파일, 가사 및 디버그 정보를 삭제합니다."
+      "description": "이것은 모든 캐시된 오디오 파일, 가사, 앨범 아트 및 디버그 정보를 삭제합니다."
     }
   },
   "cache": {
     "results": {
       "audio": "오디오: {{count}}개 파일 삭제됨",
       "lyrics": "가사: {{count}}개 파일 삭제됨",
-      "debug": "디버그: {{count}}개 파일 삭제됨"
+      "debug": "디버그: {{count}}개 파일 삭제됨",
+      "album_art": "앨범 아트: {{count}}개 파일 삭제됨"
     },
     "folderNotExist": "폴더가 존재하지 않습니다"
   },

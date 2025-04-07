@@ -80,14 +80,15 @@
       "cache": {
         "title": "Quản lý Bộ nhớ đệm",
         "clearAll": "Xóa Toàn bộ Bộ nhớ đệm",
-        "description": "Thao tác này sẽ xóa tất cả các tệp âm thanh, lời bài hát và thông tin gỡ lỗi đã lưu trong bộ nhớ đệm."
+        "description": "Thao tác này sẽ xóa tất cả các tệp âm thanh, lời bài hát, ảnh bìa album và thông tin gỡ lỗi đã lưu trong bộ nhớ đệm."
       }
     },
     "cache": {
       "results": {
         "audio": "Âm thanh: Đã xóa {{count}} tệp",
         "lyrics": "Lời bài hát: Đã xóa {{count}} tệp",
-        "debug": "Gỡ lỗi: Đã xóa {{count}} tệp"
+        "debug": "Gỡ lỗi: Đã xóa {{count}} tệp",
+        "album_art": "Ảnh bìa album: Đã xóa {{count}} tệp"
       },
       "folderNotExist": "Thư mục không tồn tại"
     },
