@@ -17,6 +17,8 @@ const AudioPreviewSection = ({
   lyrics = [],
   artist,
   song,
+  geniusArtist,
+  geniusSong,
   onAlbumArtChange,
   onCustomLyrics,
   onAudioChange
@@ -61,7 +63,11 @@ const AudioPreviewSection = ({
       return;
     }
 
-    if (!artist || !song) {
+    // Check if we have Genius artist and song values
+    const useGeniusValues = geniusArtist && geniusSong;
+
+    // If we don't have either YouTube or Genius values, show an error
+    if ((!artist || !song) && (!useGeniusValues)) {
       onError(new Error(t('errors.artistSongRequired')));
       return;
     }
@@ -78,14 +84,18 @@ const AudioPreviewSection = ({
           void onAlbumArtChange?.(objectUrl);
 
           // Upload the file to the server
+          // Use the Genius artist and song values if available, otherwise use YouTube values
+          // This ensures the album art is saved with the correct filename
           const API_URL = 'http://localhost:3001';
           const response = await fetch(`${API_URL}/api/upload_album_art`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              artist,
-              song,
-              imageData: base64Data
+              artist: useGeniusValues ? geniusArtist : artist,
+              song: useGeniusValues ? geniusSong : song,
+              imageData: base64Data,
+              // Add a flag to indicate this is a custom upload
+              isCustomUpload: true
             })
           });
 
@@ -95,10 +105,10 @@ const AudioPreviewSection = ({
 
           // Get the server URL for the saved file
           const data = await response.json();
-          
+
           // Update the album art URL to point to the saved file
           void onAlbumArtChange?.(data.albumArtUrl);
-          
+
           // Clean up temporary object URL
           URL.revokeObjectURL(objectUrl);
         } catch (uploadError) {
@@ -123,7 +133,11 @@ const AudioPreviewSection = ({
       return;
     }
 
-    if (!artist || !song) {
+    // Check if we have Genius artist and song values
+    const useGeniusValues = geniusArtist && geniusSong;
+
+    // If we don't have either YouTube or Genius values, show an error
+    if ((!artist || !song) && (!useGeniusValues)) {
       onError(new Error(t('errors.artistSongRequired')));
       return;
     }
@@ -136,13 +150,14 @@ const AudioPreviewSection = ({
           const base64Data = reader.result;
 
           // Upload the file to the server
+          // Use the Genius artist and song values if available, otherwise use YouTube values
           const API_URL = 'http://localhost:3001';
           const response = await fetch(`${API_URL}/api/upload_audio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              artist,
-              song,
+              artist: useGeniusValues ? geniusArtist : artist,
+              song: useGeniusValues ? geniusSong : song,
               audioData: base64Data
             })
           });
@@ -153,7 +168,7 @@ const AudioPreviewSection = ({
 
           // Get the server URL for the saved file
           const data = await response.json();
-          
+
           // Update the audio URL to point to the saved file
           if (onAudioChange) {
             onAudioChange(data.audioUrl);
@@ -183,17 +198,17 @@ const AudioPreviewSection = ({
           }}>
             {/* Album Art Section */}
             {albumArtUrl && (
-              <div style={{ 
+              <div style={{
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: theme.spacing.md
               }}>
-                <img 
-                  src={albumArtUrl} 
+                <img
+                  src={albumArtUrl}
                   alt="Album Art"
                   key={albumArtUrl} // Add key prop to force re-render when URL changes
-                  style={{ 
+                  style={{
                     width: '100%',
                     maxWidth: '300px',
                     maxHeight: '300px',
@@ -272,7 +287,7 @@ const AudioPreviewSection = ({
                   </div>
                 </div>
                 {lyrics.map((line, index) => (
-                  <p 
+                  <p
                     key={index}
                     style={{
                       margin: `${theme.spacing.xs} 0`,
@@ -314,7 +329,7 @@ const AudioPreviewSection = ({
               }}>
                 {t('audio.fileSize')}: {Math.round(fileSize / 1024)} KB
               </p>
-              
+
               <input
                 type="file"
                 ref={audioInputRef}

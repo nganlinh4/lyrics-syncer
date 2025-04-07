@@ -20,7 +20,7 @@ if (typeof document !== 'undefined') {
         transform: translateY(0);
       }
     }
-    
+
     @keyframes slideInFromRight {
       0% {
         opacity: 0;
@@ -31,7 +31,7 @@ if (typeof document !== 'undefined') {
         transform: translateX(0);
       }
     }
-    
+
     @keyframes pulseGlow {
       0% {
         box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4);
@@ -43,44 +43,44 @@ if (typeof document !== 'undefined') {
         box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
       }
     }
-    
+
     .matching-buttons-container {
       animation: fadeInStagger 0.5s ease-out forwards;
     }
-    
+
     .matching-progress-container {
       animation: fadeInStagger 0.6s ease-out forwards;
     }
-    
+
     .album-art-container {
       animation: fadeInStagger 0.7s ease-out forwards;
     }
-    
+
     .lyrics-original-container {
       animation: slideInFromRight 0.7s ease-out forwards;
     }
-    
+
     .audio-player-container {
       animation: fadeInStagger 0.8s ease-out forwards;
     }
-    
+
     .synchronized-lyrics-container {
       animation: fadeInStagger 0.9s ease-out forwards;
     }
-    
+
     .album-art-image {
       transition: all 0.3s ease;
     }
-    
+
     .album-art-image:hover {
       transform: scale(1.03);
       box-shadow: ${theme.shadows.lg};
     }
-    
+
     .download-json-button {
       animation: pulseGlow 2s infinite;
     }
-    
+
     .progress-bar-animation {
       transition: width 0.5s ease-in-out;
     }
@@ -105,6 +105,8 @@ const LyricsMatchingSection = ({
   onDownloadJSON,
   artist,
   song,
+  geniusArtist,
+  geniusSong,
   audioUrl,
   lyrics,
   selectedModel,
@@ -128,17 +130,19 @@ const LyricsMatchingSection = ({
       // Fetch the image to avoid cross-origin issues
       const response = await fetch(albumArtUrl);
       const blob = await response.blob();
-      
+
       // Create object URL from the blob
       const blobUrl = URL.createObjectURL(blob);
-      
+
       // Create a temporary link element
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = `${artist}_${song}_album_art.png`;
+      // Use Genius artist and song values if available, otherwise use YouTube values
+      const useGeniusValues = geniusArtist && geniusSong;
+      link.download = `${useGeniusValues ? geniusArtist : artist}_${useGeniusValues ? geniusSong : song}_album_art.png`;
       document.body.appendChild(link);
       link.click();
-      
+
       // Clean up
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
@@ -147,7 +151,9 @@ const LyricsMatchingSection = ({
       // Fallback to the original method if fetch fails
       const link = document.createElement('a');
       link.href = albumArtUrl;
-      link.download = `${artist}_${song}_album_art.png`;
+      // Use Genius artist and song values if available, otherwise use YouTube values
+      const useGeniusValues = geniusArtist && geniusSong;
+      link.download = `${useGeniusValues ? geniusArtist : artist}_${useGeniusValues ? geniusSong : song}_album_art.png`;
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();
@@ -165,7 +171,11 @@ const LyricsMatchingSection = ({
       return;
     }
 
-    if (!artist || !song) {
+    // Check if we have Genius artist and song values
+    const useGeniusValues = geniusArtist && geniusSong;
+
+    // If we don't have either YouTube or Genius values, show an error
+    if ((!artist || !song) && (!useGeniusValues)) {
       onError(new Error(t('errors.artistSongRequired')));
       return;
     }
@@ -182,14 +192,17 @@ const LyricsMatchingSection = ({
           void onAlbumArtChange?.(objectUrl);
 
           // Upload the file to the server
+          // Use the Genius artist and song values if available, otherwise use YouTube values
           const API_URL = 'http://localhost:3001';
           const response = await fetch(`${API_URL}/api/upload_album_art`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              artist,
-              song,
-              imageData: base64Data
+              artist: useGeniusValues ? geniusArtist : artist,
+              song: useGeniusValues ? geniusSong : song,
+              imageData: base64Data,
+              // Add a flag to indicate this is a custom upload
+              isCustomUpload: true
             })
           });
 
@@ -199,10 +212,10 @@ const LyricsMatchingSection = ({
 
           // Get the server URL for the saved file
           const data = await response.json();
-          
+
           // Update the album art URL to point to the saved file
           void onAlbumArtChange?.(data.albumArtUrl);
-          
+
           // Clean up temporary object URL
           URL.revokeObjectURL(objectUrl);
         } catch (uploadError) {
@@ -277,7 +290,7 @@ const LyricsMatchingSection = ({
         {matchingComplete && matchedLyrics.length > 0 && (
           <div style={{ display: 'grid', gap: theme.spacing.lg }}>
             {/* Top row: Album Art and Original Lyrics side-by-side */}
-            <div style={{ 
+            <div style={{
               display: 'grid',
               gridTemplateColumns: albumArtUrl ? '300px 1fr' : '1fr',
               gap: theme.spacing.lg,
@@ -285,17 +298,17 @@ const LyricsMatchingSection = ({
             }} className="album-art-container">
               {/* Left column: Album Art */}
               {albumArtUrl && (
-                <div style={{ 
+                <div style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: theme.spacing.md
                 }} className="album-art-image">
-                  <img 
-                    src={albumArtUrl} 
+                  <img
+                    src={albumArtUrl}
                     alt="Album Art"
                     key={albumArtUrl}
-                    style={{ 
+                    style={{
                       width: '100%',
                       maxWidth: '300px',
                       maxHeight: '300px',
@@ -338,7 +351,7 @@ const LyricsMatchingSection = ({
                   </div>
                 </div>
               )}
-              
+
               {/* Right column: Original Lyrics Display */}
               {lyrics && lyrics.length > 0 && (
                 <div style={{
@@ -376,7 +389,7 @@ const LyricsMatchingSection = ({
                     </div>
                   </div>
                   {lyrics.map((line, index) => (
-                    <p 
+                    <p
                       key={index}
                       style={{
                         margin: `${theme.spacing.xs} 0`,
@@ -391,7 +404,7 @@ const LyricsMatchingSection = ({
                 </div>
               )}
             </div>
-            
+
             {/* Middle row: Audio Player */}
             {audioUrl && (
               <div className="audio-player-container">
@@ -404,7 +417,7 @@ const LyricsMatchingSection = ({
                 />
               </div>
             )}
-            
+
             {/* Bottom row: Synchronized Lyrics */}
             <div className="synchronized-lyrics-container">
               <LyricsDisplay
@@ -416,7 +429,7 @@ const LyricsMatchingSection = ({
                 allowEditing={matchingComplete}
                 onCustomLyrics={onCustomLyrics}
               />
-              
+
               <div style={{ marginTop: theme.spacing.md }}>
                 <Button
                   onClick={onDownloadJSON}
@@ -427,7 +440,7 @@ const LyricsMatchingSection = ({
                 >
                   {t('lyrics.downloadJSON')}
                 </Button>
-                <p style={{ 
+                <p style={{
                   ...theme.typography.small,
                   color: theme.colors.text.secondary,
                   marginTop: theme.spacing.xs

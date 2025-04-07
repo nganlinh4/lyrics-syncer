@@ -21,7 +21,7 @@ import useLyrics from './hooks/useLyrics';
 
 const MainApp = () => {
   const { t } = useTranslation();
-  
+
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -35,6 +35,8 @@ const MainApp = () => {
   // Other state
   const [artist, setArtist] = useState(() => localStorage.getItem('lastArtist') || '');
   const [song, setSong] = useState(() => localStorage.getItem('lastSong') || '');
+  const [geniusArtist, setGeniusArtist] = useState(() => localStorage.getItem('geniusArtist') || artist);
+  const [geniusSong, setGeniusSong] = useState(() => localStorage.getItem('geniusSong') || song);
   const [loading, setLoading] = useState(false);
   const [needsRefetch, setNeedsRefetch] = useState(true);
   const [hasDownloaded, setHasDownloaded] = useState(false);
@@ -131,13 +133,13 @@ const MainApp = () => {
         const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
         setLyrics(lyricsArray);
       }
-      
+
       setNeedsRefetch(false);
       setHasDownloaded(true);
-      
+
       const songName = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}`;
       const audioResponse = await fetch(`${API_URL}/api/audio_data/${encodeURIComponent(songName)}`);
-      
+
       if (!audioResponse.ok) {
         throw new Error('Failed to get audio data');
       }
@@ -248,11 +250,19 @@ const MainApp = () => {
             setNeedsRefetch(true);
             localStorage.setItem('lastSong', e.target.value);
           }}
+          onGeniusArtistChange={(value) => {
+            setGeniusArtist(value);
+          }}
+          onGeniusSongChange={(value) => {
+            setGeniusSong(value);
+          }}
           onDownload={handleDownload}
           onForceDownload={handleForceDownload}
-          onFetchFromGenius={async (artist, song, force = false) => {
+          onFetchFromGenius={async (geniusArtistValue, geniusSongValue, force = false) => {
             try {
-              const result = await fetchFromGenius(artist, song, force);
+              // Always pass the YouTube artist and song values as well
+              // This ensures the backend can check if a custom album art exists
+              const result = await fetchFromGenius(geniusArtistValue, geniusSongValue, force, artist, song);
               if (result && result.albumArtUrl) {
                 setAlbumArtUrl(result.albumArtUrl);
               }
@@ -277,6 +287,8 @@ const MainApp = () => {
               lyrics={lyrics}
               artist={artist}
               song={song}
+              geniusArtist={geniusArtist}
+              geniusSong={geniusSong}
               onAlbumArtChange={handleAlbumArtChange}
               onAudioChange={handleAudioChange}
               onCustomLyrics={() => setIsEditingLyrics(true)}
@@ -294,7 +306,7 @@ const MainApp = () => {
               onSave={async (lyricsArray, artist, song) => {
                 try {
                   await saveCustomLyrics(lyricsArray, artist, song);
-                  
+
                   // Update state
                   setLyrics(lyricsArray);
                   setIsEditingLyrics(false);
@@ -325,6 +337,8 @@ const MainApp = () => {
             onDownloadJSON={handleDownloadJSON}
             artist={artist}
             song={song}
+            geniusArtist={geniusArtist}
+            geniusSong={geniusSong}
             audioUrl={audioUrl}
             lyrics={lyrics}
             selectedModel={selectedModel}

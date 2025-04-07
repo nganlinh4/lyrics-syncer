@@ -33,7 +33,7 @@ const useLyrics = () => {
   const handlePreviewLyrics = useCallback(async (artist, song) => {
     try {
       setError(null);
-      
+
       const response = await fetch(`${API_URL}/api/preview_lyrics`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,7 +101,7 @@ const useLyrics = () => {
         try {
           const data = await response.json();
           console.log('Received complete JSON response:', data);
-          
+
           // Handle the response as a result message
           if (data.matched_lyrics) {
             setMatchedLyrics(data.matched_lyrics);
@@ -128,20 +128,20 @@ const useLyrics = () => {
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) break;
-        
+
         buffer += decoder.decode(value, { stream: true });
-        
+
         // Process complete messages from buffer
         const lines = buffer.split('\n');
         buffer = lines.pop() || ''; // Keep incomplete line in buffer
-        
+
         for (const line of lines) {
           if (line.trim()) {
             try {
               const data = JSON.parse(line);
-              
+
               if (data.type === 'progress') {
                 setMatchingProgress(data.progress);
                 setProcessingStatus(data.status);
@@ -149,7 +149,7 @@ const useLyrics = () => {
                 // Make sure we're extracting the matched lyrics array correctly
                 const matchedData = data.matchedLyrics || [];
                 console.log('Received matched lyrics:', matchedData);
-                
+
                 if (Array.isArray(matchedData) && matchedData.length > 0) {
                   setMatchedLyrics(matchedData);
                   setLanguageDetected(data.language || '');
@@ -190,7 +190,7 @@ const useLyrics = () => {
       const jsonContent = JSON.stringify(matchedLyrics, null, 2);
       const blob = new Blob([jsonContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      
+
       const a = document.createElement('a');
       a.href = url;
       a.download = 'synchronized_lyrics.json';
@@ -213,11 +213,11 @@ const useLyrics = () => {
   const saveCustomLyrics = useCallback(async (customLyrics, artist, song) => {
     try {
       setError(null);
-      
+
       if (!artist || !song) {
         throw new Error('Artist and song are required to save custom lyrics');
       }
-      
+
       const response = await fetch(`${API_URL}/api/save_custom_lyrics`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -236,7 +236,7 @@ const useLyrics = () => {
       // Update local state
       setLyrics(customLyrics);
       setIsCustomLyrics(true);
-      
+
       return true;
     } catch (err) {
       console.error('Custom lyrics save error:', err);
@@ -248,7 +248,7 @@ const useLyrics = () => {
   const generateImagePrompt = useCallback(async () => {
     try {
       setError(null);
-      
+
       // Handle blob URLs (custom uploaded images) consistently with generateImage
       let imageData;
       if (albumArtUrl.startsWith('blob:')) {
@@ -293,7 +293,7 @@ const useLyrics = () => {
   const generateImage = useCallback(async (prompt) => {
     try {
       setError(null);
-      
+
       // If albumArtUrl is an object URL (custom uploaded image), fetch it and convert to base64
       let imageData;
       if (albumArtUrl.startsWith('blob:')) {
@@ -335,7 +335,7 @@ const useLyrics = () => {
     }
   }, [API_URL, albumArtUrl, selectedImageModel]);
 
-  const fetchFromGenius = useCallback(async (artist, song, force = false) => {
+  const fetchFromGenius = useCallback(async (artist, song, force = false, youtubeArtist = '', youtubeSong = '') => {
     try {
       setError(null);
       setLoading(true); // Add loading state
@@ -343,7 +343,13 @@ const useLyrics = () => {
       const response = await fetch(`${API_URL}/api/lyrics`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artist, song, force })
+        body: JSON.stringify({
+          artist,
+          song,
+          force,
+          youtubeArtist,
+          youtubeSong
+        })
       });
 
       if (!response.ok) {

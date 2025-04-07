@@ -176,7 +176,7 @@ export const matchLyrics = async (req, res) => {
  */
 export const forceMatchLyrics = async (req, res) => {
   try {
-    const { artist, song, audioPath, lyrics, model } = req.body;
+    const { artist, song, model } = req.body;
 
     // Delete existing Gemini results if they exist
     const resultsPath = getGeminiResultsPath(artist, song, model, config.lyricsDir);
@@ -413,7 +413,7 @@ export const generateImage = async (req, res) => {
 /**
  * Delete cache files from specified folders
  */
-export const deleteCache = async (req, res) => {
+export const deleteCache = async (_, res) => {
   try {
     const foldersToClean = [
       { path: config.audioDir, name: 'audio' },
@@ -475,14 +475,18 @@ export const deleteCache = async (req, res) => {
  */
 export const uploadAlbumArt = async (req, res) => {
   try {
-    const { artist, song, imageData } = req.body;
+    const { artist, song, imageData, isCustomUpload } = req.body;
 
     if (!artist || !song || !imageData) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
-    // Generate filename in the same format as other album art files
-    const filename = `${artist.toLowerCase().replace(/\s+/g, '_')}_-_${song.toLowerCase().replace(/\s+/g, '_')}.png`;
+    console.log(`Uploading custom album art for ${artist} - ${song}${isCustomUpload ? ' (marked as custom upload)' : ''}`);
+
+
+    // Generate filename using the same function as other parts of the app
+    const songName = getSongName(artist, song);
+    const filename = `${songName}.png`;
     const filePath = path.join(config.albumArtDir, filename);
 
     // Create album_art directory if it doesn't exist
@@ -505,13 +509,13 @@ export const uploadAlbumArt = async (req, res) => {
     console.log(`Saved new album art to: ${filePath}`);
 
     // Also update metadata file if it exists
-    const metadataFilePath = path.join(config.lyricsDir, `${filename.replace('.png', '')}_metadata.json`);
+    const metadataFilePath = path.join(config.lyricsDir, `${songName}_metadata.json`);
     if (await fileExists(metadataFilePath)) {
       try {
         const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
 
         // Update albumArtUrl in metadata
-        const serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${filename}`;
+        const serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${songName}.png`;
         metadata.albumArtUrl = serverAlbumArtUrl;
         metadata.originalAlbumArtUrl = 'custom_upload';
         metadata.lastModified = new Date().toISOString();
@@ -526,7 +530,7 @@ export const uploadAlbumArt = async (req, res) => {
 
     // Add a timestamp parameter to force browser to refresh the image
     const timestamp = new Date().getTime();
-    const serverUrl = `http://localhost:${config.port}/album_art/${filename}?t=${timestamp}`;
+    const serverUrl = `http://localhost:${config.port}/album_art/${songName}.png?t=${timestamp}`;
     res.json({ albumArtUrl: serverUrl });
   } catch (error) {
     console.error('Error in uploadAlbumArt:', error);
@@ -545,7 +549,7 @@ export const uploadAudio = async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
-    // Generate filename in the same format as other audio files
+    // Generate filename using the same function as other parts of the app
     const songName = getSongName(artist, song);
     const filePath = path.join(config.audioDir, `${songName}.mp3`);
 

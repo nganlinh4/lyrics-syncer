@@ -1,6 +1,5 @@
 // filepath: c:\WORK_win\lyrics-syncer\backend\controllers\lyricsController.js
 import fs from 'fs/promises';
-import * as fsSync from 'fs';
 import path from 'path';
 import axios from 'axios';
 import config from '../config/config.js';
@@ -46,11 +45,13 @@ export const saveTiming = async (req, res) => {
  */
 export const getLyrics = async (req, res) => {
   try {
-    const { artist, song, force } = req.body;
-    
+    const { artist, song, force, youtubeArtist, youtubeSong } = req.body;
+
     if (!artist || !song) {
       return res.status(400).json({ error: 'Missing artist or song' });
     }
+
+    // Check if we have YouTube artist and song values for custom album art lookup
 
     // Check cached lyrics first unless force is true
     const songName = getSongName(artist, song);
@@ -67,6 +68,56 @@ export const getLyrics = async (req, res) => {
       const lyrics = await fs.readFile(lyricsFilePath, 'utf-8');
       const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
       return res.json({ lyrics, albumArtUrl: metadata.albumArtUrl });
+    }
+
+    // Check if we have a metadata file to see if album art was customized
+    let isCustomAlbumArt = false;
+    let existingMetadata = req.body.existingMetadata || {};
+
+    // If existingMetadata wasn't passed in the request, try to read it from the file
+    if (Object.keys(existingMetadata).length === 0 && await fileExists(metadataFilePath)) {
+      try {
+        existingMetadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
+      } catch (metadataError) {
+        console.error(`Error reading metadata file: ${metadataError.message}`);
+      }
+    }
+
+    // Check if album art is custom
+    isCustomAlbumArt = existingMetadata.originalAlbumArtUrl === 'custom_upload';
+
+    // If we have YouTube artist and song values, check if there's a custom album art for those values
+    if (youtubeArtist && youtubeSong && !isCustomAlbumArt) {
+      const youtubeSongName = getSongName(youtubeArtist, youtubeSong);
+      const youtubeMetadataFilePath = path.join(config.lyricsDir, `${youtubeSongName}_metadata.json`);
+
+      if (await fileExists(youtubeMetadataFilePath)) {
+        try {
+          const youtubeMetadata = JSON.parse(await fs.readFile(youtubeMetadataFilePath, 'utf-8'));
+          if (youtubeMetadata.originalAlbumArtUrl === 'custom_upload') {
+            // We found a custom album art for the YouTube artist and song
+            isCustomAlbumArt = true;
+            existingMetadata = youtubeMetadata;
+            console.log(`Found custom album art for YouTube values: ${youtubeSongName}`);
+
+            // Use the YouTube album art file instead
+            const youtubeAlbumArtFilePath = path.join(config.albumArtDir, `${youtubeSongName}.png`);
+            if (await fileExists(youtubeAlbumArtFilePath)) {
+              // Copy the YouTube album art file to the Genius album art file
+              const albumArtData = await fs.readFile(youtubeAlbumArtFilePath);
+              await fs.mkdir(path.dirname(albumArtFilePath), { recursive: true });
+              await fs.writeFile(albumArtFilePath, albumArtData);
+              console.log(`Copied custom album art from ${youtubeAlbumArtFilePath} to ${albumArtFilePath}`);
+            }
+          }
+        } catch (metadataError) {
+          console.error(`Error reading YouTube metadata file: ${metadataError.message}`);
+        }
+      }
+    }
+
+    if (isCustomAlbumArt) {
+      console.log(`Album art for ${songName} is custom - will preserve it`);
     }
 
     // If we get here, we either have force=true or missing cached files
@@ -86,20 +137,22 @@ export const getLyrics = async (req, res) => {
 
     // Search for the song
     const geniusSong = await geniusClient.songs.search(`${artist} ${song}`);
-    
+
     if (geniusSong.length > 0) {
       const geniusResult = geniusSong[0];
-      
+
       // Fetch fresh lyrics and album art
       console.log('Fetching fresh lyrics and album art from Genius...');
       const lyrics = await geniusResult.lyrics();
       await fs.writeFile(lyricsFilePath, lyrics, 'utf-8');
-    
+
       // Get album art URL
       const albumArtUrl = geniusResult.image || geniusResult.header_image_url || geniusResult.song_art_image_url;
-      
-      // Download and save the album art
-      if (albumArtUrl) {
+
+      // Download and save the album art only if it's not a custom upload
+      let serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${songName}.png`;
+
+      if (albumArtUrl && !isCustomAlbumArt) {
         console.log(`Downloading album art from: ${albumArtUrl}`);
         try {
           const response = await axios.get(albumArtUrl, { responseType: 'arraybuffer' });
@@ -108,19 +161,26 @@ export const getLyrics = async (req, res) => {
         } catch (downloadError) {
           console.error(`Error downloading album art: ${downloadError.message}`);
         }
+      } else if (isCustomAlbumArt) {
+        console.log(`Preserving custom album art at: ${albumArtFilePath}`);
       }
-      
-      // Create server URL for album art
-      const serverAlbumArtUrl = `http://localhost:${config.port}/album_art/${songName}.png`;
-      
-      // Cache the metadata
+
+      // Server URL for album art was already defined above
+
+      // Cache the metadata, preserving custom album art info if it exists
       const metadata = {
+        ...existingMetadata,
         albumArtUrl: serverAlbumArtUrl,
-        originalAlbumArtUrl: albumArtUrl,
         cached: new Date().toISOString()
       };
+
+      // Only update originalAlbumArtUrl if it's not a custom upload
+      if (!isCustomAlbumArt) {
+        metadata.originalAlbumArtUrl = albumArtUrl;
+      }
+
       await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
-      
+
       console.log('Album Art URL:', serverAlbumArtUrl);
       return res.json({ lyrics, albumArtUrl: serverAlbumArtUrl });
     } else {
@@ -137,30 +197,53 @@ export const getLyrics = async (req, res) => {
  */
 export const forceLyrics = async (req, res) => {
   try {
+    // Extract only what we need for this function
     const { artist, song } = req.body;
     const songName = getSongName(artist, song);
     const lyricsFilePath = path.join(config.lyricsDir, `${songName}.txt`);
     const metadataFilePath = path.join(config.lyricsDir, `${songName}_metadata.json`);
     const albumArtFilePath = path.join(config.albumArtDir, `${songName}.png`);
 
+    // Check if we have a metadata file to see if album art was customized
+    let isCustomAlbumArt = false;
+    let existingMetadata = {};
+    if (await fileExists(metadataFilePath)) {
+      try {
+        existingMetadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
+        isCustomAlbumArt = existingMetadata.originalAlbumArtUrl === 'custom_upload';
+        console.log(`Album art for ${songName} is ${isCustomAlbumArt ? 'custom' : 'from Genius'}`);
+      } catch (metadataError) {
+        console.error(`Error reading metadata file: ${metadataError.message}`);
+      }
+    }
+
     // Delete existing lyrics file if it exists
     if (await fileExists(lyricsFilePath)) {
       await fs.unlink(lyricsFilePath);
     }
-    // Delete existing metadata file if it exists
-    if (await fileExists(metadataFilePath)) {
+
+    // Delete existing metadata file if it exists, but save its content if album art is custom
+    if (await fileExists(metadataFilePath) && !isCustomAlbumArt) {
       await fs.unlink(metadataFilePath);
     }
-    // Delete existing album art file if it exists
-    if (await fileExists(albumArtFilePath)) {
+
+    // Delete existing album art file if it exists, but only if it's not custom
+    if (await fileExists(albumArtFilePath) && !isCustomAlbumArt) {
       await fs.unlink(albumArtFilePath);
     }
 
+    // Update request body with force flag and existing metadata if album art is custom
     req.body.force = true;
-    
+    if (isCustomAlbumArt) {
+      req.body.existingMetadata = existingMetadata;
+    }
+
+    // Make sure to pass the YouTube artist and song values to getLyrics
+    // This ensures that if there's a custom album art for the YouTube values, it will be used
+
     // Get fresh data from Genius API
     const result = await getLyrics(req, res);
-    
+
     // Generate a timestamp to force browser to refresh the image
     if (!res.headersSent) {
       const albumArtUrl = result?.albumArtUrl;
@@ -171,7 +254,7 @@ export const forceLyrics = async (req, res) => {
         return;
       }
     }
-    
+
     // If we've reached this point, getLyrics already sent a response
     return;
   } catch (error) {
@@ -216,7 +299,7 @@ export const autoMatchLyrics = async (req, res) => {
 export const saveCustomLyrics = async (req, res) => {
   try {
     const { artist, song, lyrics } = req.body;
-    
+
     if (!artist || !song || !lyrics) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
@@ -240,11 +323,11 @@ export const saveCustomLyrics = async (req, res) => {
     if (await fileExists(metadataFilePath)) {
       try {
         const metadata = JSON.parse(await fs.readFile(metadataFilePath, 'utf-8'));
-        
+
         // Update metadata
         metadata.customLyrics = true;
         metadata.lastModified = new Date().toISOString();
-        
+
         await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2), 'utf-8');
         console.log(`Updated metadata file at: ${metadataFilePath}`);
       } catch (metadataError) {

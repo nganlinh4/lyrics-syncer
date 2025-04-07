@@ -14,16 +14,18 @@ const SongInput = ({
   onDownload,
   onForceDownload,
   onFetchFromGenius,
-  geniusLoading
+  geniusLoading,
+  onGeniusArtistChange,
+  onGeniusSongChange
 }) => {
   const { t } = useTranslation();
-  const [sameAsYoutube, setSameAsYoutube] = useState(() => 
+  const [sameAsYoutube, setSameAsYoutube] = useState(() =>
     localStorage.getItem('sameAsYoutube') !== 'false'
   );
-  const [geniusArtist, setGeniusArtist] = useState(() => 
+  const [geniusArtist, setGeniusArtist] = useState(() =>
     localStorage.getItem('geniusArtist') || artist
   );
-  const [geniusSong, setGeniusSong] = useState(() => 
+  const [geniusSong, setGeniusSong] = useState(() =>
     localStorage.getItem('geniusSong') || song
   );
 
@@ -32,17 +34,31 @@ const SongInput = ({
     if (sameAsYoutube) {
       setGeniusArtist(artist);
       setGeniusSong(song);
+
+      // Also call the callbacks if they exist
+      if (onGeniusArtistChange) {
+        onGeniusArtistChange(artist);
+      }
+      if (onGeniusSongChange) {
+        onGeniusSongChange(song);
+      }
     }
-  }, [sameAsYoutube, artist, song]);
+  }, [sameAsYoutube, artist, song, onGeniusArtistChange, onGeniusSongChange]);
 
   const handleGeniusArtistChange = (e) => {
     setGeniusArtist(e.target.value);
     localStorage.setItem('geniusArtist', e.target.value);
+    if (onGeniusArtistChange) {
+      onGeniusArtistChange(e.target.value);
+    }
   };
 
   const handleGeniusSongChange = (e) => {
     setGeniusSong(e.target.value);
     localStorage.setItem('geniusSong', e.target.value);
+    if (onGeniusSongChange) {
+      onGeniusSongChange(e.target.value);
+    }
   };
 
   return (
@@ -84,10 +100,10 @@ const SongInput = ({
               />
             </div>
 
-            <div style={{ 
-              display: 'grid', 
+            <div style={{
+              display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: theme.spacing.md 
+              gap: theme.spacing.md
             }}>
               <Button
                 onClick={onDownload}
@@ -97,7 +113,7 @@ const SongInput = ({
               >
                 {loading ? t('common.loading') : t('audio.download')}
               </Button>
-              
+
               <Button
                 onClick={onForceDownload}
                 disabled={loading || !artist || !song}
@@ -166,10 +182,10 @@ const SongInput = ({
               </>
             )}
 
-            <div style={{ 
-              display: 'grid', 
+            <div style={{
+              display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: theme.spacing.md 
+              gap: theme.spacing.md
             }}>
               <Button
                 onClick={() => onFetchFromGenius(sameAsYoutube ? artist : geniusArtist, sameAsYoutube ? song : geniusSong)}
