@@ -16,8 +16,50 @@ const useApiKeys = () => {
       return acc;
     }, {});
   });
-  
+
   const [error, setError] = useState(null);
+
+  // Fetch API keys from backend on mount
+  useEffect(() => {
+    const fetchApiKeys = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/get_api_keys`);
+        if (!response.ok) {
+          console.warn('Failed to fetch API keys from backend');
+          return;
+        }
+
+        const data = await response.json();
+        if (data.apiKeys) {
+          // Update state with backend API keys
+          setApiKeys(prev => {
+            const newApiKeys = { ...prev };
+
+            // For each API key type, update the key if it exists in the backend
+            // and there's no key in localStorage
+            API_TYPES.forEach(type => {
+              const storedKey = localStorage.getItem(`${STORAGE_PREFIX}${type}_api_key`);
+              if (!storedKey && data.apiKeys[type]) {
+                // Save to localStorage
+                localStorage.setItem(`${STORAGE_PREFIX}${type}_api_key`, data.apiKeys[type]);
+                // Update state
+                newApiKeys[type] = {
+                  key: data.apiKeys[type],
+                  status: 'saved'
+                };
+              }
+            });
+
+            return newApiKeys;
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching API keys:', error);
+      }
+    };
+
+    fetchApiKeys();
+  }, []);
 
   // Validate API key format based on type
   const validateApiKey = useCallback((type, key) => {
@@ -70,7 +112,7 @@ const useApiKeys = () => {
   const handleSaveApiKey = useCallback(async (type, value) => {
     try {
       setError(null);
-      
+
       // Validate the API key format
       validateApiKey(type, value);
 
@@ -111,7 +153,7 @@ const useApiKeys = () => {
 
     } catch (error) {
       setError(error.message);
-      
+
       // Update state to show error
       setApiKeys(prev => ({
         ...prev,

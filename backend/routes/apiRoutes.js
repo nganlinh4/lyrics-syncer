@@ -1,9 +1,10 @@
 import express from 'express';
-import { 
-  saveApiKey, 
-  matchLyrics, 
-  forceMatchLyrics, 
-  generateImagePrompt, 
+import {
+  getApiKeys,
+  saveApiKey,
+  matchLyrics,
+  forceMatchLyrics,
+  generateImagePrompt,
   generateImage,
   deleteCache,
   uploadAlbumArt,
@@ -13,6 +14,7 @@ import {
 const router = express.Router();
 
 // API key management
+router.get('/get_api_keys', getApiKeys);
 router.post('/save_api_key', saveApiKey);
 
 // Audio upload route

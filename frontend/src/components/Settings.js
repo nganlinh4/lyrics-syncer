@@ -92,8 +92,8 @@ const Settings = ({
       zIndex: 1000,
       transition: theme.transitions.medium
     }}>
-      <Card style={{ 
-        width: '100%', 
+      <Card style={{
+        width: '100%',
         maxWidth: '800px',
         marginBottom: theme.spacing.xl,
         opacity: 1,
@@ -121,22 +121,25 @@ const Settings = ({
               <ApiKeyInput
                 type="genius"
                 label={t('settings.geniusApiKey')}
-                value={apiKeys.genius || ''}
-                onChange={onApiKeyChange}
+                value={apiKeys.genius?.key || ''}
+                status={apiKeys.genius?.status}
+                onChange={(value) => onApiKeyChange('genius', value)}
                 onSave={onSaveApiKey}
               />
               <ApiKeyInput
                 type="youtube"
                 label={t('settings.youtubeApiKey')}
-                value={apiKeys.youtube || ''}
-                onChange={onApiKeyChange}
+                value={apiKeys.youtube?.key || ''}
+                status={apiKeys.youtube?.status}
+                onChange={(value) => onApiKeyChange('youtube', value)}
                 onSave={onSaveApiKey}
               />
               <ApiKeyInput
                 type="gemini"
                 label={t('settings.geminiApiKey')}
-                value={apiKeys.gemini || ''}
-                onChange={onApiKeyChange}
+                value={apiKeys.gemini?.key || ''}
+                status={apiKeys.gemini?.status}
+                onChange={(value) => onApiKeyChange('gemini', value)}
                 onSave={onSaveApiKey}
               />
             </div>
@@ -187,7 +190,7 @@ const Settings = ({
           {/* Cache Management Section */}
           <section>
             <h3 style={theme.typography.h3}>{t('settings.cache.title')}</h3>
-            <div style={{ 
+            <div style={{
               padding: theme.spacing.md,
               backgroundColor: theme.colors.background.light,
               borderRadius: theme.borderRadius.sm
@@ -202,7 +205,7 @@ const Settings = ({
                   >
                     {loading ? t('common.loading') : t('settings.cache.clearAll')}
                   </Button>
-                  
+
                   <p style={{
                     ...theme.typography.small,
                     color: theme.colors.text.secondary
@@ -238,8 +241,8 @@ const Settings = ({
                           ...theme.typography.body,
                           color: theme.colors.text.primary
                         }}>
-                          {result.translationKey 
-                            ? t(result.translationKey, { count: result.count }) 
+                          {result.translationKey
+                            ? t(result.translationKey, { count: result.count })
                             : `${result.folder}: ${result.message}`}
                         </span>
                       </div>

@@ -10,6 +10,34 @@ import { fileExists, getGeminiResultsPath, getSongName } from '../utils/fileUtil
 const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || 'python';
 
 /**
+ * Get API keys from config file
+ */
+export const getApiKeys = async (req, res) => {
+  try {
+    let apiKeys = {
+      youtube: '',
+      genius: '',
+      gemini: ''
+    };
+
+    if (await fileExists(config.configFilePath)) {
+      const configData = await fs.readFile(config.configFilePath, 'utf-8');
+      const appConfig = JSON.parse(configData);
+
+      // Extract API keys from config
+      apiKeys.youtube = appConfig.youtubeApiKey || '';
+      apiKeys.genius = appConfig.geniusApiKey || '';
+      apiKeys.gemini = appConfig.geminiApiKey || '';
+    }
+
+    res.json({ apiKeys });
+  } catch (error) {
+    console.error("Error in /api/get_api_keys:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
  * Handles requests to save API keys
  */
 export const saveApiKey = async (req, res) => {
