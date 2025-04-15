@@ -7,7 +7,7 @@
     "frontend": "cd frontend && .\\start-frontend.bat",
     "backend": "cd backend && .\\start-backend.bat",
     "dev": "concurrently \"cd backend && .\\start-backend.bat\" \"cd frontend && .\\start-frontend.bat\"",
-    "install-all": "npm install && cd frontend && npm install && cd ../backend && set YOUTUBE_DL_SKIP_PYTHON_CHECK=1 && npm install && cd ../backend && uv venv && .venv\\\\Scripts\\\\python.exe -m pip install -r requirements.txt"
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && set YOUTUBE_DL_SKIP_PYTHON_CHECK=1 && npm install && cd ../backend && uv venv && uv pip install -r requirements.txt"
   },
   "keywords": [
     "lyrics",
