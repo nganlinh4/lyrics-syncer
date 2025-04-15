@@ -12,6 +12,9 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3001') do (
 :: Set the path to the Python executable from .venv
 set PYTHON_PATH=%~dp0\.venv\Scripts\python.exe
 
+:: Set environment variable to skip Python check for youtube-dl-exec
+set YOUTUBE_DL_SKIP_PYTHON_CHECK=1
+
 :: Verify Python path exists
 if not exist "%PYTHON_PATH%" (
     echo ERROR: Python executable not found at %PYTHON_PATH%

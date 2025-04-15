@@ -24,65 +24,37 @@ A web application for synchronizing lyrics with audio files, built with React an
 - npm or yarn
 - FFmpeg installed and available in system PATH
 - Python 3.9+ for AI features
+- uv tool for Python virtual environment management
 - Google Gemini API key for AI features
 
 ## Configuration
 
-1. Copy the example config file to create your own config:
+Copy the example config file to create your own config:
 ```bash
 cp backend/config.example.json backend/config.json
 ```
-
-2. Add your API keys to `backend/config.json`:
-```json
-{
-    "youtubeApiKey": "YOUR_YOUTUBE_API_KEY",
-    "geniusApiKey": "YOUR_GENIUS_API_KEY",
-    "geminiApiKey": "YOUR_GEMINI_API_KEY"
-}
-```
-
-> **Note:** The `config.json` file is ignored by Git to prevent accidentally committing your API keys to the repository.
 
 ## Setup
 
 1. Clone the repository
 
-2. Install all dependencies at once:
+2. Install uv (PowerShell in Administrator mode):
+```bash
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+3. Install all dependencies at once:
 ```bash
 npm run install-all
 ```
 
-3. Install Python dependencies:
-```bash
-cd backend
-pip install -r requirements.txt
-```
+This will:
+- Install root dependencies
+- Install frontend dependencies
+- Install backend dependencies with YOUTUBE_DL_SKIP_PYTHON_CHECK=1 set
+- Create a Python virtual environment in the backend directory
+- Install Python dependencies in the virtual environment
 
-Alternatively, you can install dependencies separately:
-
-1. Install root dependencies:
-```bash
-npm install
-```
-
-2. Install frontend dependencies:
-```bash
-cd frontend
-npm install
-```
-
-3. Install backend dependencies:
-```bash
-cd ../backend
-npm install
-```
-
-4. Install Python dependencies:
-```bash
-cd ../backend
-pip install -r requirements.txt
-```
 
 ## Running the Application
 
@@ -94,34 +66,7 @@ npm run dev
 
 This will start both the backend (with Python environment activated) and frontend concurrently.
 
-### Option 2: Run services separately
-
-1. Start the backend server:
-```bash
-cd backend
-./venv/Scripts/activate
-npm run dev
-```
-
-2. Start the frontend:
-```bash
-cd frontend
-npm start
-```
-
 The application will be available at `http://localhost:3000` with the backend API running at `http://localhost:3001`
-
-## Directory Structure
-
-```
-.
-├── frontend/          # React frontend application
-├── backend/           # Node.js backend server and Python AI integration
-├── audio/             # Downloaded audio files (not tracked in git)
-├── album_art/         # Downloaded album art files (not tracked in git)
-├── lyrics/            # Generated lyrics/subtitle files
-└── config/            # Configuration files
-```
 
 ## Key Features
 
@@ -134,34 +79,6 @@ The application will be available at `http://localhost:3000` with the backend AP
 - Lyrics timing synchronization using Gemini models
 - Background image generation based on lyrics and album art
 - Customizable AI models via the settings panel
-
-## API Endpoints
-
-### `GET /api/audio_data/:song_name`
-Retrieves audio data for a given song.
-
-### `GET /api/lyrics_timing/:song_name`
-Retrieves lyrics timing data for a given song.
-
-### `POST /api/save_timing`
-Saves lyrics timing data for a song.
-
-### `POST /api/process`
-Processes a new song (downloads audio and fetches lyrics).
-
-### `POST /api/generate_image_prompt`
-Generates a prompt for background image creation based on lyrics.
-
-### `POST /api/generate_image`
-Creates a background image using AI based on album art and prompt.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
