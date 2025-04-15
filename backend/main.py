@@ -96,8 +96,18 @@ def main():
             model = args.model
             song_name = args.song or "Unknown Song"
 
+            if not model:
+                raise ValueError("Model parameter is required for prompt generation")
+
             print(f"Using model: {model}", file=sys.stderr)
-            generate_prompt_with_gemini(lyrics, model, song_name)
+            try:
+                result = generate_prompt_with_gemini(lyrics, model, song_name)
+                # Ensure we have a valid result
+                if not result or not result.get("prompt"):
+                    raise ValueError("No prompt was generated")
+            except Exception as e:
+                print(f"Error in generate_prompt: {str(e)}", file=sys.stderr)
+                raise
 
         elif args.mode == "generate_image":
             if not args.prompt or not args.album_art:

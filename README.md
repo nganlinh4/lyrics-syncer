@@ -53,7 +53,7 @@ This will:
 - Install frontend dependencies
 - Install backend dependencies with YOUTUBE_DL_SKIP_PYTHON_CHECK=1 set
 - Create a Python virtual environment in the backend directory
-- Install Python dependencies in the virtual environment
+- Install Python dependencies in the virtual environment using uv pip
 
 
 ## Running the Application

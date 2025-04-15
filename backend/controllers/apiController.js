@@ -7,7 +7,8 @@ import config from '../config/config.js';
 import { fileExists, getGeminiResultsPath, getSongName } from '../utils/fileUtils.js';
 
 // Get Python executable path from environment variable or use default
-const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || 'python';
+// Always prefer the Python executable from the virtual environment
+const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || path.join(config.rootDir, '.venv', 'Scripts', 'python.exe');
 
 /**
  * Get API keys from config file
@@ -307,10 +308,26 @@ export const generateImagePrompt = async (req, res) => {
 
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
-        console.error('Python process error occurred');
+        console.error('Python process error occurred with code:', code);
+        console.error('Python stderr:', stderrData);
+
+        // Try to parse error from stderr if possible
+        let errorMessage = 'Failed to generate prompt';
+        try {
+          // Check if stderr contains JSON
+          if (stderrData.includes('{"error"')) {
+            const errorJson = stderrData.substring(stderrData.indexOf('{"error"'));
+            const parsedError = JSON.parse(errorJson);
+            errorMessage = parsedError.error || errorMessage;
+          }
+        } catch (parseError) {
+          console.error('Error parsing stderr JSON:', parseError);
+        }
+
         return res.status(500).json({
-          error: 'Failed to generate prompt',
-          status: 'error'
+          error: errorMessage,
+          status: 'error',
+          details: stderrData
         });
       }
 
@@ -319,9 +336,12 @@ export const generateImagePrompt = async (req, res) => {
         res.json(result);
       } catch (error) {
         console.error('Error parsing Python output:', error);
+        console.error('Python stdout:', stdoutData);
+        console.error('Python stderr:', stderrData);
         res.status(500).json({
           error: 'Failed to parse prompt generation results',
-          status: 'error'
+          status: 'error',
+          details: error.message
         });
       }
     });
