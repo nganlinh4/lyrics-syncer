@@ -131,7 +131,9 @@ const MainApp = () => {
       const data = await response.json();
       if (data.lyrics) {
         const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
-        setLyrics(lyricsArray);
+        // Remove the first line from the array
+        const lyricsWithoutFirstLine = lyricsArray.slice(1);
+        setLyrics(lyricsWithoutFirstLine);
       }
 
       setNeedsRefetch(false);

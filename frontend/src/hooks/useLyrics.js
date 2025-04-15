@@ -48,7 +48,9 @@ const useLyrics = () => {
       const data = await response.json();
       if (data.lyrics) {
         const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
-        setLyrics(lyricsArray);
+        // Remove the first line from the array
+        const lyricsWithoutFirstLine = lyricsArray.slice(1);
+        setLyrics(lyricsWithoutFirstLine);
       }
     } catch (err) {
       setError(`Preview failed: ${err.message}`);
@@ -359,8 +361,11 @@ const useLyrics = () => {
 
       const data = await response.json();
       if (data.lyrics) {
+        // Split lyrics into array, filter empty lines, and remove the first line
         const lyricsArray = data.lyrics.split(/\\n|\n/).filter(line => line.trim());
-        setLyrics(lyricsArray);
+        // Remove the first line from the array
+        const lyricsWithoutFirstLine = lyricsArray.slice(1);
+        setLyrics(lyricsWithoutFirstLine);
         setAlbumArtUrl(data.albumArtUrl || '');
         setIsCustomLyrics(false);
         return { albumArtUrl: data.albumArtUrl }; // Return the albumArtUrl
