@@ -1,5 +1,7 @@
 # Lyrics Syncer
 
+> **DEPRECATED**: This project is deprecated and has been replaced by [OneClick Subtitles Generator](https://github.com/nganlinh4/oneclick-subtitles-generator), which includes all the features of this project and more.
+
 | | | |
 |:-------------------------:|:-------------------------:|:-------------------------:|
 |<img src="readme_assests/Screenshot%202025-03-26%20104703.png" width="250">|<img src="readme_assests/Screenshot%202025-03-26%20104723.png" width="250">|<img src="readme_assests/Screenshot%202025-03-26%20104744.png" width="250">|
